@@ -34,6 +34,7 @@ create table cycles (
   campaign_id       uuid not null references campaigns(id) on delete cascade,
   name              text not null,
   status            cycle_status_t not null default 'draft',
+  timezone          text,                            -- optional per-cycle IANA tz; falls back to campaign.timezone
   starts_on         date not null,
   ends_on           date not null,
   freeze_at         timestamptz,                     -- computed from ends_on + campaign tz
@@ -46,6 +47,13 @@ create table cycles (
   enforce_post_window boolean not null default true,  -- flag clips posted outside the dates
   hashtag_mode      hashtag_mode_t not null default 'off',
   required_hashtags text[] not null default '{}',     -- stored lowercased, without '#'
+  -- Automatic view-check schedule, interpreted in this cycle's timezone and run
+  -- only while status='active'. YouTube is free so it can run often; TikTok/IG
+  -- cost per check, so `paid` has its own (usually slower) cadence to control spend.
+  -- Modes: 'manual' (button only) | 'daily' (atLocal times) | 'interval' (everyMinutes).
+  auto_check_enabled boolean not null default true,
+  check_schedule     jsonb not null default
+    '{"free":{"mode":"interval","everyMinutes":360},"paid":{"mode":"daily","atLocal":["06:00"]}}',
   created_at        timestamptz not null default now()
 );
 create index on cycles (campaign_id, status);

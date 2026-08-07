@@ -21,11 +21,16 @@ were built first. All verified against the real APIs; `npm test` → **32 passin
 | `core/normalize.mjs` | Maps YouTube / Apify-TikTok / Apify-IG responses → one common shape. Raises `ig_suspect` on unreliable IG views. `evaluateFlags()` = the anti-fraud suite. |
 | `core/*.test.mjs` | 32 tests covering the tricky real-world cases. Run: `npm test`. |
 
-## ⏳ Blocked only on two answers
-- **Timezone** (drives cycle freeze + posted-in-dates check).
-- **Host: free Vercel+Supabase vs ~$5/mo Railway** (changes only the deploy step, not the code).
-
-Six other choices already have recommended defaults (see brief). None block starting.
+## ✅ Decisions made
+- **Host: Railway (~$5/mo)** — always-on Postgres, no pausing, no cold starts, no
+  free-tier ToS gray area. Storage scales; data footprint is <1 MB/campaign/year.
+- **Timezone: Morocco (`Africa/Casablanca`)** as the campaign default, **overridable
+  per cycle** (`cycles.timezone`). All schedules/freeze times honor the cycle tz.
+- **Programmable checks per cycle** (`cycles.check_schedule`, `auto_check_enabled`):
+  manager sets frequency + times when creating a cycle. Separate cadence for FREE
+  (YouTube) vs PAID (TikTok/IG) platforms, with a live monthly-cost estimate shown
+  in the setup form. Railway (not Vercel) removes the once-a-day cron limit.
+- Six smaller choices use recommended defaults (see brief) unless changed.
 
 ---
 
@@ -41,7 +46,9 @@ Six other choices already have recommended defaults (see brief). None block star
 8. **Dashboard** — summary ticker, budget bar, platform totals, leaderboard (views+payout), clip cards (thumbnail/views/likes/comments/engagement), clip detail Overview+Analytics charts, filters/search, alerts strip.
 9. **Payouts Hub** — pending → pay-whole-cycle → history → lifetime per-campaign + grand total.
 10. **Reports** — PDF cycle report + per-clipper payout sheets.
-11. **Automation** — Vercel daily cron (runs the check + keeps Supabase awake) with enable/disable + Apify daily spend cap.
+11. **Automation** — Railway scheduler runs each active cycle's `check_schedule`
+    (free vs paid cadence, in the cycle's timezone) + enable/disable + Apify daily
+    spend cap. No once-a-day limit (that was a Vercel-free constraint we've dropped).
 
 **v1 = steps 1–10 with YouTube + manual entry live; TikTok/IG (step 7 Apify) is the fast second pass once the Apify key exists.**
 
