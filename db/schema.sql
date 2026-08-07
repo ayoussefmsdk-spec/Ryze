@@ -10,6 +10,14 @@
 -- ---- Enumerated types -------------------------------------------------------
 create type platform_t          as enum ('youtube','tiktok','instagram','twitter','other');
 create type cycle_status_t       as enum ('draft','active','frozen');
+-- How clippers get paid in a given cycle. Each model reads its own params from
+-- cycles.payout_config (jsonb), so new models can be added without schema changes.
+--   cpm             — views/1000 × CPM per platform (+ floor/caps)
+--   pot_proportional— fixed pot split by each qualifier's share of views
+--   pot_equal       — fixed pot split equally among qualifiers
+--   placement       — fixed prizes to the top ranks (1st/2nd/3rd…)
+--   flat_per_clip   — fixed amount per qualifying clip
+create type payout_model_t       as enum ('cpm','pot_proportional','pot_equal','placement','flat_per_clip');
 create type clip_status_t        as enum ('pending','approved','rejected');
 create type clip_source_t        as enum ('auto','manual');   -- was the number fetched or hand-typed
 create type hashtag_mode_t       as enum ('off','flag','auto_reject');
@@ -38,11 +46,17 @@ create table cycles (
   starts_on         date not null,
   ends_on           date not null,
   freeze_at         timestamptz,                     -- computed from ends_on + campaign tz
-  budget_cap_cents  bigint not null default 0,
+  -- Payout model + its parameters. `payout_config` holds model-specific values:
+  --   cpm             -> {"maxPerClipCents":null,"maxPerClipperCents":null}  (rates live in cycle_cpm)
+  --   pot_proportional-> {"potCents":350000,"qualifyMinViews":5000,"maxPerClipperCents":null}
+  --   pot_equal       -> {"potCents":350000,"qualifyMinViews":5000}
+  --   placement       -> {"prizesCents":[100000,50000,25000],"qualifyMinViews":1000}
+  --   flat_per_clip   -> {"amountCents":500}
+  payout_model      payout_model_t not null default 'cpm',
+  payout_config     jsonb not null default '{}',
+  budget_cap_cents  bigint not null default 0,        -- spend ceiling for cpm/flat; equals the pot for pot/placement
   min_view_enabled  boolean not null default false,
-  min_view_floor    bigint not null default 0,       -- clips under this pay $0 but stay tracked
-  max_per_clip_cents    bigint,                       -- null = no cap
-  max_per_clipper_cents bigint,                       -- null = no cap
+  min_view_floor    bigint not null default 0,        -- general qualify threshold: below it a clip pays $0 but stays tracked
   allowed_platforms platform_t[] not null default '{youtube,tiktok,instagram,twitter,other}',
   enforce_post_window boolean not null default true,  -- flag clips posted outside the dates
   hashtag_mode      hashtag_mode_t not null default 'off',
@@ -146,6 +160,19 @@ create table payouts (
   notes        text,
   unique (cycle_id, clipper_id)                         -- a clipper is settled once per cycle
 );
+
+-- ---- Manual payout adjustments (the "any detail" catch-all) -----------------
+-- A signed per-clipper tweak on top of whatever the model computes: a bonus
+-- (+), a deduction (−), or a note. Covers anything the structured models don't.
+create table payout_adjustments (
+  id           uuid primary key default gen_random_uuid(),
+  cycle_id     uuid not null references cycles(id) on delete cascade,
+  clipper_id   uuid not null references clippers(id) on delete cascade,
+  amount_cents bigint not null,                         -- may be negative
+  reason       text,
+  created_at   timestamptz not null default now()
+);
+create index on payout_adjustments (cycle_id, clipper_id);
 
 -- ---- Cycle change log (mid-cycle edits to money/dates) ---------------------
 create table cycle_changes (

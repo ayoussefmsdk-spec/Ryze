@@ -78,6 +78,81 @@ export function formatEngagement(fraction) {
   return `${(fraction * 100).toFixed(1)}%`;
 }
 
+// ============================================================================
+// Alternative payout models (per-cycle choice). Each takes already-aggregated
+// "entries" — [{ key, views }] where key identifies a clipper (or a clip, for
+// flat_per_clip) — and returns a Map(key -> cents). The manager picks the model
+// per cycle and can change it (and its params) mid-cycle; payouts recalc live.
+// ============================================================================
+
+/** True when an entry meets the qualifying view threshold (and has >0 views). */
+export function qualifies(views, qualifyMinViews = 0) {
+  const v = toNonNegInt(views);
+  return v > 0 && v >= (qualifyMinViews || 0);
+}
+
+/**
+ * distributePot(totalCents, weights[]) -> cents[]
+ * Splits a fixed pot proportionally to weights, using largest-remainder rounding
+ * so the parts sum to EXACTLY totalCents (no lost or phantom pennies).
+ */
+export function distributePot(totalCents, weights) {
+  const total = weights.reduce((a, b) => a + (b > 0 ? b : 0), 0);
+  const pot = toNonNegInt(totalCents);
+  if (total <= 0 || pot <= 0) return weights.map(() => 0);
+  const raw = weights.map((w) => (pot * (w > 0 ? w : 0)) / total);
+  const out = raw.map((x) => Math.floor(x));
+  let remainder = pot - out.reduce((a, b) => a + b, 0);
+  const byFrac = raw
+    .map((x, i) => ({ i, f: x - Math.floor(x) }))
+    .sort((a, b) => b.f - a.f);
+  for (let k = 0; k < remainder; k++) out[byFrac[k % byFrac.length].i] += 1;
+  return out;
+}
+
+/** pot_proportional — split the pot by each qualifier's share of total views. */
+export function computePotProportional({ potCents, entries, qualifyMinViews = 0, maxPerClipperCents = null }) {
+  const weights = entries.map((e) => (qualifies(e.views, qualifyMinViews) ? toNonNegInt(e.views) : 0));
+  let cents = distributePot(potCents, weights);
+  if (maxPerClipperCents != null) cents = cents.map((c) => Math.min(c, maxPerClipperCents));
+  return new Map(entries.map((e, i) => [e.key, cents[i]]));
+}
+
+/** pot_equal — split the pot equally among all qualifiers. */
+export function computePotEqual({ potCents, entries, qualifyMinViews = 0 }) {
+  const weights = entries.map((e) => (qualifies(e.views, qualifyMinViews) ? 1 : 0));
+  const cents = distributePot(potCents, weights);
+  return new Map(entries.map((e, i) => [e.key, cents[i]]));
+}
+
+/** placement — fixed prizes to the top qualifiers, ranked by views (desc). */
+export function computePlacement({ prizesCents, entries, qualifyMinViews = 0 }) {
+  const ranked = entries
+    .filter((e) => qualifies(e.views, qualifyMinViews))
+    .sort((a, b) => toNonNegInt(b.views) - toNonNegInt(a.views));
+  const result = new Map(entries.map((e) => [e.key, 0]));
+  ranked.forEach((e, rank) => {
+    if (rank < prizesCents.length) result.set(e.key, toNonNegInt(prizesCents[rank]));
+  });
+  return result;
+}
+
+/** flat_per_clip — fixed amount per qualifying clip (entries are clips here). */
+export function computeFlatPerClip({ amountCents, entries, qualifyMinViews = 0 }) {
+  const amt = toNonNegInt(amountCents);
+  return new Map(entries.map((e) => [e.key, qualifies(e.views, qualifyMinViews) ? amt : 0]));
+}
+
+/** Apply signed manual adjustments (bonuses/deductions), never below $0. */
+export function applyAdjustments(baseCentsByKey, adjustmentsByKey = {}) {
+  const out = new Map(baseCentsByKey);
+  for (const [key, delta] of Object.entries(adjustmentsByKey)) {
+    const base = out.get(key) ?? 0;
+    out.set(key, Math.max(0, base + Math.trunc(Number(delta) || 0)));
+  }
+  return out;
+}
+
 // ---- helpers ----------------------------------------------------------------
 function toNonNegInt(x) {
   const n = Math.trunc(Number(x));

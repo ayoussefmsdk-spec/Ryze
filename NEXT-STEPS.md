@@ -17,7 +17,7 @@ were built first. All verified against the real APIs; `npm test` → **32 passin
 |---|---|
 | `db/schema.sql` | Full Postgres schema. Portable across Supabase **and** Railway. Money in integer cents; times in UTC; per-campaign timezone column. Soft-delete on people/history. |
 | `core/platform.mjs` | Platform detection + YouTube-ID / TikTok / IG / X parsing + URL normalization. Powers duplicate detection (youtu.be = watch = shorts). |
-| `core/payout.mjs` | Payout math (min-view floor, per-clip & per-clipper caps, cent-rounding), engagement % (null-safe for hidden counts), budget bands, money formatting. |
+| `core/payout.mjs` | Payout engine — **5 models**: CPM, pot-proportional, pot-equal, placement, flat-per-clip; exact-cent pot splitting; qualify thresholds; per-clip/per-clipper caps; manual +/− adjustments (the "any detail" catch-all); engagement % (null-safe); budget bands; formatting. Model is a per-cycle choice, editable mid-cycle. |
 | `core/normalize.mjs` | Maps YouTube / Apify-TikTok / Apify-IG responses → one common shape. Raises `ig_suspect` on unreliable IG views. `evaluateFlags()` = the anti-fraud suite. |
 | `core/*.test.mjs` | 32 tests covering the tricky real-world cases. Run: `npm test`. |
 
