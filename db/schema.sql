@@ -19,7 +19,8 @@ create type cycle_status_t       as enum ('draft','active','frozen');
 --   flat_per_clip   — fixed amount per qualifying clip
 create type payout_model_t       as enum ('cpm','pot_proportional','pot_equal','placement','flat_per_clip');
 create type clip_status_t        as enum ('pending','approved','rejected');
-create type clip_source_t        as enum ('auto','manual');   -- was the number fetched or hand-typed
+create type clip_source_t        as enum ('auto','manual');   -- how the view NUMBER was obtained: fetched vs hand-typed
+create type clip_added_via_t     as enum ('manual','submission','scan'); -- how the CLIP entered the app
 create type hashtag_mode_t       as enum ('off','flag','auto_reject');
 
 -- ---- Campaigns (a streamer's ongoing program) -------------------------------
@@ -121,6 +122,7 @@ create table clips (
   account_handle  text,                                -- resolved from URL/fetch, lowercased
   status          clip_status_t not null default 'pending',
   source          clip_source_t not null default 'auto',
+  added_via       clip_added_via_t not null default 'manual', -- manual | submission | scan
   views           bigint not null default 0,
   likes           bigint,                              -- null = hidden/unknown (never store -1 or 0-as-unknown)
   comments        bigint,                              -- null = disabled/unknown

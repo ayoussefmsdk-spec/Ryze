@@ -41,7 +41,14 @@ were built first. All verified against the real APIs; `npm test` → **32 passin
 3. **Auth** — single shared password (hashed env var) + session cookie; protect all API routes; secret token on the cron route.
 4. **Campaigns & cycles** — CRUD, cycle setup form (all per-cycle settings), "clone last cycle", mid-cycle edit + change log.
 5. **Roster** — clippers, linked accounts, per-clipper private submission tokens.
-6. **Submission** — public per-clipper link (auto-detect platform, rate-limited) → Pending queue.
+6. **Adding clips — three ways, all landing in Pending:**
+   - **Manual** — paste a link (auto-detect platform).
+   - **Submission link** — public per-clipper link (rate-limited).
+   - **Account scan** — pull a clipper's last N posts from their linked accounts,
+     keep only those matching the required hashtag + date window, de-dupe against
+     existing clips, attribute to the clipper (account-match auto-satisfied).
+     Shows a live "this scan ≈ $X" cost preview; occasional use keeps it ~free.
+     YouTube scan is free; TikTok/IG scan is pay-per-post (~$1.60/1,000).
 7. **Fetching** — YouTube batch (50/call); Apify TikTok/IG async + webhook→DB; per-clip "recheck"; freeze logic; failure flags; thumbnail download-and-rehost.
 8. **Dashboard** — summary ticker, budget bar, platform totals, leaderboard (views+payout), clip cards (thumbnail/views/likes/comments/engagement), clip detail Overview+Analytics charts, filters/search, alerts strip.
 9. **Payouts Hub** — pending → pay-whole-cycle → history → lifetime per-campaign + grand total.
