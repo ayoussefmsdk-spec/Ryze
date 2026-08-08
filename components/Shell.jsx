@@ -15,6 +15,7 @@ const NAV = [
     { href: '/payouts', label: 'Payouts', icon: 'cash' },
     { href: '/analytics', label: 'Performance', icon: 'chart' },
     { href: '/fraud', label: 'Fraud radar', icon: 'shield' },
+    { href: '/reports', label: 'Reports', icon: 'doc' },
   ] },
 ];
 
@@ -26,6 +27,7 @@ function Icon({ name }) {
     cash: <><rect x="2.5" y="6" width="19" height="12" rx="2.5" /><circle cx="12" cy="12" r="2.6" /></>,
     chart: <><path d="M4 20V4" /><path d="M4 20h16" /><path d="M8 16l3.5-4 3 2.5L20 8" /></>,
     shield: <><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9.5-4-2-7-5-7-9.5V6z" /><path d="M9.5 12l2 2 3.5-4" /></>,
+    doc: <><path d="M6 2.5h8l4 4V21a.5.5 0 0 1-.5.5h-11A.5.5 0 0 1 6 21V3a.5.5 0 0 1 .5-.5Z" /><path d="M14 2.5V7h4.5M9 12h6M9 16h6" /></>,
   }[name];
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

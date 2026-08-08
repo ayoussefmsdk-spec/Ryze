@@ -36,6 +36,21 @@ export async function PATCH(req, { params }) {
     return NextResponse.json({ ok: true });
   }
 
+  if (b.action === 'trustAccount') {
+    // Link this clip's account to its clipper and clear the unknown-account flag.
+    const clip = (await query(`select clipper_id, platform, account_handle from clips where id = $1`, [params.id])).rows[0];
+    if (!clip?.account_handle) {
+      return NextResponse.json({ ok: false, error: 'No account handle on this clip yet' }, { status: 400 });
+    }
+    await query(
+      `insert into clipper_accounts (clipper_id, platform, handle) values ($1,$2,$3)
+         on conflict (platform, handle) do nothing`,
+      [clip.clipper_id, clip.platform, clip.account_handle.toLowerCase()],
+    );
+    await query(`update clips set flags = array_remove(flags, 'unknown_account') where id = $1`, [params.id]);
+    return NextResponse.json({ ok: true });
+  }
+
   if (b.action === 'clearFlag' && typeof b.flag === 'string') {
     await query(`update clips set flags = array_remove(flags, $1) where id = $2`, [b.flag, params.id]);
     return NextResponse.json({ ok: true });

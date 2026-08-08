@@ -55,6 +55,13 @@ export default function ClipActions({ clip, compact = false }) {
             {busy ? '…' : 'Recheck'}
           </button>
         )}
+        {clip.flags?.includes('unknown_account') && clip.account_handle && (
+          <button className="btn secondary" style={{ ...btn, color: 'var(--good)' }} disabled={busy}
+            title={`Link @${clip.account_handle} to this clipper and clear the flag`}
+            onClick={() => act({ action: 'trustAccount' })}>
+            ✓ Trust @{clip.account_handle}
+          </button>
+        )}
         {editingViews ? (
           <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
             <input className="field" style={{ width: 96, padding: '4px 8px' }} inputMode="numeric" placeholder="views" title="views" value={views} onChange={(e) => setViews(e.target.value)} />

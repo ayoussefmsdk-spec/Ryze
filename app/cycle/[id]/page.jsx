@@ -17,6 +17,8 @@ import ViewerCodePanel from '../../../components/ViewerCodePanel.jsx';
 import ScanPanel from '../../../components/ScanPanel.jsx';
 import IntelBand from '../../../components/IntelBand.jsx';
 import { cycleIntel } from '../../../lib/intel.mjs';
+import CycleSettings from '../../../components/CycleSettings.jsx';
+import ClipExplorer from '../../../components/ClipExplorer.jsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,6 +82,10 @@ export default async function CyclePage({ params }) {
     ? projectSpend({ series, endsOn: cycleRow.ends_on, totalPayoutCents: payouts.totalPayoutCents, totalViews: payouts.totalViews })
     : null;
   const intel = await cycleIntel({ cycle: cycleRow, payouts, series, clips });
+  const cpmMap = Object.fromEntries(
+    (await query(`select platform, cpm_cents from cycle_cpm where cycle_id = $1`, [params.id]))
+      .rows.map((r) => [r.platform, Number(r.cpm_cents)]),
+  );
 
   const pending = clips.filter((c) => c.status === 'pending');
   const flagged = clips.filter((c) => c.flags?.length > 0 && c.status !== 'rejected');
@@ -142,7 +148,10 @@ export default async function CyclePage({ params }) {
           </div>
           <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
             <CycleActions cycleId={cycleRow.id} status={cycleRow.status} hasPaidPlatforms={hasPaid} />
-            <ViewerCodePanel cycleId={cycleRow.id} />
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <CycleSettings cycle={cycleRow} cpm={cpmMap} />
+              <ViewerCodePanel cycleId={cycleRow.id} />
+            </div>
           </div>
         </div>
 
@@ -299,51 +308,12 @@ export default async function CyclePage({ params }) {
           </div>
         )}
 
-        {/* All clips, grouped clipper -> platform */}
+        {/* All clips — filterable explorer */}
         <div className="card grid" style={{ gap: 6 }}>
           <h2 style={{ margin: '0 0 6px' }}>All clips</h2>
-          {clips.length === 0 && <div className="muted" style={{ fontSize: 14 }}>No clips yet — add one above or send your clippers their submission links.</div>}
-          {[...byClipper.entries()].map(([clipperId, g]) => (
-            <details key={clipperId} open>
-              <summary style={{ cursor: 'pointer', padding: '8px 0', fontWeight: 650, listStyle: 'none' }}>
-                {g.name} <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>· {[...g.platforms.values()].flat().length} clips</span>
-              </summary>
-              <div className="grid" style={{ gap: 6, paddingLeft: 10 }}>
-                {[...g.platforms.entries()].map(([plat, platClips]) => (
-                  <details key={plat} open>
-                    <summary style={{ cursor: 'pointer', padding: '4px 0', fontSize: 14, color: 'var(--text-2)', listStyle: 'none', textTransform: 'capitalize' }}>
-                      {PLATFORM_ICON[plat]} {plat} ({platClips.length})
-                    </summary>
-                    <div className="grid" style={{ gap: 10, padding: '4px 0 10px 14px' }}>
-                      {platClips.map((c) => (
-                        <div key={c.id} style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', opacity: c.status === 'rejected' ? 0.45 : 1 }}>
-                          {c.thumbnail_url && <img src={c.thumbnail_url} alt="" style={{ width: 40, height: 54, objectFit: 'cover', borderRadius: 6 }} />}
-                          <div className="grid" style={{ gap: 2, flex: 1, minWidth: 200 }}>
-                            <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap', fontSize: 13.5 }}>
-                              <a href={c.url} target="_blank" rel="noreferrer" style={{ wordBreak: 'break-all' }}>
-                                {c.account_handle ? `@${c.account_handle}` : c.url.slice(0, 46)}
-                              </a>
-                              <span className="muted" style={{ fontSize: 12, fontFamily: 'var(--mono)' }}>{c.status}</span>
-                              {c.manual_override && <span className="muted" style={{ fontSize: 11, fontFamily: 'var(--mono)', border: '1px solid var(--line-2)', borderRadius: 999, padding: '0 6px' }}>manual</span>}
-                              <FlagBadges flags={c.flags} />
-                            </div>
-                            <div className="muted" style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
-                              {nfmt(c.views)} views · {c.likes == null ? '—' : nfmt(c.likes)} likes · {c.comments == null ? '—' : nfmt(c.comments)} comments · {formatEngagement(c.engagement)}
-                              {payouts.clipPayouts[c.id] != null && c.status === 'approved' && (
-                                <span style={{ color: 'var(--gold)' }}> · {formatCents(payouts.clipPayouts[c.id])}</span>
-                              )}
-                              {c.last_checked_at && <span> · checked {new Date(c.last_checked_at).toLocaleString()}</span>}
-                            </div>
-                          </div>
-                          <ClipActions clip={c} />
-                        </div>
-                      ))}
-                    </div>
-                  </details>
-                ))}
-              </div>
-            </details>
-          ))}
+          {clips.length === 0
+            ? <div className="muted" style={{ fontSize: 14 }}>No clips yet — add one above or send your clippers their submission links.</div>
+            : <ClipExplorer clips={clips} clipPayouts={payouts.clipPayouts} isPot={isPot} />}
         </div>
 
         {/* Change log */}

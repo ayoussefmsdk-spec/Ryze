@@ -45,6 +45,9 @@ export default async function CampaignPage({ params }) {
             {campaign.streamer_handle && <div className="muted" style={{ fontSize: 14 }}>{campaign.streamer_handle}</div>}
           </div>
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <Link href={`/report/campaign/${campaign.id}`} className="btn secondary" style={{ padding: '8px 13px', fontSize: 13.5 }}>
+              📊 All-time report
+            </Link>
             {cycles.length > 0 && (
               <CloneCycleForm campaignId={campaign.id} sourceCycleId={cycles[0].id} sourceName={cycles[0].name} />
             )}

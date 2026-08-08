@@ -63,13 +63,18 @@ export default async function ClipperPage({ params }) {
       <span style={{ fontSize: 14, fontWeight: 600 }}>{clipper.name}</span>
     </>}>
       <div className="grid" style={{ gap: 20 }}>
-        <div>
-          <div className="eyebrow">Clipper profile</div>
-          <h1>{clipper.name}</h1>
-          <div className="muted" style={{ fontSize: 14 }}>
-            {clipper.payment_handle ? `pays to ${clipper.payment_handle}` : 'no payment handle set'}
-            {clipper.notes ? ` · ${clipper.notes}` : ''}
+        <div style={{ display: 'flex', gap: 12, alignItems: 'start', flexWrap: 'wrap' }}>
+          <div>
+            <div className="eyebrow">Clipper profile</div>
+            <h1>{clipper.name}</h1>
+            <div className="muted" style={{ fontSize: 14 }}>
+              {clipper.payment_handle ? `pays to ${clipper.payment_handle}` : 'no payment handle set'}
+              {clipper.notes ? ` · ${clipper.notes}` : ''}
+            </div>
           </div>
+          <Link href={`/report/clipper/${clipper.id}`} className="btn secondary" style={{ marginLeft: 'auto', padding: '7px 13px', fontSize: 13.5 }}>
+            🏆 All-time report
+          </Link>
         </div>
 
         {/* Lifetime tiles */}

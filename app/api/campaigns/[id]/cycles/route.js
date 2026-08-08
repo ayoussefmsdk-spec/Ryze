@@ -85,10 +85,22 @@ export async function POST(req, { params }) {
     .filter(Boolean);
 
   // Model-specific config (kept minimal; editable later from the cycle page).
+  const optCents = (v) => {
+    const n = Number(v);
+    return v !== '' && v != null && Number.isFinite(n) && n > 0 ? Math.round(n * 100) : null;
+  };
   const payoutConfig = {};
+  if (payoutModel === 'cpm') {
+    const perClip = optCents(b.maxPerClipDollars);
+    const perClipper = optCents(b.maxPerClipperDollars);
+    if (perClip) payoutConfig.maxPerClipCents = perClip;
+    if (perClipper) payoutConfig.maxPerClipperCents = perClipper;
+  }
   if (payoutModel === 'pot_proportional' || payoutModel === 'pot_equal') {
     payoutConfig.potCents = budgetCents;
     payoutConfig.qualifyMinViews = b.minViewEnabled ? Number(b.minViewFloor || 0) : 0;
+    const perClipper = optCents(b.maxPerClipperDollars);
+    if (payoutModel === 'pot_proportional' && perClipper) payoutConfig.maxPerClipperCents = perClipper;
   }
   if (payoutModel === 'placement') {
     payoutConfig.prizesCents = Array.isArray(b.prizesDollars)

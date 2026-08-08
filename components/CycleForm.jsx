@@ -30,6 +30,8 @@ export default function CycleForm({ campaignId, campaignTimezone }) {
   const [cpm, setCpm] = useState({ youtube: '2', tiktok: '2', instagram: '2', twitter: '2', other: '2' });
   const [prizes, setPrizes] = useState('1000, 500, 250');
   const [flatAmountDollars, setFlat] = useState('5');
+  const [maxPerClipDollars, setMaxClip] = useState('');
+  const [maxPerClipperDollars, setMaxClipper] = useState('');
   const [allowedPlatforms, setAllowed] = useState([...PLATFORMS]);
   const [minViewEnabled, setMinEnabled] = useState(false);
   const [minViewFloor, setMinFloor] = useState('1000');
@@ -51,7 +53,8 @@ export default function CycleForm({ campaignId, campaignTimezone }) {
       body: JSON.stringify({
         name, startsOn, endsOn, timezone, payoutModel, budgetDollars, cpm,
         prizesDollars: prizes.split(',').map((s) => s.trim()).filter(Boolean),
-        flatAmountDollars, allowedPlatforms, minViewEnabled, minViewFloor,
+        flatAmountDollars, maxPerClipDollars, maxPerClipperDollars,
+        allowedPlatforms, minViewEnabled, minViewFloor,
         enforcePostWindow, hashtagMode, requiredHashtags,
       }),
     });
@@ -122,6 +125,21 @@ export default function CycleForm({ campaignId, campaignTimezone }) {
           <span className="muted" style={{ fontSize: 13 }}>{isPot ? 'Pot size ($) — the amount split among qualifiers' : 'Budget cap ($)'}</span>
           <input className="field" inputMode="decimal" value={budgetDollars} onChange={(e) => setBudget(e.target.value)} />
         </label>
+      )}
+
+      {(payoutModel === 'cpm' || payoutModel === 'pot_proportional') && (
+        <div className="grid" style={{ gridTemplateColumns: payoutModel === 'cpm' ? '1fr 1fr' : '1fr', gap: 10 }}>
+          {payoutModel === 'cpm' && (
+            <label className="grid" style={{ gap: 6 }}>
+              <span className="muted" style={{ fontSize: 13 }}>Max payout per clip ($, blank = none)</span>
+              <input className="field" inputMode="decimal" placeholder="e.g. 100" value={maxPerClipDollars} onChange={(e) => setMaxClip(e.target.value)} />
+            </label>
+          )}
+          <label className="grid" style={{ gap: 6 }}>
+            <span className="muted" style={{ fontSize: 13 }}>Max payout per clipper ($, blank = none)</span>
+            <input className="field" inputMode="decimal" placeholder="e.g. 500" value={maxPerClipperDollars} onChange={(e) => setMaxClipper(e.target.value)} />
+          </label>
+        </div>
       )}
 
       {payoutModel === 'placement' && (
