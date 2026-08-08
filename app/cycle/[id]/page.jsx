@@ -290,7 +290,7 @@ export default async function CyclePage({ params }) {
             <h2 style={{ margin: 0 }}>Pending review ({pending.length})</h2>
             {pending.map((c) => (
               <div key={c.id} style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', borderTop: '1px solid var(--line)', paddingTop: 10 }}>
-                {c.thumbnail_url && <img src={c.thumbnail_url} alt="" style={{ width: 52, height: 70, objectFit: 'cover', borderRadius: 8 }} />}
+                {c.thumbnail_url && <img loading="lazy" src={c.thumbnail_url} alt="" style={{ width: 52, height: 70, objectFit: 'cover', borderRadius: 8 }} />}
                 <div className="grid" style={{ gap: 3, flex: 1, minWidth: 220 }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
                     <strong>{c.clipper_name}</strong>

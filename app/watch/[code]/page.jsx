@@ -157,7 +157,7 @@ export default async function WatchPage({ params }) {
               {clips.map((c, i) => (
                 <a key={i} href={c.url} target="_blank" rel="noreferrer" className="card" style={{ padding: 0, overflow: 'hidden', color: 'inherit', display: 'block' }}>
                   {c.thumbnail_url
-                    ? <img src={c.thumbnail_url} alt="" style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', display: 'block' }} />
+                    ? <img loading="lazy" src={c.thumbnail_url} alt="" style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', display: 'block' }} />
                     : <div style={{ width: '100%', aspectRatio: '3/4', background: 'var(--surface-2)', display: 'grid', placeItems: 'center', color: 'var(--text-3)' }}>{PLAT[c.platform]?.split(' ')[0]}</div>}
                   <div style={{ padding: '9px 11px' }}>
                     <div style={{ fontSize: 12.5, fontWeight: 600 }}>{c.account_handle ? `@${c.account_handle}` : c.clipper_name}</div>

@@ -3,6 +3,8 @@ import { requireSession } from '../lib/auth.mjs';
 import { getDashboard } from '../lib/dashboard.mjs';
 import { formatCents } from '../core/payout.mjs';
 import Shell from '../components/Shell.jsx';
+import TrendChart from '../components/TrendChart.jsx';
+import { hiveDailySeries } from '../lib/history.mjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +16,8 @@ export default async function DashboardPage() {
   requireSession();
   let d = null;
   let error = null;
-  try { d = await getDashboard(); } catch (e) { error = e.message; }
+  let hiveSeries = [];
+  try { d = await getDashboard(); hiveSeries = await hiveDailySeries(30); } catch (e) { error = e.message; }
 
   if (error) {
     return (
@@ -61,6 +64,14 @@ export default async function DashboardPage() {
             </div>
           ))}
         </div>
+
+        {/* Hive views over time */}
+        {hiveSeries.length >= 2 && (
+          <div className="card grid" style={{ gap: 10 }}>
+            <h2 style={{ margin: 0 }}>Hive views — last 30 days</h2>
+            <TrendChart points={hiveSeries} />
+          </div>
+        )}
 
         {/* Needs you */}
         {needs.length > 0 && (

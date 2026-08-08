@@ -8,6 +8,8 @@ import CloneCycleForm from '../../../components/CloneCycleForm.jsx';
 import { formatCents } from '../../../core/payout.mjs';
 import Shell from '../../../components/Shell.jsx';
 import { gmtLabel } from '../../../lib/tz.mjs';
+import TrendChart from '../../../components/TrendChart.jsx';
+import { campaignDailySeries } from '../../../lib/history.mjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +34,8 @@ export default async function CampaignPage({ params }) {
     [params.id],
   );
 
+  const series = await campaignDailySeries(params.id);
+
   return (
     <Shell breadcrumb={<>
       <Link href="/campaigns" className="muted" style={{ fontSize: 14 }}>Campaigns</Link>
@@ -55,6 +59,13 @@ export default async function CampaignPage({ params }) {
             <CycleForm campaignId={campaign.id} campaignTimezone={campaign.timezone} />
           </div>
         </div>
+
+        {series.length >= 2 && (
+          <div className="card grid" style={{ gap: 10 }}>
+            <h2 style={{ margin: 0 }}>Campaign views — all cycles</h2>
+            <TrendChart points={series} />
+          </div>
+        )}
 
         {cycles.length === 0 && (
           <div className="card">

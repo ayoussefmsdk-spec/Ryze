@@ -80,7 +80,7 @@ export default function ClipExplorer({ clips, clipPayouts = {}, isPot = false })
                 <div className="grid" style={{ gap: 10, padding: '4px 0 10px 14px' }}>
                   {platClips.map((c) => (
                     <div key={c.id} style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', opacity: c.status === 'rejected' ? 0.45 : 1 }}>
-                      {c.thumbnail_url && <img src={c.thumbnail_url} alt="" style={{ width: 40, height: 54, objectFit: 'cover', borderRadius: 6 }} />}
+                      {c.thumbnail_url && <img loading="lazy" src={c.thumbnail_url} alt="" style={{ width: 40, height: 54, objectFit: 'cover', borderRadius: 6 }} />}
                       <div className="grid" style={{ gap: 2, flex: 1, minWidth: 200 }}>
                         <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap', fontSize: 13.5 }}>
                           <a href={c.url} target="_blank" rel="noreferrer" style={{ wordBreak: 'break-all' }}>
