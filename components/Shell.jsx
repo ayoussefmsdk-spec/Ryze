@@ -16,6 +16,7 @@ const NAV = [
     { href: '/analytics', label: 'Performance', icon: 'chart' },
     { href: '/fraud', label: 'Fraud radar', icon: 'shield' },
     { href: '/reports', label: 'Reports', icon: 'doc' },
+    { href: '/system', label: 'System', icon: 'gear' },
   ] },
 ];
 
@@ -28,6 +29,7 @@ function Icon({ name }) {
     chart: <><path d="M4 20V4" /><path d="M4 20h16" /><path d="M8 16l3.5-4 3 2.5L20 8" /></>,
     shield: <><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9.5-4-2-7-5-7-9.5V6z" /><path d="M9.5 12l2 2 3.5-4" /></>,
     doc: <><path d="M6 2.5h8l4 4V21a.5.5 0 0 1-.5.5h-11A.5.5 0 0 1 6 21V3a.5.5 0 0 1 .5-.5Z" /><path d="M14 2.5V7h4.5M9 12h6M9 16h6" /></>,
+    gear: <><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1" /></>,
   }[name];
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -44,10 +46,11 @@ export default function Shell({ children, breadcrumb }) {
     <div className="shell">
       <CommandPalette />
       <aside className="side">
-        <div className="side-brand">
-          <Brand size={16} />
-          <div className="muted" style={{ fontSize: 11, fontFamily: 'var(--mono)', marginTop: 8, opacity: 0.7 }}>⌘K to jump anywhere</div>
-        </div>
+        <Link href="/" className="side-brand">
+          <Brand size={22} />
+          <div className="side-brand-sub">clipping agency</div>
+          <div className="side-hint"><kbd>⌘K</kbd> jump anywhere</div>
+        </Link>
         <nav className="side-nav">
           {NAV.map((sec) => (
             <div key={sec.group} className="side-group">
@@ -86,7 +89,24 @@ export default function Shell({ children, breadcrumb }) {
           background: linear-gradient(180deg, var(--surface), var(--bg));
           padding: 16px 12px;
         }
-        .side-brand { padding: 6px 8px 14px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+        .side-brand {
+          display: block; text-decoration: none;
+          padding: 4px 8px 14px; border-bottom: 1px solid var(--line); margin-bottom: 8px;
+        }
+        .side-brand:hover { text-decoration: none; }
+        .side-brand:hover .brand { filter: brightness(1.08); }
+        .side-brand-sub {
+          font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em;
+          text-transform: uppercase; color: var(--text-3); margin: 5px 0 0 32px;
+        }
+        .side-hint {
+          font-size: 11px; font-family: var(--mono); color: var(--text-3);
+          margin-top: 11px; opacity: 0.85;
+        }
+        .side-hint kbd {
+          font-family: var(--mono); font-size: 10.5px; padding: 1px 5px;
+          border: 1px solid var(--line-2); border-radius: 5px; background: var(--surface-2); color: var(--text-2);
+        }
         .side-nav { display: flex; flex-direction: column; gap: 16px; flex: 1; }
         .side-group { display: flex; flex-direction: column; gap: 2px; }
         .side-glabel { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-3); padding: 4px 10px 6px; }
