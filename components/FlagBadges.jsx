@@ -9,6 +9,8 @@ const FLAG_LABELS = {
   removed: ['video removed?', 'var(--crit)'],
   view_drop: ['big view drop', 'var(--crit)'],
   fetch_failed: ['check failed', 'var(--text-3)'],
+  engagement_suspect: ['engagement too low — bought views?', 'var(--crit)'],
+  velocity_suspect: ['unnatural view spike', 'var(--crit)'],
 };
 
 export default function FlagBadges({ flags }) {

@@ -5,6 +5,7 @@ import { query } from '../../../lib/db.mjs';
 import { formatCents, formatEngagement } from '../../../core/payout.mjs';
 import Brand from '../../../components/Brand.jsx';
 import TrendChart from '../../../components/TrendChart.jsx';
+import { cycleIntel } from '../../../lib/intel.mjs';
 
 export const dynamic = 'force-dynamic';
 const nf = (n) => Number(n || 0).toLocaleString('en-US');
@@ -54,6 +55,16 @@ export default async function WatchPage({ params }) {
   const clips = clipsRes.rows;
   const leaderboard = [...pay.perClipper].sort((a, b) => b.views - a.views);
 
+  let intel = null;
+  try {
+    intel = await cycleIntel({
+      cycle: { ...cycle, campaign_id: cycle.campaign_id },
+      payouts: pay,
+      series,
+      clips: clips.map((c) => ({ ...c, status: 'approved', id: null })),
+    });
+  } catch { /* the room renders fine without intel */ }
+
   const tiles = [
     ['Total views', nf(pay.totalViews)],
     ['Approved clips', clips.length],
@@ -84,6 +95,18 @@ export default async function WatchPage({ params }) {
             </div>
           ))}
         </div>
+
+        {intel?.recap && (
+          <div className="card" style={{ borderColor: 'rgba(240,182,74,.35)' }}>
+            <p style={{ margin: 0, fontSize: 15, lineHeight: 1.65 }}>{intel.recap}</p>
+            {showMoney && intel.roi?.multiple != null && intel.roi.multiple >= 1.5 && (
+              <p style={{ margin: '10px 0 0', fontSize: 14 }}>
+                💰 The same reach would cost roughly <b style={{ color: 'var(--honey)' }}>{formatCents(intel.roi.adEquivalentCents)}</b> in
+                paid ads — this campaign delivered it <b style={{ color: 'var(--good)' }}>{intel.roi.multiple}× cheaper</b>.
+              </p>
+            )}
+          </div>
+        )}
 
         {series.length >= 2 && (
           <div className="card grid" style={{ gap: 10 }}>

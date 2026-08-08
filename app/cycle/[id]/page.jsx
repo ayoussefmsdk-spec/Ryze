@@ -15,6 +15,8 @@ import { cycleDailySeries, projectSpend } from '../../../lib/history.mjs';
 import Shell from '../../../components/Shell.jsx';
 import ViewerCodePanel from '../../../components/ViewerCodePanel.jsx';
 import ScanPanel from '../../../components/ScanPanel.jsx';
+import IntelBand from '../../../components/IntelBand.jsx';
+import { cycleIntel } from '../../../lib/intel.mjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,6 +79,7 @@ export default async function CyclePage({ params }) {
   const projectedCents = ['cpm', 'flat_per_clip'].includes(cycleRow.payout_model) && cycleRow.status !== 'frozen'
     ? projectSpend({ series, endsOn: cycleRow.ends_on, totalPayoutCents: payouts.totalPayoutCents, totalViews: payouts.totalViews })
     : null;
+  const intel = await cycleIntel({ cycle: cycleRow, payouts, series, clips });
 
   const pending = clips.filter((c) => c.status === 'pending');
   const flagged = clips.filter((c) => c.flags?.length > 0 && c.status !== 'rejected');
@@ -137,6 +140,9 @@ export default async function CyclePage({ params }) {
             {flagged.length > 0 && <span style={{ fontSize: 14, color: 'var(--crit)' }}>⚑ {flagged.length} flagged clip{flagged.length > 1 ? 's' : ''}</span>}
           </div>
         )}
+
+        {/* Intelligence band: recap, ROI proof, pace, money pipeline */}
+        <IntelBand recap={intel.recap} roi={intel.roi} pace={intel.pace} moneyStates={intel.moneyStates} />
 
         {/* Summary ticker */}
         <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>

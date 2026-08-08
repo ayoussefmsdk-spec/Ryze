@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Brand, { BrandMark } from './Brand.jsx';
+import CommandPalette from './CommandPalette.jsx';
 
 const NAV = [
   { group: 'Operate', items: [
@@ -13,6 +14,7 @@ const NAV = [
   { group: 'Money', items: [
     { href: '/payouts', label: 'Payouts', icon: 'cash' },
     { href: '/analytics', label: 'Performance', icon: 'chart' },
+    { href: '/fraud', label: 'Fraud radar', icon: 'shield' },
   ] },
 ];
 
@@ -23,6 +25,7 @@ function Icon({ name }) {
     users: <><circle cx="9" cy="8" r="3.2" /><path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" /><path d="M16 6.5a3 3 0 0 1 0 5.6M17.5 19c0-2.2-1-3.8-2.4-4.6" /></>,
     cash: <><rect x="2.5" y="6" width="19" height="12" rx="2.5" /><circle cx="12" cy="12" r="2.6" /></>,
     chart: <><path d="M4 20V4" /><path d="M4 20h16" /><path d="M8 16l3.5-4 3 2.5L20 8" /></>,
+    shield: <><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9.5-4-2-7-5-7-9.5V6z" /><path d="M9.5 12l2 2 3.5-4" /></>,
   }[name];
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -37,9 +40,11 @@ export default function Shell({ children, breadcrumb }) {
 
   return (
     <div className="shell">
+      <CommandPalette />
       <aside className="side">
         <div className="side-brand">
           <Brand size={16} />
+          <div className="muted" style={{ fontSize: 11, fontFamily: 'var(--mono)', marginTop: 8, opacity: 0.7 }}>⌘K to jump anywhere</div>
         </div>
         <nav className="side-nav">
           {NAV.map((sec) => (
