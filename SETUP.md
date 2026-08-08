@@ -46,18 +46,24 @@ This is the one you pay for: it runs the app AND holds the database, always on.
 
 1. Go to **railway.app** → **Login** (GitHub sign-in is easiest).
 2. Add the **Hobby plan** ($5/month) in **Account → Billing** (needs a card).
-3. **New Project → Deploy from GitHub repo** → pick this repo (`ryze`) and the
-   branch we've been building on. (I'll tell you the exact branch when the app code
-   is ready.)
-4. In the same project → **New → Database → Add PostgreSQL**. Railway creates it
-   and wires a `DATABASE_URL` in automatically.
-5. Project → **Variables** — this is the private vault. Add:
+3. **New Project → Deploy from GitHub repo** → pick the `Ryze` repo and the
+   branch **`claude/clip-tracker-discussion-9sq9xy`** (or `main` after we merge).
+4. In the same project → **Create → Database → Add PostgreSQL**. Then, on the
+   app service → **Variables → Add Variable Reference** → pick `DATABASE_URL`
+   from the Postgres service (Railway wires it in).
+5. Still in the app service → **Variables** — this is the private vault. Add:
    - `YOUTUBE_API_KEY` = *(from step 1)*
    - `APIFY_TOKEN` = *(from step 2)*
    - `APP_PASSWORD` = *(the password you'll use to log into the app)*
-   - `CRON_SECRET` = *(any long random string — I'll tell you when needed)*
-6. Deploy. Railway gives you a URL like `ryze-production.up.railway.app` — that's
-   your app. Open it, enter your password, you're in.
+   - `SESSION_SECRET` = *(any long random string)*
+   - `CRON_SECRET` = *(another long random string)*
+6. Deploy. The app applies the database schema automatically on first start.
+   Railway gives you a URL like `ryze-production.up.railway.app` — open it,
+   enter your password, you're in.
+
+Note: the daily/scheduled view-checks run **inside the app itself** (it's an
+always-on server) — no separate cron service needed. The schedule is set per
+cycle in the app.
 
 ➡️ **Result:** a live, private app at your own URL, with the database attached.
 

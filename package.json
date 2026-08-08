@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start -p ${PORT:-3000}",
+    "start": "node scripts/migrate.mjs && next start -p ${PORT:-3000}",
     "migrate": "node scripts/migrate.mjs",
     "test": "node --test core/*.test.mjs"
   },

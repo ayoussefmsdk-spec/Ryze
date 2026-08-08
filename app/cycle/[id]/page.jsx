@@ -94,6 +94,7 @@ export default async function CyclePage({ params }) {
         <span className="muted">›</span>
         <span style={{ fontSize: 14 }}>{cycleRow.name}</span>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 12 }}>
+          <Link href={`/cycle/${params.id}/report`} className="muted" style={{ fontSize: 14 }}>Report</Link>
           <Link href="/roster" className="muted" style={{ fontSize: 14 }}>Roster</Link>
           <Link href="/payouts" className="muted" style={{ fontSize: 14 }}>Payouts</Link>
         </div>
