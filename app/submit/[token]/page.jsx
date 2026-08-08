@@ -45,6 +45,7 @@ export default async function SubmitPage({ params }) {
         <div className="muted" style={{ fontSize: 12.5 }}>
           Paste one link at a time — TikTok, YouTube, Instagram or X. Your submissions go to the manager for review.
         </div>
+        <div className="brand" style={{ fontSize: 12, letterSpacing: '0.04em' }}>Post the clip. Keep the honey. 🍯</div>
       </div>
     </div>
   );

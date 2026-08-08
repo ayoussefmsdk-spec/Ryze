@@ -7,7 +7,8 @@
 export const BRAND = {
   name: 'ClipHive',
   descriptor: 'clipping agency',
-  tagline: 'Clip together. Get paid.',
+  tagline: 'Where clips make money.',          // professional face (login, pitches)
+  taglineFun: 'Post the clip. Keep the honey.', // community face (clipper pages, socials)
 };
 
 /** N — The Hive Reel: a comb cell that is also a film frame (official logo). */
