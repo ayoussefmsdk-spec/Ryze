@@ -65,10 +65,21 @@ export default async function WatchPage({ params }) {
     });
   } catch { /* the room renders fine without intel */ }
 
+  // Weighted engagement across clips that have real like/comment data.
+  let engInter = 0;
+  let engViews = 0;
+  for (const c of clips) {
+    if (c.likes == null && c.comments == null) continue;
+    engInter += Number(c.likes || 0) + Number(c.comments || 0);
+    engViews += Number(c.views || 0);
+  }
+  const avgEngagement = engViews > 0 ? engInter / engViews : null;
+
   const tiles = [
     ['Total views', nf(pay.totalViews)],
     ['Approved clips', clips.length],
     ['Clippers working', pay.perClipper.length],
+    ...(avgEngagement != null ? [['Engagement', formatEngagement(avgEngagement)]] : []),
     ...(showMoney ? [['Invested', formatCents(pay.totalPayoutCents)]] : []),
   ];
 

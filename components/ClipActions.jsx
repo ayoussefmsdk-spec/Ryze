@@ -8,6 +8,8 @@ export default function ClipActions({ clip, compact = false }) {
   const [busy, setBusy] = useState(false);
   const [editingViews, setEditingViews] = useState(false);
   const [views, setViews] = useState(String(clip.views ?? 0));
+  const [likes, setLikes] = useState(clip.likes == null ? '' : String(clip.likes));
+  const [comments, setComments] = useState(clip.comments == null ? '' : String(clip.comments));
   const [err, setErr] = useState('');
 
   async function act(body) {
@@ -54,13 +56,15 @@ export default function ClipActions({ clip, compact = false }) {
           </button>
         )}
         {editingViews ? (
-          <span style={{ display: 'inline-flex', gap: 6 }}>
-            <input className="field" style={{ width: 110, padding: '4px 8px' }} inputMode="numeric" value={views} onChange={(e) => setViews(e.target.value)} />
-            <button className="btn" style={btn} disabled={busy} onClick={() => { act({ action: 'setViews', views: Number(views) }); setEditingViews(false); }}>Save</button>
+          <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            <input className="field" style={{ width: 96, padding: '4px 8px' }} inputMode="numeric" placeholder="views" title="views" value={views} onChange={(e) => setViews(e.target.value)} />
+            <input className="field" style={{ width: 76, padding: '4px 8px' }} inputMode="numeric" placeholder="likes" title="likes (optional)" value={likes} onChange={(e) => setLikes(e.target.value)} />
+            <input className="field" style={{ width: 86, padding: '4px 8px' }} inputMode="numeric" placeholder="comments" title="comments (optional)" value={comments} onChange={(e) => setComments(e.target.value)} />
+            <button className="btn" style={btn} disabled={busy} onClick={() => { act({ action: 'setViews', views: Number(views), likes, comments }); setEditingViews(false); }}>Save</button>
             <button className="btn secondary" style={btn} onClick={() => setEditingViews(false)}>×</button>
           </span>
         ) : (
-          <button className="btn secondary" style={btn} onClick={() => setEditingViews(true)}>Set views</button>
+          <button className="btn secondary" style={btn} onClick={() => setEditingViews(true)}>Set stats</button>
         )}
         <button className="btn secondary" style={{ ...btn, color: 'var(--crit)' }} disabled={busy} onClick={del}>Delete</button>
       </div>

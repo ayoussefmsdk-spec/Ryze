@@ -16,10 +16,18 @@ export async function PATCH(req, { params }) {
 
   if (b.action === 'setViews') {
     const views = Math.max(0, Math.trunc(Number(b.views) || 0));
+    const num = (x) => (x === '' || x == null ? null : Math.max(0, Math.trunc(Number(x) || 0)));
+    // Optional manual likes/comments (for X/manual platforms); else keep stored.
+    const cur = (await query(`select likes, comments from clips where id = $1`, [params.id])).rows[0] || {};
+    const likes = b.likes !== undefined ? num(b.likes) : cur.likes;
+    const comments = b.comments !== undefined ? num(b.comments) : cur.comments;
+    const { computeEngagement } = await import('../../../../core/payout.mjs');
+    const engagement = computeEngagement({ views, likes, comments });
     await query(
-      `update clips set views = $1, source = 'manual', manual_override = true,
-              last_checked_at = now() where id = $2`,
-      [views, params.id],
+      `update clips set views = $1, likes = $2, comments = $3, engagement = $4,
+              source = 'manual', manual_override = true, last_checked_at = now()
+        where id = $5`,
+      [views, likes, comments, engagement, params.id],
     );
     await query(
       `insert into view_history (clip_id, views) values ($1, $2)`,

@@ -98,6 +98,24 @@ export default async function CyclePage({ params }) {
 
   const budgetPct = Math.min(payouts.budget.pct, 100);
 
+  // Weighted engagement: (all likes + comments) / (all views), over approved
+  // clips that actually have engagement data. Per-clipper version for the board.
+  function weightedEngagement(list) {
+    let inter = 0;
+    let vws = 0;
+    for (const c of list) {
+      if (c.status !== 'approved') continue;
+      if (c.likes == null && c.comments == null) continue;
+      inter += Number(c.likes || 0) + Number(c.comments || 0);
+      vws += Number(c.views || 0);
+    }
+    return vws > 0 ? inter / vws : null;
+  }
+  const cycleEngagement = weightedEngagement(clips);
+  const engagementByClipper = new Map(
+    [...byClipper.keys()].map((id) => [id, weightedEngagement(clips.filter((c) => c.clipper_id === id))]),
+  );
+
   return (
     <Shell breadcrumb={<>
       <Link href={`/campaign/${cycleRow.campaign_id}`} className="muted" style={{ fontSize: 14 }}>{cycleRow.campaign_name}</Link>
@@ -149,6 +167,7 @@ export default async function CyclePage({ params }) {
           {[
             ['Total views', nfmt(payouts.totalViews)],
             [isPot ? 'Distributed' : 'Total payout', formatCents(payouts.totalPayoutCents)],
+            ['Engagement', formatEngagement(cycleEngagement)],
             ['Clippers', members.length],
             ['Clips', clips.length],
           ].map(([k, v]) => (
@@ -194,7 +213,9 @@ export default async function CyclePage({ params }) {
           <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
             {payouts.perPlatform.map((p) => (
               <div key={p.platform} className="card" style={{ padding: '12px 16px' }}>
-                <div className="muted" style={{ fontSize: 13, textTransform: 'capitalize' }}>{PLATFORM_ICON[p.platform]} {p.platform} · {p.clips} clips</div>
+                <div className="muted" style={{ fontSize: 13, textTransform: 'capitalize' }}>
+                  {PLATFORM_ICON[p.platform]} {p.platform} · {p.clips} clips · ♥ {formatEngagement(weightedEngagement(clips.filter((c) => c.platform === p.platform)))}
+                </div>
                 <div style={{ fontSize: 17, fontWeight: 650, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
                   {nfmt(p.views)} views{!isPot && <span className="muted"> · {formatCents(p.payoutCents)}</span>}
                 </div>
@@ -213,6 +234,9 @@ export default async function CyclePage({ params }) {
                 <span style={{ fontFamily: 'var(--mono)', color: i < 3 ? 'var(--gold)' : 'var(--text-3)', width: 26 }}>#{i + 1}</span>
                 <Link href={`/clipper/${p.clipperId}`} style={{ color: 'inherit', fontWeight: 650 }}>{p.name}</Link>
                 <span className="muted" style={{ fontSize: 13 }}>{p.clipCount} clips</span>
+                <span className="muted" style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums' }} title="engagement — (likes+comments)/views">
+                  ♥ {formatEngagement(engagementByClipper.get(p.clipperId))}
+                </span>
                 <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>{nfmt(p.views)} views</span>
                 <span style={{ fontWeight: 700, color: 'var(--gold)', fontVariantNumeric: 'tabular-nums', minWidth: 84, textAlign: 'right' }}>{formatCents(p.payoutCents)}</span>
               </summary>

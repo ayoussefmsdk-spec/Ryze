@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { requireSession } from '../../lib/auth.mjs';
 import { query } from '../../lib/db.mjs';
 import { computeCyclePayouts } from '../../lib/payouts.mjs';
-import { formatCents } from '../../core/payout.mjs';
+import { formatCents, formatEngagement } from '../../core/payout.mjs';
 import Shell from '../../components/Shell.jsx';
 import FlagBadges from '../../components/FlagBadges.jsx';
 import ClipActions from '../../components/ClipActions.jsx';
@@ -80,7 +80,7 @@ export default async function FraudPage() {
               <FlagBadges flags={c.flags} />
               <a href={c.url} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, wordBreak: 'break-all' }}>{c.url}</a>
               <div className="muted" style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
-                {nf(c.views)} views · {c.likes == null ? '—' : nf(c.likes)} likes
+                {nf(c.views)} views · {c.likes == null ? '—' : nf(c.likes)} likes · ♥ {formatEngagement(c.engagement)}
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
