@@ -27,8 +27,8 @@ export default async function HomePage() {
   return (
     <>
       <div className="topbar">
-        <span className="brand">▲ RYZE</span>
-        <span className="muted" style={{ fontSize: 14 }}>Clip Tracker</span>
+        <span className="brand">▲ RyZeX</span>
+        <span className="muted" style={{ fontSize: 14 }}>clipping agency</span>
         <form action="/api/logout" method="post" style={{ marginLeft: 'auto' }}>
           <button className="btn secondary" style={{ padding: '6px 12px' }} type="submit">Log out</button>
         </form>

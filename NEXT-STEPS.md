@@ -1,4 +1,13 @@
-# Ryze Clip Tracker — build plan & status
+# RyZeX (Ryze Clip Tracker) — build plan & status
+
+> **Status: v1 BUILT and end-to-end tested** against a real local Postgres —
+> full flow verified over HTTP: login → campaign → cycle → roster → enrollment →
+> public token submissions → duplicate/unknown-account flags → approve/reject →
+> manual views → CPM + pot payout math ($95.60 / $666.67–$333.33 exact) →
+> mark-cycle-paid → lifetime totals → report → freeze/resume → change log →
+> rate limiting → cron endpoint. 40 unit tests green. What remains before use:
+> deploy to Railway (SETUP.md §3) and a live-keys smoke test of YouTube/Apify
+> fetching (needs the real keys, which only exist in Railway's vault).
 
 Automated view-tracking + payout tool for paid clipping campaigns
 (streamer program → monthly cycles → clips by clippers, paid on views × CPM).

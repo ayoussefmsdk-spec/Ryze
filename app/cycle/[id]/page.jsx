@@ -87,7 +87,7 @@ export default async function CyclePage({ params }) {
   return (
     <>
       <div className="topbar">
-        <span className="brand">▲ RYZE</span>
+        <span className="brand">▲ RyZeX</span>
         <Link href="/" className="muted" style={{ fontSize: 14 }}>Campaigns</Link>
         <span className="muted">›</span>
         <Link href={`/campaign/${cycleRow.campaign_id}`} className="muted" style={{ fontSize: 14 }}>{cycleRow.campaign_name}</Link>

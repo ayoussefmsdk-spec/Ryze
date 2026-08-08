@@ -55,7 +55,7 @@ export default async function ClipperPage({ params }) {
   return (
     <>
       <div className="topbar">
-        <span className="brand">▲ RYZE</span>
+        <span className="brand">▲ RyZeX</span>
         <Link href="/roster" className="muted" style={{ fontSize: 14 }}>Roster</Link>
         <span className="muted">›</span>
         <span style={{ fontSize: 14 }}>{clipper.name}</span>

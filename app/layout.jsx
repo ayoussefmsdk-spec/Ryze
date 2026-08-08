@@ -1,7 +1,7 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'Ryze — Clip Tracker',
+  title: 'RyZeX — Clipping Agency',
   description: 'Automated view tracking and payouts for clipping campaigns.',
 };
 

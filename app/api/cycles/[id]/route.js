@@ -33,7 +33,9 @@ export async function PATCH(req, { params }) {
   if (b.action === 'stopTracking' || b.action === 'resumeTracking') {
     const to = b.action === 'stopTracking' ? 'frozen' : 'active';
     await query(
-      `update cycles set status = $1, freeze_at = case when $1 = 'frozen' then now() else null end where id = $2`,
+      `update cycles set status = $1::cycle_status_t,
+              freeze_at = case when $1::text = 'frozen' then now() else null end
+        where id = $2`,
       [to, params.id],
     );
     await query(

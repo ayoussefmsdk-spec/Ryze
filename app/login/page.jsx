@@ -31,7 +31,7 @@ export default function LoginPage() {
     <div className="center-screen">
       <form className="card grid" style={{ width: 340, gap: 16 }} onSubmit={submit}>
         <div>
-          <div className="brand" style={{ fontSize: 20 }}>▲ RYZE</div>
+          <div className="brand" style={{ fontSize: 20 }}>▲ RyZeX</div>
           <div className="muted" style={{ fontSize: 14, marginTop: 4 }}>Enter your password to continue.</div>
         </div>
         <input

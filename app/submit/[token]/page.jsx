@@ -25,7 +25,7 @@ export default async function SubmitPage({ params }) {
     <div className="center-screen">
       <div className="card grid" style={{ width: 420, maxWidth: '94vw', gap: 14 }}>
         <div>
-          <div className="brand" style={{ fontSize: 18 }}>▲ RYZE</div>
+          <div className="brand" style={{ fontSize: 18 }}>▲ RyZeX</div>
           <h2 style={{ margin: '10px 0 2px' }}>Hey {clipperName} 👋</h2>
           <div className="muted" style={{ fontSize: 14 }}>
             Drop your clip links for <strong>{cycle.name}</strong>

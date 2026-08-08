@@ -76,7 +76,7 @@ export default async function PayoutsPage() {
   return (
     <>
       <div className="topbar">
-        <span className="brand">▲ RYZE</span>
+        <span className="brand">▲ RyZeX</span>
         <Link href="/" className="muted" style={{ fontSize: 14 }}>Campaigns</Link>
         <span className="muted">›</span>
         <span style={{ fontSize: 14 }}>Payouts</span>
