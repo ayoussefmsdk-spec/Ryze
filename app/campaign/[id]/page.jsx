@@ -6,6 +6,7 @@ import { query } from '../../../lib/db.mjs';
 import CycleForm from '../../../components/CycleForm.jsx';
 import CloneCycleForm from '../../../components/CloneCycleForm.jsx';
 import { formatCents } from '../../../core/payout.mjs';
+import Shell from '../../../components/Shell.jsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,15 +32,12 @@ export default async function CampaignPage({ params }) {
   );
 
   return (
-    <>
-      <div className="topbar">
-        <Brand />
-        <Link href="/" className="muted" style={{ fontSize: 14 }}>Campaigns</Link>
-        <span className="muted">›</span>
-        <span style={{ fontSize: 14 }}>{campaign.name}</span>
-      </div>
-
-      <div className="wrap grid" style={{ gap: 22 }}>
+    <Shell breadcrumb={<>
+      <Link href="/campaigns" className="muted" style={{ fontSize: 14 }}>Campaigns</Link>
+      <span className="muted">›</span>
+      <span style={{ fontSize: 14, fontWeight: 600 }}>{campaign.name}</span>
+    </>}>
+      <div className="grid" style={{ gap: 22 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
           <div>
             <div className="eyebrow">Campaign · {campaign.timezone}</div>
@@ -97,6 +95,6 @@ export default async function CampaignPage({ params }) {
           </div>
         )}
       </div>
-    </>
+    </Shell>
   );
 }

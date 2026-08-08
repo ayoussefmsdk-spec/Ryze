@@ -3,6 +3,7 @@ import Brand from '../../components/Brand.jsx';
 import { requireSession } from '../../lib/auth.mjs';
 import { query } from '../../lib/db.mjs';
 import { AddClipperForm, AccountsEditor } from '../../components/RosterManager.jsx';
+import Shell from '../../components/Shell.jsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,15 +21,8 @@ export default async function RosterPage() {
   );
 
   return (
-    <>
-      <div className="topbar">
-        <Brand />
-        <Link href="/" className="muted" style={{ fontSize: 14 }}>Campaigns</Link>
-        <span className="muted">›</span>
-        <span style={{ fontSize: 14 }}>Roster</span>
-      </div>
-
-      <div className="wrap grid" style={{ gap: 22 }}>
+    <Shell breadcrumb={<span style={{ fontSize: 14, fontWeight: 600 }}>Clippers</span>}>
+      <div className="grid" style={{ gap: 22 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div>
             <div className="eyebrow">Roster</div>
@@ -59,6 +53,6 @@ export default async function RosterPage() {
           ))}
         </div>
       </div>
-    </>
+    </Shell>
   );
 }

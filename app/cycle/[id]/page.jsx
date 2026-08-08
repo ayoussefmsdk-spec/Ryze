@@ -12,6 +12,7 @@ import ClipActions from '../../../components/ClipActions.jsx';
 import FlagBadges from '../../../components/FlagBadges.jsx';
 import TrendChart from '../../../components/TrendChart.jsx';
 import { cycleDailySeries, projectSpend } from '../../../lib/history.mjs';
+import Shell from '../../../components/Shell.jsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -93,23 +94,16 @@ export default async function CyclePage({ params }) {
   const budgetPct = Math.min(payouts.budget.pct, 100);
 
   return (
-    <>
-      <div className="topbar">
-        <Brand />
-        <Link href="/" className="muted" style={{ fontSize: 14 }}>Campaigns</Link>
-        <span className="muted">›</span>
-        <Link href={`/campaign/${cycleRow.campaign_id}`} className="muted" style={{ fontSize: 14 }}>{cycleRow.campaign_name}</Link>
-        <span className="muted">›</span>
-        <span style={{ fontSize: 14 }}>{cycleRow.name}</span>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 12 }}>
-          <a href={`/api/cycles/${params.id}/export`} className="muted" style={{ fontSize: 14 }}>CSV</a>
-          <Link href={`/cycle/${params.id}/report`} className="muted" style={{ fontSize: 14 }}>Report</Link>
-          <Link href="/roster" className="muted" style={{ fontSize: 14 }}>Roster</Link>
-          <Link href="/payouts" className="muted" style={{ fontSize: 14 }}>Payouts</Link>
-        </div>
+    <Shell breadcrumb={<>
+      <Link href={`/campaign/${cycleRow.campaign_id}`} className="muted" style={{ fontSize: 14 }}>{cycleRow.campaign_name}</Link>
+      <span className="muted">›</span>
+      <span style={{ fontSize: 14, fontWeight: 600 }}>{cycleRow.name}</span>
+      <div style={{ marginLeft: 'auto', display: 'flex', gap: 14 }}>
+        <a href={`/api/cycles/${params.id}/export`} className="muted" style={{ fontSize: 13.5 }}>CSV</a>
+        <Link href={`/cycle/${params.id}/report`} className="muted" style={{ fontSize: 13.5 }}>Report</Link>
       </div>
-
-      <div className="wrap grid" style={{ gap: 20 }}>
+    </>}>
+      <div className="grid" style={{ gap: 20 }}>
         {/* Header */}
         <div style={{ display: 'flex', gap: 14, alignItems: 'start', flexWrap: 'wrap' }}>
           <div>
@@ -329,6 +323,6 @@ export default async function CyclePage({ params }) {
           </details>
         )}
       </div>
-    </>
+    </Shell>
   );
 }

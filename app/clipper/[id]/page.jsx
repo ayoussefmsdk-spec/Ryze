@@ -7,6 +7,7 @@ import { formatCents } from '../../../core/payout.mjs';
 import { AccountsEditor } from '../../../components/RosterManager.jsx';
 import TrendChart from '../../../components/TrendChart.jsx';
 import { clipperDailySeries } from '../../../lib/history.mjs';
+import Shell from '../../../components/Shell.jsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,15 +57,12 @@ export default async function ClipperPage({ params }) {
   }
 
   return (
-    <>
-      <div className="topbar">
-        <Brand />
-        <Link href="/roster" className="muted" style={{ fontSize: 14 }}>Roster</Link>
-        <span className="muted">›</span>
-        <span style={{ fontSize: 14 }}>{clipper.name}</span>
-      </div>
-
-      <div className="wrap grid" style={{ gap: 20 }}>
+    <Shell breadcrumb={<>
+      <Link href="/roster" className="muted" style={{ fontSize: 14 }}>Clippers</Link>
+      <span className="muted">›</span>
+      <span style={{ fontSize: 14, fontWeight: 600 }}>{clipper.name}</span>
+    </>}>
+      <div className="grid" style={{ gap: 20 }}>
         <div>
           <div className="eyebrow">Clipper profile</div>
           <h1>{clipper.name}</h1>
@@ -136,6 +134,6 @@ export default async function ClipperPage({ params }) {
           <AccountsEditor clipperId={clipper.id} accounts={accountsRes.rows} />
         </div>
       </div>
-    </>
+    </Shell>
   );
 }

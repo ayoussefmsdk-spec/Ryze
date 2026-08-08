@@ -6,6 +6,7 @@ import { computeCyclePayouts } from '../../lib/payouts.mjs';
 import { formatCents } from '../../core/payout.mjs';
 import PayCycleButton from '../../components/PayCycleButton.jsx';
 import AdjustmentForm from '../../components/AdjustmentForm.jsx';
+import Shell from '../../components/Shell.jsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -76,18 +77,8 @@ export default async function PayoutsPage() {
   const lifetimeRows = [...byClipper.entries()].sort((a, b) => b[1].total - a[1].total);
 
   return (
-    <>
-      <div className="topbar">
-        <Brand />
-        <Link href="/" className="muted" style={{ fontSize: 14 }}>Campaigns</Link>
-        <span className="muted">›</span>
-        <span style={{ fontSize: 14 }}>Payouts</span>
-        <div style={{ marginLeft: 'auto' }}>
-          <Link href="/roster" className="muted" style={{ fontSize: 14 }}>Roster</Link>
-        </div>
-      </div>
-
-      <div className="wrap grid" style={{ gap: 22 }}>
+    <Shell breadcrumb={<span style={{ fontSize: 14, fontWeight: 600 }}>Payouts</span>}>
+      <div className="grid" style={{ gap: 22 }}>
         <div>
           <div className="eyebrow">Payouts hub</div>
           <h1>Payouts</h1>
@@ -183,6 +174,6 @@ export default async function PayoutsPage() {
           </div>
         )}
       </div>
-    </>
+    </Shell>
   );
 }
