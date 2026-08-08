@@ -19,12 +19,13 @@ export async function POST(req) {
 
   const timezone = (body.timezone || 'Africa/Casablanca').trim();
   const streamer = (body.streamerHandle || '').trim() || null;
+  const avatar = (body.avatar || '').trim() || null;
 
   const { rows } = await query(
-    `insert into campaigns (name, streamer_handle, timezone)
-       values ($1, $2, $3)
+    `insert into campaigns (name, streamer_handle, timezone, avatar_url)
+       values ($1, $2, $3, $4)
        returning id, name, streamer_handle, timezone, created_at`,
-    [name, streamer, timezone],
+    [name, streamer, timezone, avatar],
   );
   return NextResponse.json({ ok: true, campaign: rows[0] });
 }

@@ -18,6 +18,7 @@ import ScanPanel from '../../../components/ScanPanel.jsx';
 import IntelBand from '../../../components/IntelBand.jsx';
 import { cycleIntel } from '../../../lib/intel.mjs';
 import CycleSettings from '../../../components/CycleSettings.jsx';
+import { gmtLabel } from '../../../lib/tz.mjs';
 import ClipExplorer from '../../../components/ClipExplorer.jsx';
 
 export const dynamic = 'force-dynamic';
@@ -137,7 +138,7 @@ export default async function CyclePage({ params }) {
         <div style={{ display: 'flex', gap: 14, alignItems: 'start', flexWrap: 'wrap' }}>
           <div>
             <div className="eyebrow">
-              {cycleRow.starts_on} → {cycleRow.ends_on} · {cycleRow.effective_tz} · {MODEL_LABEL[cycleRow.payout_model]}
+              {cycleRow.starts_on} → {cycleRow.ends_on} · {gmtLabel(cycleRow.effective_tz)} · {MODEL_LABEL[cycleRow.payout_model]}
             </div>
             <h1 style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
               {cycleRow.name}

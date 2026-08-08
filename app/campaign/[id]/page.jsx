@@ -7,6 +7,7 @@ import CycleForm from '../../../components/CycleForm.jsx';
 import CloneCycleForm from '../../../components/CloneCycleForm.jsx';
 import { formatCents } from '../../../core/payout.mjs';
 import Shell from '../../../components/Shell.jsx';
+import { gmtLabel } from '../../../lib/tz.mjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,7 +41,7 @@ export default async function CampaignPage({ params }) {
       <div className="grid" style={{ gap: 22 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
           <div>
-            <div className="eyebrow">Campaign · {campaign.timezone}</div>
+            <div className="eyebrow">Campaign · {gmtLabel(campaign.timezone)}</div>
             <h1>{campaign.name}</h1>
             {campaign.streamer_handle && <div className="muted" style={{ fontSize: 14 }}>{campaign.streamer_handle}</div>}
           </div>
@@ -71,7 +72,7 @@ export default async function CampaignPage({ params }) {
                   <h2 style={{ margin: 0 }}>{cy.name}</h2>
                   <div className="muted" style={{ fontSize: 13 }}>
                     {String(cy.starts_on).slice(0, 10)} → {String(cy.ends_on).slice(0, 10)}
-                    {cy.timezone ? ` · ${cy.timezone}` : ''}
+                    {cy.timezone ? ` · ${gmtLabel(cy.timezone)}` : ''}
                   </div>
                 </div>
                 <div className="muted" style={{ fontSize: 14 }}>{MODEL_SHORT[cy.payout_model] || cy.payout_model}</div>

@@ -13,7 +13,7 @@ const MODEL_LABELS = {
 
 const PLATFORMS = ['youtube', 'tiktok', 'instagram', 'twitter', 'other'];
 
-const ZONES = ['', 'Africa/Casablanca', 'UTC', 'Europe/London', 'Europe/Paris', 'America/New_York', 'America/Los_Angeles'];
+import { zoneChoices, gmtLabel } from '../lib/tz.mjs';
 
 export default function CycleForm({ campaignId, campaignTimezone }) {
   const router = useRouter();
@@ -93,9 +93,10 @@ export default function CycleForm({ campaignId, campaignTimezone }) {
       </div>
 
       <label className="grid" style={{ gap: 6 }}>
-        <span className="muted" style={{ fontSize: 13 }}>Timezone (blank = campaign default: {campaignTimezone})</span>
+        <span className="muted" style={{ fontSize: 13 }}>Timezone</span>
         <select className="field" value={timezone} onChange={(e) => setTimezone(e.target.value)}>
-          {ZONES.map((z) => <option key={z} value={z}>{z || `Campaign default (${campaignTimezone})`}</option>)}
+          <option value="">Campaign default ({gmtLabel(campaignTimezone)})</option>
+          {zoneChoices().map(([tz, label]) => <option key={tz} value={tz}>{label}</option>)}
         </select>
       </label>
 
