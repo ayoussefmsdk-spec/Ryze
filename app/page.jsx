@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Brand from '../components/Brand.jsx';
 import { requireSession } from '../lib/auth.mjs';
 import { query } from '../lib/db.mjs';
 import CampaignForm from '../components/CampaignForm.jsx';
@@ -27,8 +28,7 @@ export default async function HomePage() {
   return (
     <>
       <div className="topbar">
-        <span className="brand">▲ RyZeX</span>
-        <span className="muted" style={{ fontSize: 14 }}>clipping agency</span>
+        <Brand withDescriptor />
         <form action="/api/logout" method="post" style={{ marginLeft: 'auto' }}>
           <button className="btn secondary" style={{ padding: '6px 12px' }} type="submit">Log out</button>
         </form>

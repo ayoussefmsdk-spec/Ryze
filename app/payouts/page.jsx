@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Brand from '../../components/Brand.jsx';
 import { requireSession } from '../../lib/auth.mjs';
 import { query } from '../../lib/db.mjs';
 import { computeCyclePayouts } from '../../lib/payouts.mjs';
@@ -77,7 +78,7 @@ export default async function PayoutsPage() {
   return (
     <>
       <div className="topbar">
-        <span className="brand">▲ RyZeX</span>
+        <Brand />
         <Link href="/" className="muted" style={{ fontSize: 14 }}>Campaigns</Link>
         <span className="muted">›</span>
         <span style={{ fontSize: 14 }}>Payouts</span>

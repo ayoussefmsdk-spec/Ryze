@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Brand from '../../../components/Brand.jsx';
 import { notFound } from 'next/navigation';
 import { requireSession } from '../../../lib/auth.mjs';
 import { query } from '../../../lib/db.mjs';
@@ -94,7 +95,7 @@ export default async function CyclePage({ params }) {
   return (
     <>
       <div className="topbar">
-        <span className="brand">▲ RyZeX</span>
+        <Brand />
         <Link href="/" className="muted" style={{ fontSize: 14 }}>Campaigns</Link>
         <span className="muted">›</span>
         <Link href={`/campaign/${cycleRow.campaign_id}`} className="muted" style={{ fontSize: 14 }}>{cycleRow.campaign_name}</Link>

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Brand from '../../../components/Brand.jsx';
 import { notFound } from 'next/navigation';
 import { requireSession } from '../../../lib/auth.mjs';
 import { query } from '../../../lib/db.mjs';
@@ -57,7 +58,7 @@ export default async function ClipperPage({ params }) {
   return (
     <>
       <div className="topbar">
-        <span className="brand">▲ RyZeX</span>
+        <Brand />
         <Link href="/roster" className="muted" style={{ fontSize: 14 }}>Roster</Link>
         <span className="muted">›</span>
         <span style={{ fontSize: 14 }}>{clipper.name}</span>
