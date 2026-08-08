@@ -1,6 +1,6 @@
 import { resolveToken } from '../../../lib/clips.mjs';
 import SubmitForm from '../../../components/SubmitForm.jsx';
-import Brand from '../../../components/Brand.jsx';
+import Brand, { BeeMascot } from '../../../components/Brand.jsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +27,9 @@ export default async function SubmitPage({ params }) {
       <div className="card grid" style={{ width: 420, maxWidth: '94vw', gap: 14 }}>
         <div>
           <Brand size={18} />
-          <h2 style={{ margin: '10px 0 2px' }}>Hey {clipperName} 👋</h2>
+          <h2 style={{ margin: '10px 0 2px', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <BeeMascot size={30} /> Hey {clipperName} 👋
+          </h2>
           <div className="muted" style={{ fontSize: 14 }}>
             Drop your clip links for <strong>{cycle.name}</strong>
             {' '}({String(cycle.starts_on).slice(0, 10)} → {String(cycle.ends_on).slice(0, 10)}).
