@@ -13,6 +13,7 @@ import FlagBadges from '../../../components/FlagBadges.jsx';
 import TrendChart from '../../../components/TrendChart.jsx';
 import { cycleDailySeries, projectSpend } from '../../../lib/history.mjs';
 import Shell from '../../../components/Shell.jsx';
+import ViewerCodePanel from '../../../components/ViewerCodePanel.jsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -117,8 +118,9 @@ export default async function CyclePage({ params }) {
               </span>
             </h1>
           </div>
-          <div style={{ marginLeft: 'auto' }}>
+          <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
             <CycleActions cycleId={cycleRow.id} status={cycleRow.status} hasPaidPlatforms={hasPaid} />
+            <ViewerCodePanel cycleId={cycleRow.id} />
           </div>
         </div>
 

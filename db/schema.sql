@@ -188,6 +188,22 @@ create table cycle_changes (
 );
 create index on cycle_changes (cycle_id, changed_at);
 
+-- ---- Streamer viewer codes (single-use, read-only campaign access) ----------
+-- The manager mints a short code for a streamer to watch a cycle's numbers with
+-- zero ability to touch anything. Single-use (consumed on first open) + expiry.
+create table viewer_codes (
+  id          uuid primary key default gen_random_uuid(),
+  code        text not null unique,                 -- short, shareable e.g. HIVE-7K2M
+  cycle_id    uuid not null references cycles(id) on delete cascade,
+  label       text,                                 -- e.g. "for Camy"
+  show_money  boolean not null default false,       -- include $ spend/payouts, or reach-only
+  used_at     timestamptz,                          -- set on first open (single-use)
+  expires_at  timestamptz not null,
+  revoked     boolean not null default false,
+  created_at  timestamptz not null default now()
+);
+create index on viewer_codes (cycle_id);
+
 -- ---- Global app settings (single row) --------------------------------------
 create table app_settings (
   id                 int primary key default 1 check (id = 1),
