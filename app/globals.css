@@ -1,26 +1,31 @@
 :root {
   color-scheme: dark;
-  /* Ground: "broadcast black" with a subtle violet cast — streamer DNA. */
-  --bg: #0b0a12;
-  --bg-2: #0e0d17;
-  --surface: #14121f;
-  --surface-2: #1a1729;
-  --line: #262238;
-  --line-2: #363050;
-  /* Ink */
-  --text: #eeecf6;
-  --text-2: #a8a3bd;
-  --text-3: #6f6a87;
-  /* Accents: gold = money/payouts (primary) · violet = stream culture (secondary) */
-  --gold: #e8ba58;
-  --gold-dim: #b48f45;
-  --gold-soft: rgba(232, 186, 88, 0.13);
-  --violet: #8b7bff;
-  --violet-soft: rgba(139, 123, 255, 0.14);
-  /* Semantics (separate from accents) */
-  --good: #55d98c;
+  /* Ground: "midnight comb" — near-black with a warm honey cast. */
+  --bg: #0e0c0a;
+  --bg-2: #12100d;
+  --surface: #181510;
+  --surface-2: #1f1b14;
+  --line: #2b2619;
+  --line-2: #3e3623;
+  /* Ink: warm cream, not clinical white. */
+  --text: #f4efe4;
+  --text-2: #b3ab97;
+  --text-3: #7d7663;
+  /* Honey = the money (payouts, budgets, the brand). */
+  --honey: #f0b64a;
+  --honey-deep: #c98f2b;
+  --honey-soft: rgba(240, 182, 74, 0.13);
+  /* Nectar violet = stream culture; interactive states only. */
+  --violet: #9d8bff;
+  --violet-soft: rgba(157, 139, 255, 0.15);
+  /* Semantics stay separate from brand accents. */
+  --good: #5cd98c;
   --warn: #f6a64b;
   --crit: #f0736f;
+  /* Back-compat aliases (older components reference gold). */
+  --gold: var(--honey);
+  --gold-dim: var(--honey-deep);
+  --gold-soft: var(--honey-soft);
   --radius: 13px;
   --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
@@ -31,9 +36,11 @@
 body {
   margin: 0;
   background: var(--bg);
+  /* The comb: a faint hexagon lattice + a warm hive glow. */
   background-image:
-    radial-gradient(900px 420px at 85% -10%, rgba(139, 123, 255, 0.07), transparent 60%),
-    radial-gradient(700px 380px at 0% 0%, rgba(232, 186, 88, 0.05), transparent 55%);
+    radial-gradient(860px 400px at 85% -8%, rgba(240, 182, 74, 0.08), transparent 60%),
+    radial-gradient(640px 360px at 0% 2%, rgba(157, 139, 255, 0.05), transparent 55%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cg fill='none' stroke='%23f0b64a' stroke-opacity='0.045' stroke-width='1'%3E%3Cpath d='M28 0 L56 16.2 V48.5 L28 64.7 L0 48.5 V16.2 Z'/%3E%3Cpath d='M28 64.7 L56 80.8 V97 M28 64.7 L0 80.8 V97'/%3E%3C/g%3E%3C/svg%3E");
   background-attachment: fixed;
   color: var(--text);
   font-family: var(--sans);
@@ -42,9 +49,9 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-::selection { background: var(--gold-soft); color: #fff; }
+::selection { background: var(--honey-soft); color: #fff; }
 
-a { color: var(--gold); text-decoration: none; }
+a { color: var(--honey); text-decoration: none; }
 a:hover { text-decoration: underline; text-underline-offset: 3px; }
 
 button, input, select { font: inherit; color: inherit; }
@@ -54,8 +61,8 @@ button, input, select { font: inherit; color: inherit; }
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: linear-gradient(180deg, var(--gold), var(--gold-dim));
-  color: #221a06;
+  background: linear-gradient(180deg, var(--honey), var(--honey-deep));
+  color: #241a05;
   font-weight: 680;
   letter-spacing: 0.01em;
   border: 0;
@@ -63,6 +70,8 @@ button, input, select { font: inherit; color: inherit; }
   padding: 10px 16px;
   cursor: pointer;
   transition: filter 0.15s, transform 0.05s;
+  /* The signature detail: one corner "clipped" out of every primary button. */
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
 }
 .btn:hover { filter: brightness(1.08); }
 .btn:active { transform: translateY(1px); }
@@ -71,8 +80,9 @@ button, input, select { font: inherit; color: inherit; }
   background: var(--surface-2);
   color: var(--text);
   border: 1px solid var(--line-2);
+  clip-path: none;
 }
-.btn.secondary:hover { border-color: var(--violet); filter: none; }
+.btn.secondary:hover { border-color: var(--honey-deep); filter: none; }
 
 .field {
   width: 100%;
@@ -97,13 +107,13 @@ button, input, select { font: inherit; color: inherit; }
   gap: 12px;
   padding: 13px 20px;
   border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  background: color-mix(in srgb, var(--bg) 84%, transparent);
   backdrop-filter: blur(10px);
 }
 .brand {
   font-family: var(--mono);
   font-weight: 700;
-  color: var(--gold);
+  color: var(--honey);
   letter-spacing: -0.01em;
 }
 
@@ -112,9 +122,9 @@ button, input, select { font: inherit; color: inherit; }
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 18px;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
-.card:hover { border-color: var(--line-2); }
+.card:hover { border-color: var(--line-2); box-shadow: 0 14px 40px -30px rgba(240, 182, 74, 0.25); }
 
 .grid { display: grid; gap: 14px; }
 .muted { color: var(--text-2); }

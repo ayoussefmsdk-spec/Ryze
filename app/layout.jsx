@@ -1,9 +1,9 @@
 import './globals.css';
 import { BRAND } from '../components/Brand.jsx';
 
-// Favicon: the sliced-triangle mark as an inline SVG data URI — no asset files.
+// Favicon: the hex-cell + play mark as an inline SVG data URI — no asset files.
 const faviconSvg = encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M7.1 12.4 L2.5 21 H21.5 L16.6 12.2 L6.9 15.4 Z" fill="#b48f45"/><path d="M12.6 2.6 L16.1 9.0 L6.6 12.1 Z" fill="#e8ba58"/></svg>`,
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 1.8 L20.6 6.8 V16.8 L12 21.8 L3.4 16.8 V6.8 Z" fill="none" stroke="#f0b64a" stroke-width="2.1" stroke-linejoin="round"/><path d="M9.9 8.3 L16.2 11.8 L9.9 15.3 Z" fill="#f0b64a"/></svg>`,
 );
 
 export const metadata = {
