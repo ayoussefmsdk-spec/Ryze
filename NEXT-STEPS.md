@@ -52,6 +52,17 @@ were built first. All verified against the real APIs; `npm test` → **32 passin
 7. **Fetching** — YouTube batch (50/call); Apify TikTok/IG async + webhook→DB; per-clip "recheck"; freeze logic; failure flags; thumbnail download-and-rehost.
 8. **Dashboard** — summary ticker, budget bar, platform totals, leaderboard (views+payout), clip cards (thumbnail/views/likes/comments/engagement), clip detail Overview+Analytics charts, filters/search, alerts strip.
 9. **Payouts Hub** — pending → pay-whole-cycle → history → lifetime per-campaign + grand total.
+9b. **History & analytics hub (two levels)** — built from view_history (trajectories)
+    + payouts (settled amounts) + frozen cycle snapshots, so comparisons use final
+    locked numbers:
+    - **Per clipper (profile):** lifetime views/paid; per-campaign breakdown;
+      month-by-month cycle history (views · payout · clips · engagement); a "path"
+      trend graph of views + earnings over time; leaderboard rank per cycle.
+    - **Per campaign:** list of past cycles (dates · views · payout · #clippers ·
+      budget/pot used); cycle-over-cycle graphs (views, spend, clipper count, avg
+      engagement); drill into any past cycle's frozen leaderboard.
+    (No schema change needed — all derivable from existing tables; optional cached
+    cycle-summary rollups can be added later purely for speed.)
 10. **Reports** — PDF cycle report + per-clipper payout sheets.
 11. **Automation** — Railway scheduler runs each active cycle's `check_schedule`
     (free vs paid cadence, in the cycle's timezone) + enable/disable + Apify daily
