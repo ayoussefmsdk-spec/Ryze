@@ -14,6 +14,7 @@ import TrendChart from '../../../components/TrendChart.jsx';
 import { cycleDailySeries, projectSpend } from '../../../lib/history.mjs';
 import Shell from '../../../components/Shell.jsx';
 import ViewerCodePanel from '../../../components/ViewerCodePanel.jsx';
+import ScanPanel from '../../../components/ScanPanel.jsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -230,10 +231,15 @@ export default async function CyclePage({ params }) {
           <MembersPanel cycleId={cycleRow.id} members={members} roster={roster} />
         </div>
 
-        {/* Add clip manually */}
+        {/* Add clip manually + account scan */}
         {!frozen && members.length > 0 && (
-          <div className="card grid" style={{ gap: 10 }}>
-            <h2 style={{ margin: 0 }}>Add a clip</h2>
+          <div className="card grid" style={{ gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <h2 style={{ margin: 0 }}>Add clips</h2>
+              <div style={{ marginLeft: 'auto' }}>
+                <ScanPanel cycleId={cycleRow.id} members={members} />
+              </div>
+            </div>
             <AddClipForm cycleId={cycleRow.id} members={members} />
           </div>
         )}
