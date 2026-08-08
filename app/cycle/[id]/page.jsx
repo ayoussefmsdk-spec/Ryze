@@ -9,6 +9,8 @@ import MembersPanel from '../../../components/MembersPanel.jsx';
 import AddClipForm from '../../../components/AddClipForm.jsx';
 import ClipActions from '../../../components/ClipActions.jsx';
 import FlagBadges from '../../../components/FlagBadges.jsx';
+import TrendChart from '../../../components/TrendChart.jsx';
+import { cycleDailySeries, projectSpend } from '../../../lib/history.mjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,6 +69,11 @@ export default async function CyclePage({ params }) {
   const roster = rosterRes.rows;
   const changes = changesRes.rows;
 
+  const series = await cycleDailySeries(params.id);
+  const projectedCents = ['cpm', 'flat_per_clip'].includes(cycleRow.payout_model) && cycleRow.status !== 'frozen'
+    ? projectSpend({ series, endsOn: cycleRow.ends_on, totalPayoutCents: payouts.totalPayoutCents, totalViews: payouts.totalViews })
+    : null;
+
   const pending = clips.filter((c) => c.status === 'pending');
   const flagged = clips.filter((c) => c.flags?.length > 0 && c.status !== 'rejected');
   const isPot = ['pot_proportional', 'pot_equal', 'placement'].includes(cycleRow.payout_model);
@@ -94,6 +101,7 @@ export default async function CyclePage({ params }) {
         <span className="muted">›</span>
         <span style={{ fontSize: 14 }}>{cycleRow.name}</span>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 12 }}>
+          <a href={`/api/cycles/${params.id}/export`} className="muted" style={{ fontSize: 14 }}>CSV</a>
           <Link href={`/cycle/${params.id}/report`} className="muted" style={{ fontSize: 14 }}>Report</Link>
           <Link href="/roster" className="muted" style={{ fontSize: 14 }}>Roster</Link>
           <Link href="/payouts" className="muted" style={{ fontSize: 14 }}>Payouts</Link>
@@ -159,6 +167,21 @@ export default async function CyclePage({ params }) {
             <div style={{ height: 10, borderRadius: 999, background: 'var(--surface-2)', overflow: 'hidden' }}>
               <div style={{ width: `${budgetPct}%`, height: '100%', borderRadius: 999, background: BAND_COLOR[payouts.budget.band], transition: 'width .3s' }} />
             </div>
+          </div>
+        )}
+
+        {/* Views growth chart + projection */}
+        {series.length >= 2 && (
+          <div className="card grid" style={{ gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+              <h2 style={{ margin: 0 }}>Views over time</h2>
+              {projectedCents != null && (
+                <span className="muted" style={{ fontSize: 13, marginLeft: 'auto' }}>
+                  At this pace ≈ <strong style={{ color: 'var(--gold)' }}>{formatCents(projectedCents)}</strong> by {cycleRow.ends_on} (rough estimate)
+                </span>
+              )}
+            </div>
+            <TrendChart points={series} />
           </div>
         )}
 

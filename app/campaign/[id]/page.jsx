@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { requireSession } from '../../../lib/auth.mjs';
 import { query } from '../../../lib/db.mjs';
 import CycleForm from '../../../components/CycleForm.jsx';
+import CloneCycleForm from '../../../components/CloneCycleForm.jsx';
 import { formatCents } from '../../../core/payout.mjs';
 
 export const dynamic = 'force-dynamic';
@@ -44,7 +45,10 @@ export default async function CampaignPage({ params }) {
             <h1>{campaign.name}</h1>
             {campaign.streamer_handle && <div className="muted" style={{ fontSize: 14 }}>{campaign.streamer_handle}</div>}
           </div>
-          <div style={{ marginLeft: 'auto' }}>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            {cycles.length > 0 && (
+              <CloneCycleForm campaignId={campaign.id} sourceCycleId={cycles[0].id} sourceName={cycles[0].name} />
+            )}
             <CycleForm campaignId={campaign.id} campaignTimezone={campaign.timezone} />
           </div>
         </div>

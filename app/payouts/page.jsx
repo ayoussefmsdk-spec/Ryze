@@ -4,6 +4,7 @@ import { query } from '../../lib/db.mjs';
 import { computeCyclePayouts } from '../../lib/payouts.mjs';
 import { formatCents } from '../../core/payout.mjs';
 import PayCycleButton from '../../components/PayCycleButton.jsx';
+import AdjustmentForm from '../../components/AdjustmentForm.jsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -120,6 +121,7 @@ export default async function PayoutsPage() {
                       {p.paymentHandle && <span className="muted" style={{ fontSize: 13 }}>→ {p.paymentHandle}</span>}
                       <span className="muted" style={{ fontSize: 13 }}>{p.clipCount} clips · {nfmt(p.views)} views</span>
                       <span style={{ marginLeft: 'auto', fontWeight: 700, color: 'var(--gold)', fontVariantNumeric: 'tabular-nums' }}>{formatCents(p.payoutCents)}</span>
+                      <AdjustmentForm cycleId={cycle.id} clipperId={p.clipperId} />
                       <PayCycleButton cycleId={cycle.id} clipperId={p.clipperId} label={p.name} amount={formatCents(p.payoutCents)} />
                     </summary>
                     <div className="grid" style={{ gap: 3, padding: '2px 2px 10px 14px' }}>

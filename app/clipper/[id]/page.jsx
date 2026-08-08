@@ -4,6 +4,8 @@ import { requireSession } from '../../../lib/auth.mjs';
 import { query } from '../../../lib/db.mjs';
 import { formatCents } from '../../../core/payout.mjs';
 import { AccountsEditor } from '../../../components/RosterManager.jsx';
+import TrendChart from '../../../components/TrendChart.jsx';
+import { clipperDailySeries } from '../../../lib/history.mjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -98,6 +100,12 @@ export default async function ClipperPage({ params }) {
             ))}
           </div>
         )}
+
+        {/* Views path chart */}
+        <div className="card grid" style={{ gap: 10 }}>
+          <h2 style={{ margin: 0 }}>Views path</h2>
+          <TrendChart points={await clipperDailySeries(params.id)} />
+        </div>
 
         {/* Cycle history — their "path" */}
         <div className="card grid" style={{ gap: 4 }}>
