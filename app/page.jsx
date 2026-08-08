@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { requireSession } from '../lib/auth.mjs';
 import { query } from '../lib/db.mjs';
 import CampaignForm from '../components/CampaignForm.jsx';
@@ -63,15 +64,17 @@ export default async function HomePage() {
         {!error && rows.length > 0 && (
           <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
             {rows.map((c) => (
-              <div key={c.id} className="card">
-                <h2>{c.name}</h2>
-                <div className="muted" style={{ fontSize: 14 }}>
-                  {c.streamer_handle ? `${c.streamer_handle} · ` : ''}{c.timezone}
+              <Link key={c.id} href={`/campaign/${c.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+                <div className="card" style={{ height: '100%' }}>
+                  <h2>{c.name}</h2>
+                  <div className="muted" style={{ fontSize: 14 }}>
+                    {c.streamer_handle ? `${c.streamer_handle} · ` : ''}{c.timezone}
+                  </div>
+                  <div className="muted" style={{ fontSize: 13, marginTop: 10 }}>
+                    {c.cycle_count} cycle{Number(c.cycle_count) === 1 ? '' : 's'}
+                  </div>
                 </div>
-                <div className="muted" style={{ fontSize: 13, marginTop: 10 }}>
-                  {c.cycle_count} cycle{Number(c.cycle_count) === 1 ? '' : 's'}
-                </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}

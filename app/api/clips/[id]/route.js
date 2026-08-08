@@ -1,0 +1,53 @@
+import { NextResponse } from 'next/server';
+import { hasSession } from '../../../../lib/auth.mjs';
+import { query } from '../../../../lib/db.mjs';
+import { fetchSingleClip } from '../../../../lib/check.mjs';
+
+/** PATCH — approve / reject / set manual views / clear a flag. */
+export async function PATCH(req, { params }) {
+  if (!hasSession()) return NextResponse.json({ ok: false }, { status: 401 });
+  const b = await req.json().catch(() => ({}));
+
+  if (b.action === 'approve' || b.action === 'reject') {
+    const status = b.action === 'approve' ? 'approved' : 'rejected';
+    await query(`update clips set status = $1 where id = $2`, [status, params.id]);
+    return NextResponse.json({ ok: true });
+  }
+
+  if (b.action === 'setViews') {
+    const views = Math.max(0, Math.trunc(Number(b.views) || 0));
+    await query(
+      `update clips set views = $1, source = 'manual', manual_override = true,
+              last_checked_at = now() where id = $2`,
+      [views, params.id],
+    );
+    await query(
+      `insert into view_history (clip_id, views) values ($1, $2)`,
+      [params.id, views],
+    );
+    return NextResponse.json({ ok: true });
+  }
+
+  if (b.action === 'clearFlag' && typeof b.flag === 'string') {
+    await query(`update clips set flags = array_remove(flags, $1) where id = $2`, [b.flag, params.id]);
+    return NextResponse.json({ ok: true });
+  }
+
+  if (b.action === 'recheck') {
+    try {
+      const updated = await fetchSingleClip(params.id);
+      return NextResponse.json({ ok: true, clip: updated });
+    } catch (err) {
+      return NextResponse.json({ ok: false, error: err.message }, { status: 502 });
+    }
+  }
+
+  return NextResponse.json({ ok: false, error: 'Unknown action' }, { status: 400 });
+}
+
+/** DELETE — remove a clip entirely. */
+export async function DELETE(_req, { params }) {
+  if (!hasSession()) return NextResponse.json({ ok: false }, { status: 401 });
+  await query(`delete from clips where id = $1`, [params.id]);
+  return NextResponse.json({ ok: true });
+}
