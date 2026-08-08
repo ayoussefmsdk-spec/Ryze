@@ -1,4 +1,19 @@
-# RyZeX (Ryze Clip Tracker) — build plan & status
+# ClipHive — build plan & status
+
+> **World-class round (latest):** sidebar app shell on every page (Dashboard /
+> Campaigns / Clippers / Payouts / Performance / Fraud radar) · streamer viewer
+> codes with public /watch room (recap + money-gated ROI) · account-scan
+> ingestion · intelligence layer (view-curve forensics, engagement floors,
+> money-state pipeline, ROI proof, auto-recap, pace/cap countdown) · ⌘K palette.
+> 63 unit tests green; all surfaces verified live against local PG.
+> Deploy note: migrate is now incremental — redeploying on Railway auto-creates
+> the new viewer_codes table.
+>
+> **Queued next (from the 56-idea brainstorm):** keyboard triage queue (j/k/a/r),
+> clipper magic-link status page + Honey Meter, share-card engine (next/og),
+> weekly digest notifications, clawback sweep, trust-score auto-approve,
+> saved views, posting-cadence heatmap, invoicing. Full ranked list in the
+> brainstorm result.
 
 > **Status: v1 BUILT and end-to-end tested** against a real local Postgres —
 > full flow verified over HTTP: login → campaign → cycle → roster → enrollment →
