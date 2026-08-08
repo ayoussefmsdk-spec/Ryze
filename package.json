@@ -1,10 +1,20 @@
 {
   "name": "ryze-clip-tracker",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "Automated view-tracking and payout tool for paid clipping campaigns.",
   "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start -p ${PORT:-3000}",
+    "migrate": "node scripts/migrate.mjs",
     "test": "node --test core/*.test.mjs"
+  },
+  "dependencies": {
+    "next": "^14.2.35",
+    "pg": "^8.13.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
   }
 }

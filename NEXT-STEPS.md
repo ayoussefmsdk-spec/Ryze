@@ -19,7 +19,17 @@ were built first. All verified against the real APIs; `npm test` → **32 passin
 | `core/platform.mjs` | Platform detection + YouTube-ID / TikTok / IG / X parsing + URL normalization. Powers duplicate detection (youtu.be = watch = shorts). |
 | `core/payout.mjs` | Payout engine — **5 models**: CPM, pot-proportional, pot-equal, placement, flat-per-clip; exact-cent pot splitting; qualify thresholds; per-clip/per-clipper caps; manual +/− adjustments (the "any detail" catch-all); engagement % (null-safe); budget bands; formatting. Model is a per-cycle choice, editable mid-cycle. |
 | `core/normalize.mjs` | Maps YouTube / Apify-TikTok / Apify-IG responses → one common shape. Raises `ig_suspect` on unreliable IG views. `evaluateFlags()` = the anti-fraud suite. |
-| `core/*.test.mjs` | 32 tests covering the tricky real-world cases. Run: `npm test`. |
+| `core/*.test.mjs` | 40 tests covering the tricky real-world cases. Run: `npm test`. |
+
+### App scaffold (step 1–4 begun — builds clean with `npm run build`)
+| File | What it is |
+|---|---|
+| `package.json` / `next.config.mjs` | Next.js 14 (App Router) project. |
+| `lib/db.mjs` | Postgres pool + `query()` helper (SSL auto for Railway). |
+| `lib/auth.mjs` | Single-password login → signed session cookie; `requireSession()` guard. |
+| `scripts/migrate.mjs` | Applies `db/schema.sql` (`npm run migrate`). |
+| `app/login` + `app/api/login` `logout` | Password login flow. |
+| `app/page.jsx` + `app/api/campaigns` + `components/CampaignForm.jsx` | Home: create & list campaigns (with timezone), backed by Postgres. |
 
 ## ✅ Decisions made
 - **Host: Railway (~$5/mo)** — always-on Postgres, no pausing, no cold starts, no
