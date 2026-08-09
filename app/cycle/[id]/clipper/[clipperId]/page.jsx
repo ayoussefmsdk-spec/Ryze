@@ -3,8 +3,8 @@ import { notFound } from 'next/navigation';
 import { requireSession } from '../../../../../lib/auth.mjs';
 import { query } from '../../../../../lib/db.mjs';
 import { computeCyclePayouts } from '../../../../../lib/payouts.mjs';
-import { clipperCycleDailySeries } from '../../../../../lib/history.mjs';
-import { fillDailySeries, dailyGains, minIso } from '../../../../../core/series.mjs';
+import { clipperCycleDailySeries, clipsPostedPerDay } from '../../../../../lib/history.mjs';
+import { fillDailySeries, zeroFillDaily, dailyGains, minIso } from '../../../../../core/series.mjs';
 import { formatCents, formatEngagement } from '../../../../../core/payout.mjs';
 import Shell from '../../../../../components/Shell.jsx';
 import TrendChart from '../../../../../components/TrendChart.jsx';
@@ -64,6 +64,10 @@ export default async function ClipperInCyclePage({ params }) {
     to: minIso(today, String(cycle.ends_on)),
   });
   const gains = dailyGains(filled);
+  const postedSeries = zeroFillDaily(
+    await clipsPostedPerDay({ cycleId: params.id, clipperId: params.clipperId }),
+    { from: String(cycle.starts_on), to: minIso(today, String(cycle.ends_on)) },
+  );
 
   const approved = clips.filter((c) => c.status === 'approved');
   const totalViews = approved.reduce((a, c) => a + Number(c.views), 0);
@@ -124,6 +128,13 @@ export default async function ClipperInCyclePage({ params }) {
             <h2 style={{ margin: 0 }}>Views gained each day</h2>
             <DayBars points={gains} />
           </div>
+          <div className="card grid" style={{ gap: 10, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+              <h2 style={{ margin: 0 }}>Clips posted each day</h2>
+              <span className="muted" style={{ fontSize: 11.5, marginLeft: 'auto', fontFamily: 'var(--mono)' }}>platform post date</span>
+            </div>
+            <DayBars points={postedSeries} color="var(--violet)" unit="clips" emptyNote="Bars appear as their clips get posted across the cycle's days." />
+          </div>
         </div>
 
         {mine && Object.keys(mine.byPlatform).length > 0 && (
@@ -165,7 +176,7 @@ export default async function ClipperInCyclePage({ params }) {
 
       <style>{`
         .two-col { grid-template-columns: 1fr; }
-        @media (min-width: 1000px) { .two-col { grid-template-columns: 1fr 1fr; align-items: start; } }
+        @media (min-width: 1000px) { .two-col { grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); align-items: start; } }
       `}</style>
     </Shell>
   );

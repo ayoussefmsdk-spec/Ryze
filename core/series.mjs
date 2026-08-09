@@ -40,6 +40,31 @@ export function fillDailySeries(series, { from = null, to = null } = {}) {
   return out;
 }
 
+/**
+ * zeroFillDaily(series, { from, to }) -> one point per calendar day, where
+ * missing days are 0 (for per-day COUNTS — unlike fillDailySeries, nothing
+ * carries forward). Bounds widen to include every datapoint.
+ */
+export function zeroFillDaily(series, { from = null, to = null } = {}) {
+  if ((!series || !series.length) && !(from && to)) return [];
+  const pts = series || [];
+  let start = from || pts[0].label;
+  let end = to || pts[pts.length - 1].label;
+  if (pts.length && pts[0].label < start) start = pts[0].label;
+  if (pts.length && pts[pts.length - 1].label > end) end = pts[pts.length - 1].label;
+  if (end < start) end = start;
+
+  const byDay = new Map(pts.map((p) => [p.label, Number(p.value)]));
+  const out = [];
+  let day = start;
+  for (let i = 0; i < DAY_CAP; i++) {
+    out.push({ label: day, value: byDay.get(day) ?? 0 });
+    if (day >= end) break;
+    day = addDays(day, 1);
+  }
+  return out;
+}
+
 /** dailyGains(filledSeries) -> [{label, value: views gained that day}] */
 export function dailyGains(filled) {
   const out = [];

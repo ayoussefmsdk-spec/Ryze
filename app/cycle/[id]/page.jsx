@@ -11,8 +11,8 @@ import AddClipForm from '../../../components/AddClipForm.jsx';
 import TriageQueue from '../../../components/TriageQueue.jsx';
 import TrendChart from '../../../components/TrendChart.jsx';
 import DayBars from '../../../components/DayBars.jsx';
-import { cycleDailySeries, projectSpend } from '../../../lib/history.mjs';
-import { fillDailySeries, dailyGains, minIso } from '../../../core/series.mjs';
+import { cycleDailySeries, clipsPostedPerDay, projectSpend } from '../../../lib/history.mjs';
+import { fillDailySeries, zeroFillDaily, dailyGains, minIso } from '../../../core/series.mjs';
 import Shell from '../../../components/Shell.jsx';
 import ViewerCodePanel from '../../../components/ViewerCodePanel.jsx';
 import ScanPanel from '../../../components/ScanPanel.jsx';
@@ -87,6 +87,11 @@ export default async function CyclePage({ params }) {
     to: minIso(todayIso, String(cycleRow.ends_on)),
   });
   const gainSeries = dailyGains(filledSeries);
+  // Posting cadence: clips per day by the PLATFORM's post date (posted_at).
+  const postedSeries = zeroFillDaily(await clipsPostedPerDay({ cycleId: params.id }), {
+    from: String(cycleRow.starts_on),
+    to: minIso(todayIso, String(cycleRow.ends_on)),
+  });
   const projectedCents = ['cpm', 'flat_per_clip'].includes(cycleRow.payout_model) && cycleRow.status !== 'frozen'
     ? projectSpend({ series, endsOn: cycleRow.ends_on, totalPayoutCents: payouts.totalPayoutCents, totalViews: payouts.totalViews })
     : null;
@@ -212,7 +217,7 @@ export default async function CyclePage({ params }) {
         )}
 
         {/* Views growth: cumulative + gained-per-day, on real calendar dates */}
-        {series.length >= 1 && (
+        {(series.length >= 1 || postedSeries.some((p) => p.value > 0)) && (
           <div className="grid chart-cols" style={{ gap: 16 }}>
             <div className="card grid" style={{ gap: 10, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
@@ -228,6 +233,13 @@ export default async function CyclePage({ params }) {
             <div className="card grid" style={{ gap: 10, minWidth: 0 }}>
               <h2 style={{ margin: 0 }}>Views gained each day</h2>
               <DayBars points={gainSeries} />
+            </div>
+            <div className="card grid" style={{ gap: 10, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                <h2 style={{ margin: 0 }}>Clips posted each day</h2>
+                <span className="muted" style={{ fontSize: 11.5, marginLeft: 'auto', fontFamily: 'var(--mono)' }}>platform post date</span>
+              </div>
+              <DayBars points={postedSeries} color="var(--violet)" unit="clips" emptyNote="Bars appear as clips get posted across the cycle's days." />
             </div>
           </div>
         )}
@@ -334,7 +346,7 @@ export default async function CyclePage({ params }) {
 
       <style>{`
         .chart-cols { grid-template-columns: 1fr; }
-        @media (min-width: 1100px) { .chart-cols { grid-template-columns: 1.25fr 1fr; align-items: start; } }
+        @media (min-width: 1100px) { .chart-cols { grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); align-items: start; } }
       `}</style>
     </Shell>
   );

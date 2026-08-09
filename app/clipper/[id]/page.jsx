@@ -7,8 +7,8 @@ import { formatCents } from '../../../core/payout.mjs';
 import { AccountsEditor } from '../../../components/RosterManager.jsx';
 import TrendChart from '../../../components/TrendChart.jsx';
 import DayBars from '../../../components/DayBars.jsx';
-import { clipperDailySeries } from '../../../lib/history.mjs';
-import { fillDailySeries, dailyGains } from '../../../core/series.mjs';
+import { clipperDailySeries, clipsPostedPerDay } from '../../../lib/history.mjs';
+import { fillDailySeries, zeroFillDaily, dailyGains } from '../../../core/series.mjs';
 import Shell from '../../../components/Shell.jsx';
 
 export const dynamic = 'force-dynamic';
@@ -48,6 +48,7 @@ export default async function ClipperPage({ params }) {
   ]);
 
   const clipperSeries = await clipperDailySeries(params.id);
+  const clipperPosted = zeroFillDaily(await clipsPostedPerDay({ clipperId: params.id }));
   const paidByCycle = new Map(paidRes.rows.map((r) => [r.cycle_id, r]));
   const lifetimePaid = paidRes.rows.reduce((a, r) => a + Number(r.amount_cents), 0);
   const lifetimeViews = cyclesRes.rows.reduce((a, r) => a + Number(r.views), 0);
@@ -121,9 +122,16 @@ export default async function ClipperPage({ params }) {
                 <h2 style={{ margin: 0 }}>Views gained each day</h2>
                 <DayBars points={dailyGains(filled)} />
               </div>
+              <div className="card grid" style={{ gap: 10, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                  <h2 style={{ margin: 0 }}>Clips posted each day</h2>
+                  <span className="muted" style={{ fontSize: 11.5, marginLeft: 'auto', fontFamily: 'var(--mono)' }}>platform post date</span>
+                </div>
+                <DayBars points={clipperPosted} color="var(--violet)" unit="clips" emptyNote="Bars appear as their clips get posted." />
+              </div>
               <style>{`
                 .clip-chart-cols { grid-template-columns: 1fr; }
-                @media (min-width: 1100px) { .clip-chart-cols { grid-template-columns: 1.25fr 1fr; align-items: start; } }
+                @media (min-width: 1100px) { .clip-chart-cols { grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); align-items: start; } }
               `}</style>
             </div>
           );

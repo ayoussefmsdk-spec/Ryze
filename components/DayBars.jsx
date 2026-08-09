@@ -1,10 +1,10 @@
-// Server-rendered SVG bar chart: views gained per calendar day. No client JS.
-// points: [{label:'YYYY-MM-DD', value}] — one bar per day, hover shows details.
+// Server-rendered SVG bar chart: one bar per calendar day. No client JS.
+// points: [{label:'YYYY-MM-DD', value}] — hover a bar for its exact numbers.
 const nf = (n) => Number(n || 0).toLocaleString('en-US');
 
-export default function DayBars({ points, height = 110, color = 'var(--gold)' }) {
+export default function DayBars({ points, height = 110, color = 'var(--gold)', unit = 'views', emptyNote = null }) {
   if (!points || points.length < 2) {
-    return <div className="muted" style={{ fontSize: 13 }}>Day-by-day bars appear once there are checks on at least two days.</div>;
+    return <div className="muted" style={{ fontSize: 13 }}>{emptyNote || 'Day-by-day bars appear once there is data on at least two days.'}</div>;
   }
   const W = 640;
   const H = height;
@@ -12,7 +12,7 @@ export default function DayBars({ points, height = 110, color = 'var(--gold)' })
   const max = Math.max(...points.map((p) => p.value));
   const best = points.reduce((a, p) => (p.value > a.value ? p : a), points[0]);
   if (max <= 0) {
-    return <div className="muted" style={{ fontSize: 13 }}>No views gained in this window yet.</div>;
+    return <div className="muted" style={{ fontSize: 13 }}>{emptyNote || 'Nothing in this window yet.'}</div>;
   }
   const innerW = W - PAD * 2;
   const gap = points.length > 60 ? 0.5 : 1.5;
@@ -22,7 +22,7 @@ export default function DayBars({ points, height = 110, color = 'var(--gold)' })
 
   return (
     <div style={{ overflowX: 'auto' }}>
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', maxWidth: W, display: 'block' }} role="img" aria-label="views gained per day">
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', maxWidth: W, display: 'block' }} role="img" aria-label={`${unit} per day`}>
         {points.map((p, i) => (
           <rect
             key={p.label}
@@ -34,14 +34,14 @@ export default function DayBars({ points, height = 110, color = 'var(--gold)' })
             fill={color}
             opacity={p.value === best.value ? 1 : 0.55}
           >
-            <title>{`${p.label} — ${nf(p.value)} views`}</title>
+            <title>{`${p.label} — ${nf(p.value)} ${unit}`}</title>
           </rect>
         ))}
         <line x1={PAD} y1={H - PAD} x2={W - PAD} y2={H - PAD} stroke="var(--line-2)" strokeWidth="1" />
       </svg>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }} className="muted">
         <span>{points[0].label}</span>
-        <span>best day: <strong style={{ color: 'var(--text)' }}>{best.label}</strong> · {nf(best.value)}</span>
+        <span>best day: <strong style={{ color: 'var(--text)' }}>{best.label}</strong> · {nf(best.value)} {unit}</span>
         <span>{points[points.length - 1].label}</span>
       </div>
     </div>

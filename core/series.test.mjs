@@ -1,6 +1,23 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fillDailySeries, dailyGains, minIso } from './series.mjs';
+import { fillDailySeries, zeroFillDaily, dailyGains, minIso } from './series.mjs';
+
+test('zeroFillDaily: missing days are 0, nothing carries forward', () => {
+  const out = zeroFillDaily(
+    [
+      { label: '2026-08-02', value: 3 },
+      { label: '2026-08-05', value: 1 },
+    ],
+    { from: '2026-08-01', to: '2026-08-06' },
+  );
+  assert.deepEqual(out.map((p) => p.value), [0, 3, 0, 0, 1, 0]);
+});
+
+test('zeroFillDaily: empty series with bounds -> all-zero calendar', () => {
+  const out = zeroFillDaily([], { from: '2026-08-01', to: '2026-08-03' });
+  assert.deepEqual(out.map((p) => p.value), [0, 0, 0]);
+  assert.deepEqual(out.map((p) => p.label), ['2026-08-01', '2026-08-02', '2026-08-03']);
+});
 
 test('fills gap days by carrying the last total forward', () => {
   const out = fillDailySeries([
