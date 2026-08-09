@@ -66,7 +66,7 @@ export default async function WatchPage({ params }) {
     computeCyclePayouts(cycle.id),
     cycleDailySeries(cycle.id),
     query(
-      `select c.platform, c.url, c.account_handle, c.views, c.likes, c.comments, c.engagement,
+      `select c.id, c.platform, c.url, c.account_handle, c.views, c.likes, c.comments, c.engagement,
               c.thumbnail_url, c.caption, c.posted_at, c.created_at, cl.name as clipper_name
          from clips c join clippers cl on cl.id = c.clipper_id
         where c.cycle_id = $1 and c.status = 'approved'
@@ -138,17 +138,30 @@ export default async function WatchPage({ params }) {
           ))}
         </div>
 
-        {intel?.recap && (
-          <div className="card" style={{ borderColor: 'rgba(240,182,74,.35)' }}>
-            <p style={{ margin: 0, fontSize: 15, lineHeight: 1.65 }}>{intel.recap}</p>
-            {showMoney && intel.roi?.multiple != null && intel.roi.multiple >= 1.5 && (
-              <p style={{ margin: '10px 0 0', fontSize: 14 }}>
-                💰 The same reach would cost roughly <b style={{ color: 'var(--honey)' }}>{formatCents(intel.roi.adEquivalentCents)}</b> in
-                paid ads — this campaign delivered it <b style={{ color: 'var(--good)' }}>{intel.roi.multiple}× cheaper</b>.
-              </p>
-            )}
-          </div>
-        )}
+        {intel?.facts && (() => {
+          const f = intel.facts;
+          const cases = [
+            f.topPlatform && ['Top platform', PLAT[f.topPlatform.platform]?.split(' ').slice(1).join(' ') || f.topPlatform.platform, `${f.topPlatform.sharePct}% of all views`, '#2ad4c8'],
+            f.bestClip && ['Breakout clip', `${nf(f.bestClip.views)} views`, f.bestClip.handle ? `@${f.bestClip.handle}` : f.bestClip.clipper, 'var(--violet)'],
+            f.deltaPct != null && ['vs last cycle', `${f.deltaPct >= 0 ? '▲' : '▼'} ${Math.abs(f.deltaPct)}%`, 'total reach', f.deltaPct >= 0 ? 'var(--good)' : 'var(--crit)'],
+            showMoney && f.investedCents > 0 && ['Invested', formatCents(f.investedCents), f.costPer1kCents != null ? `${formatCents(f.costPer1kCents)} per 1k views` : null, 'var(--honey)'],
+            showMoney && intel.roi?.multiple != null && intel.roi.multiple >= 1.5 && ['Ad-spend value', formatCents(intel.roi.adEquivalentCents), `${intel.roi.multiple}× cheaper than ads`, 'var(--good)'],
+          ].filter(Boolean);
+          if (!cases.length) return null;
+          return (
+            <div className="card" style={{ borderColor: 'rgba(240,182,74,.35)' }}>
+              <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+                {cases.map(([k, v, sub, color]) => (
+                  <div key={k} style={{ padding: '11px 14px', borderRadius: 11, background: 'var(--surface-2)', borderLeft: `3px solid ${color}`, minWidth: 0 }}>
+                    <div className="eyebrow" style={{ letterSpacing: '0.08em', fontSize: 10.5 }}>{k}</div>
+                    <div style={{ fontSize: 18, fontWeight: 720, marginTop: 3, fontVariantNumeric: 'tabular-nums', color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v}</div>
+                    {sub && <div className="muted" style={{ fontSize: 11.5, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub}</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {(series.length >= 1 || postedSeries.some((p) => p.value > 0)) && (
           <div className="grid watch-charts" style={{ gap: 14 }}>
@@ -192,8 +205,8 @@ export default async function WatchPage({ params }) {
         </div>
 
         {clips.length > 0 && (
-          <WatchGallery clips={clips.map((c) => ({
-            platform: c.platform, url: c.url, account_handle: c.account_handle,
+          <WatchGallery code={params.code} clips={clips.map((c) => ({
+            id: c.id, platform: c.platform, url: c.url, account_handle: c.account_handle,
             views: Number(c.views), likes: c.likes, comments: c.comments,
             engagement: c.engagement, thumbnail_url: c.thumbnail_url,
             caption: c.caption, posted_at: c.posted_at ? String(c.posted_at) : null,
