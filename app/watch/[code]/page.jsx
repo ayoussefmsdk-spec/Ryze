@@ -1,6 +1,10 @@
 import { headers } from 'next/headers';
 import { resolveViewerCode } from '../../../lib/viewer.mjs';
 import { limited, clientIp } from '../../../lib/ratelimit.mjs';
+import { clipsPostedPerDay } from '../../../lib/history.mjs';
+import { fillDailySeries, zeroFillDaily, dailyGains, minIso } from '../../../core/series.mjs';
+import DayBars from '../../../components/DayBars.jsx';
+import WatchGallery from '../../../components/WatchGallery.jsx';
 import { computeCyclePayouts } from '../../../lib/payouts.mjs';
 import { cycleDailySeries } from '../../../lib/history.mjs';
 import { query } from '../../../lib/db.mjs';
@@ -58,19 +62,27 @@ export default async function WatchPage({ params }) {
   }
 
   const { cycle, showMoney } = res;
-  const [pay, series, clipsRes] = await Promise.all([
+  const [pay, series, clipsRes, postedSparse] = await Promise.all([
     computeCyclePayouts(cycle.id),
     cycleDailySeries(cycle.id),
     query(
       `select c.platform, c.url, c.account_handle, c.views, c.likes, c.comments, c.engagement,
-              c.thumbnail_url, cl.name as clipper_name
+              c.thumbnail_url, c.caption, c.posted_at, c.created_at, cl.name as clipper_name
          from clips c join clippers cl on cl.id = c.clipper_id
         where c.cycle_id = $1 and c.status = 'approved'
-        order by c.views desc limit 60`,
+        order by c.views desc limit 200`,
       [cycle.id],
     ),
+    clipsPostedPerDay({ cycleId: cycle.id }),
   ]);
   const clips = clipsRes.rows;
+
+  // Real calendar days from the cycle's start through today (or its end).
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const chartTo = minIso(todayIso, String(cycle.ends_on));
+  const filledSeries = fillDailySeries(series, { from: String(cycle.starts_on), to: chartTo });
+  const gainSeries = dailyGains(filledSeries);
+  const postedSeries = zeroFillDaily(postedSparse, { from: String(cycle.starts_on), to: chartTo });
   const leaderboard = [...pay.perClipper].sort((a, b) => b.views - a.views);
 
   let intel = null;
@@ -80,6 +92,7 @@ export default async function WatchPage({ params }) {
       payouts: pay,
       series,
       clips: clips.map((c) => ({ ...c, status: 'approved', id: null })),
+      includeMoney: showMoney,
     });
   } catch { /* the room renders fine without intel */ }
 
@@ -109,7 +122,7 @@ export default async function WatchPage({ params }) {
         <span className="pilllive" style={{ marginLeft: 'auto' }}>● watching</span>
       </div>
 
-      <div className="wrap grid" style={{ gap: 22, maxWidth: 980 }}>
+      <div className="wrap grid" style={{ gap: 22, maxWidth: 1360 }}>
         <div>
           <div className="eyebrow">{cycle.campaign_name} {cycle.streamer_handle ? `· ${cycle.streamer_handle}` : ''}</div>
           <h1 style={{ fontSize: 30 }}>{cycle.name}</h1>
@@ -137,10 +150,20 @@ export default async function WatchPage({ params }) {
           </div>
         )}
 
-        {series.length >= 2 && (
-          <div className="card grid" style={{ gap: 10 }}>
-            <h2 style={{ margin: 0 }}>Views over time</h2>
-            <TrendChart points={series} />
+        {(series.length >= 1 || postedSeries.some((p) => p.value > 0)) && (
+          <div className="grid watch-charts" style={{ gap: 14 }}>
+            <div className="card grid" style={{ gap: 10, minWidth: 0 }}>
+              <h2 style={{ margin: 0 }}>Total views — day by day</h2>
+              <TrendChart points={filledSeries} />
+            </div>
+            <div className="card grid" style={{ gap: 10, minWidth: 0 }}>
+              <h2 style={{ margin: 0 }}>Views gained each day</h2>
+              <DayBars points={gainSeries} />
+            </div>
+            <div className="card grid" style={{ gap: 10, minWidth: 0 }}>
+              <h2 style={{ margin: 0 }}>Clips posted each day</h2>
+              <DayBars points={postedSeries} color="var(--violet)" unit="clips" emptyNote="Bars appear as clips get posted." />
+            </div>
           </div>
         )}
 
@@ -169,22 +192,13 @@ export default async function WatchPage({ params }) {
         </div>
 
         {clips.length > 0 && (
-          <div>
-            <h2 style={{ margin: '0 0 12px' }}>The clips</h2>
-            <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
-              {clips.map((c, i) => (
-                <a key={i} href={c.url} target="_blank" rel="noreferrer" className="card" style={{ padding: 0, overflow: 'hidden', color: 'inherit', display: 'block' }}>
-                  {c.thumbnail_url
-                    ? <img loading="lazy" src={c.thumbnail_url} alt="" style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', display: 'block' }} />
-                    : <div style={{ width: '100%', aspectRatio: '3/4', background: 'var(--surface-2)', display: 'grid', placeItems: 'center', color: 'var(--text-3)' }}>{PLAT[c.platform]?.split(' ')[0]}</div>}
-                  <div style={{ padding: '9px 11px' }}>
-                    <div style={{ fontSize: 12.5, fontWeight: 600 }}>{c.account_handle ? `@${c.account_handle}` : c.clipper_name}</div>
-                    <div className="muted" style={{ fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>👁 {nf(c.views)} · {formatEngagement(c.engagement)}</div>
-                  </div>
-                </a>
-              ))}
-            </div>
-          </div>
+          <WatchGallery clips={clips.map((c) => ({
+            platform: c.platform, url: c.url, account_handle: c.account_handle,
+            views: Number(c.views), likes: c.likes, comments: c.comments,
+            engagement: c.engagement, thumbnail_url: c.thumbnail_url,
+            caption: c.caption, posted_at: c.posted_at ? String(c.posted_at) : null,
+            created_at: String(c.created_at), clipper_name: c.clipper_name,
+          }))} />
         )}
 
         <div className="muted" style={{ fontSize: 12.5, textAlign: 'center', padding: '10px 0 30px' }}>
@@ -192,7 +206,11 @@ export default async function WatchPage({ params }) {
         </div>
       </div>
 
-      <style>{`.pilllive{font-size:12px;font-family:var(--mono);color:var(--good);border:1px solid rgba(92,217,140,.4);border-radius:999px;padding:3px 10px}`}</style>
+      <style>{`
+        .pilllive{font-size:12px;font-family:var(--mono);color:var(--good);border:1px solid rgba(92,217,140,.4);border-radius:999px;padding:3px 10px}
+        .watch-charts{grid-template-columns:1fr}
+        @media (min-width:1000px){.watch-charts{grid-template-columns:repeat(auto-fit,minmax(360px,1fr));align-items:start}}
+      `}</style>
     </div>
   );
 }
