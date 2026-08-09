@@ -135,3 +135,22 @@ test('evaluateFlags: clean clip has no flags', () => {
   });
   assert.deepEqual(flags, []);
 });
+
+test('normalizeYouTube prefers the real @handle over the display name', () => {
+  const item = { id: 'x', snippet: { title: 't', channelTitle: 'The Investigator', channelId: 'UC1' }, statistics: { viewCount: '5' } };
+  assert.equal(normalizeYouTube(item).accountHandle, 'the investigator'); // fallback: display name
+  assert.equal(normalizeYouTube(item, '@TheInvestigator00').accountHandle, 'theinvestigator00');
+  assert.equal(normalizeYouTube(item, 'theinvestigator00').accountHandle, 'theinvestigator00');
+});
+
+test('account matching ignores @, case and spaces', () => {
+  const cycle = { enforcePostWindow: false, startsOn: '2026-08-01', endsOn: '2026-08-31', hashtagMode: 'off', requiredHashtags: [] };
+  // display-name-with-spaces vs linked handle — matches once handle resolution works
+  const f1 = evaluateFlags({ stats: { accountHandle: 'theinvestigator00', views: 10 }, cycle, clipperAccounts: ['@TheInvestigator00'], previousViews: null });
+  assert.ok(!f1.includes('unknown_account'));
+  const f2 = evaluateFlags({ stats: { accountHandle: 'the investigator00', views: 10 }, cycle, clipperAccounts: ['theinvestigator00'], previousViews: null });
+  assert.ok(!f2.includes('unknown_account'));
+  // genuinely different account still flags
+  const f3 = evaluateFlags({ stats: { accountHandle: 'someoneelse', views: 10 }, cycle, clipperAccounts: ['theinvestigator00'], previousViews: null });
+  assert.ok(f3.includes('unknown_account'));
+});

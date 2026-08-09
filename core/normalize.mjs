@@ -41,7 +41,7 @@ function countOrNull(x) {
 }
 
 // ---- YouTube (videos.list item: parts snippet + statistics) -----------------
-export function normalizeYouTube(item) {
+export function normalizeYouTube(item, channelHandle = null) {
   const s = item?.statistics ?? {};
   const n = item?.snippet ?? {};
   const title = n.title ?? '';
@@ -54,7 +54,9 @@ export function normalizeYouTube(item) {
     comments: countOrNull(s.commentCount),  // absent when comments are disabled
     shares: null,
     postedAt: n.publishedAt ?? null,
-    accountHandle: (n.channelTitle ?? '').toLowerCase() || null,
+    // Prefer the channel's real @handle (resolved separately) — channelTitle
+    // is the display NAME and never matches linked handles.
+    accountHandle: (channelHandle ?? n.channelTitle ?? '').replace(/^@/, '').toLowerCase() || null,
     accountId: n.channelId ?? null,
     caption: title,
     hashtags: parseHashtags(`${title}\n${desc}`),
@@ -124,10 +126,13 @@ export function normalizeInstagram(item) {
 export function evaluateFlags({ stats, cycle, clipperAccounts, previousViews }) {
   const flags = new Set(stats?.addedFlags ?? []);
 
-  // account match — only when we know the handle and the clipper's known set
+  // account match — only when we know the handle and the clipper's known set.
+  // Compare loosely: lowercase, no leading @, no spaces (spaces are never part
+  // of a real handle — they only appear in display names).
   if (stats?.accountHandle && Array.isArray(clipperAccounts)) {
-    const known = clipperAccounts.map((h) => String(h).toLowerCase());
-    if (known.length && !known.includes(stats.accountHandle)) flags.add('unknown_account');
+    const canon = (h) => String(h).toLowerCase().replace(/^@/, '').replace(/\s+/g, '');
+    const known = clipperAccounts.map(canon);
+    if (known.length && !known.includes(canon(stats.accountHandle))) flags.add('unknown_account');
   }
 
   // posted within the cycle window
