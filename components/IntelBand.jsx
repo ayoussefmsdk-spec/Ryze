@@ -1,6 +1,6 @@
 // Server component: the cycle "intelligence band" — stat cases instead of
 // prose, plus ROI, pace and the money-state pipeline. Pure render.
-import { formatCents } from '../core/payout.mjs';
+import { formatCents, formatEngagement } from '../core/payout.mjs';
 
 const nf = (n) => Number(n || 0).toLocaleString('en-US');
 const nfc = (n) => new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(n || 0));
@@ -43,7 +43,12 @@ export default function IntelBand({ facts, pace, moneyStates }) {
           <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
             <Case label="Reach" value={`${nf(facts.totalViews)} views`} color="var(--honey)" accent="var(--honey)"
               sub={facts.deltaPct != null ? `${facts.deltaPct >= 0 ? '▲' : '▼'} ${Math.abs(facts.deltaPct)}% vs last cycle` : `${facts.clipCount} live clips`} />
-            <Case label="Hive" value={`${facts.clipperCount} clipper${facts.clipperCount === 1 ? '' : 's'}`} sub={`${facts.clipCount} clips live`} />
+            {facts.engagement != null && (
+              <Case label="Engagement" value={formatEngagement(facts.engagement)} accent="#e1568f"
+                sub="likes + comments / views" />
+            )}
+            <Case label="Hive" value={`${facts.roster ?? facts.clipperCount} clipper${(facts.roster ?? facts.clipperCount) === 1 ? '' : 's'}`}
+              sub={`${facts.clipCount} live${facts.pendingCount ? ` · ${facts.pendingCount} in review` : ''}`} />
             {facts.topPlatform && (
               <Case label="Top platform" value={PLAT_LABEL[facts.topPlatform.platform] || facts.topPlatform.platform}
                 sub={`${facts.topPlatform.sharePct}% of all views`} accent="#2ad4c8" />
@@ -52,7 +57,7 @@ export default function IntelBand({ facts, pace, moneyStates }) {
               <Case label="Breakout clip" value={`${nfc(facts.bestClip.views)} views`}
                 sub={facts.bestClip.handle ? `@${facts.bestClip.handle}` : facts.bestClip.clipper} accent="var(--violet)" color="var(--violet)" />
             )}
-            <Case label="Invested" value={formatCents(facts.investedCents)} accent="var(--honey)"
+            <Case label={facts.isPot ? 'Distributed' : 'Invested'} value={formatCents(facts.investedCents)} accent="var(--honey)"
               sub={facts.costPer1kCents != null ? `${formatCents(facts.costPer1kCents)} per 1k views` : null} />
           </div>
         </div>

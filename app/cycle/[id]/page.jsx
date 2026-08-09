@@ -194,24 +194,23 @@ export default async function CyclePage({ params }) {
           </div>
         )}
 
-        {/* Intelligence band: recap, ROI proof, pace, money pipeline */}
-        <IntelBand facts={intel.facts} pace={intel.pace} moneyStates={intel.moneyStates} />
-
-        {/* Summary ticker */}
-        <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
-          {[
-            ['Total views', nfmt(payouts.totalViews)],
-            [isPot ? 'Distributed' : 'Total payout', formatCents(payouts.totalPayoutCents)],
-            ['Engagement', formatEngagement(cycleEngagement)],
-            ['Clippers', members.length],
-            ['Clips', clips.length],
-          ].map(([k, v]) => (
-            <div key={k} className="card" style={{ padding: '14px 16px' }}>
-              <div className="eyebrow" style={{ letterSpacing: '0.08em' }}>{k}</div>
-              <div style={{ fontSize: 24, fontWeight: 700, fontVariantNumeric: 'tabular-nums', marginTop: 4 }}>{v}</div>
-            </div>
-          ))}
-        </div>
+        {/* Intelligence band — the ONE stats row: cases, pace, money pipeline */}
+        <IntelBand
+          facts={{
+            ...(intel.facts ?? {
+              totalViews: payouts.totalViews,
+              clipCount: clips.filter((c) => c.status === 'approved').length,
+              investedCents: payouts.totalPayoutCents,
+              topPlatform: null, bestClip: null, costPer1kCents: null, deltaPct: null,
+            }),
+            engagement: cycleEngagement,
+            roster: members.length,
+            pendingCount: pending.length,
+            isPot,
+          }}
+          pace={intel.pace}
+          moneyStates={intel.moneyStates}
+        />
 
         {/* Budget bar */}
         {Number(cycleRow.budget_cap_cents) > 0 && (
