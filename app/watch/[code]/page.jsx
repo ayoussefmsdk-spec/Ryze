@@ -1,4 +1,6 @@
+import { headers } from 'next/headers';
 import { resolveViewerCode } from '../../../lib/viewer.mjs';
+import { limited, clientIp } from '../../../lib/ratelimit.mjs';
 import { computeCyclePayouts } from '../../../lib/payouts.mjs';
 import { cycleDailySeries } from '../../../lib/history.mjs';
 import { query } from '../../../lib/db.mjs';
@@ -24,6 +26,12 @@ function Gate({ title, msg }) {
 }
 
 export default async function WatchPage({ params }) {
+  // Brake code-scanning: plenty for real viewers refreshing, fatal for sweeps.
+  const ip = clientIp(headers());
+  if (limited(`watch:${ip}`, { max: 60, windowMs: 15 * 60 * 1000 })) {
+    return <Gate title="Slow down" msg="Too many attempts from your network — try again in a few minutes." />;
+  }
+
   let res;
   try { res = await resolveViewerCode(params.code); }
   catch { return <Gate title="Something went wrong" msg="Try the link again in a moment." />; }

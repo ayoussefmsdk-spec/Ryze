@@ -1,5 +1,5 @@
 // ============================================================================
-// Ryze — platform + URL logic (pure, no I/O)
+// ClipHive — platform + URL logic (pure, no I/O)
 // ============================================================================
 // Decides which platform a link belongs to, pulls out the canonical video id /
 // account handle, and builds a "normalized key" used for duplicate detection so

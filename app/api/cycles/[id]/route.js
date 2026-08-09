@@ -60,6 +60,13 @@ export async function PATCH(req, { params }) {
     return NextResponse.json({ ok: true });
   }
 
+  // Date sanity: the cycle can't end before it starts.
+  const nextStarts = 'startsOn' in b ? String(b.startsOn) : String(current.starts_on).slice(0, 10);
+  const nextEnds = 'endsOn' in b ? String(b.endsOn) : String(current.ends_on).slice(0, 10);
+  if (('startsOn' in b || 'endsOn' in b) && nextEnds < nextStarts) {
+    return NextResponse.json({ ok: false, error: 'End date must be on or after the start date.' }, { status: 400 });
+  }
+
   // Plain field edits — each change is recorded in the cycle change log.
   const sets = [];
   const vals = [];

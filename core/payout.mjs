@@ -1,5 +1,5 @@
 // ============================================================================
-// Ryze — payout + engagement math (pure, no I/O)
+// ClipHive — payout + engagement math (pure, no I/O)
 // ============================================================================
 // All money is in integer CENTS. CPM is dollars-per-1000-views, also stored in
 // cents (cpm_cents). Rounding rule: each clip's payout is rounded to the nearest

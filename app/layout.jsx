@@ -7,9 +7,28 @@ const faviconSvg = encodeURIComponent(
 );
 
 export const metadata = {
-  title: `${BRAND.name} — ${BRAND.descriptor}`,
+  metadataBase: new URL('https://www.joincliphive.com'),
+  title: {
+    default: `${BRAND.name} — ${BRAND.descriptor}`,
+    template: `%s · ${BRAND.name}`,
+  },
   description: `${BRAND.tagline} Automated view tracking and payouts for clipping campaigns.`,
+  applicationName: BRAND.name,
   icons: { icon: `data:image/svg+xml,${faviconSvg}` },
+  openGraph: {
+    title: `${BRAND.name} — ${BRAND.descriptor}`,
+    description: `${BRAND.tagline} Automated view tracking and payouts for clipping campaigns.`,
+    siteName: BRAND.name,
+    url: 'https://www.joincliphive.com',
+    type: 'website',
+  },
+  robots: { index: false, follow: false }, // private ops tool — keep it out of search
+};
+
+export const viewport = {
+  themeColor: '#0e0c0a',
+  width: 'device-width',
+  initialScale: 1,
 };
 
 export default function RootLayout({ children }) {

@@ -1,51 +1,118 @@
-import { resolveToken } from '../../../lib/clips.mjs';
+import { clipperPortal } from '../../../lib/portal.mjs';
 import SubmitForm from '../../../components/SubmitForm.jsx';
-import Brand, { BeeMascot } from '../../../components/Brand.jsx';
+import Brand, { BRAND, BeeMascot } from '../../../components/Brand.jsx';
+import { formatCents } from '../../../core/payout.mjs';
 
 export const dynamic = 'force-dynamic';
 
-/** PUBLIC page — what a clipper sees when they open their private link. */
-export default async function SubmitPage({ params }) {
-  const resolved = await resolveToken(params.token);
+const nf = (n) => Number(n || 0).toLocaleString('en-US');
+const PLAT_LABEL = { tiktok: 'TikTok', youtube: 'YouTube', instagram: 'Instagram', twitter: 'X', other: 'Other' };
+const STATUS = {
+  approved: { label: 'approved', color: 'var(--good)' },
+  pending: { label: 'in review', color: 'var(--honey)' },
+  rejected: { label: 'not accepted', color: 'var(--text-3)' },
+};
 
-  if (!resolved) {
+/** PUBLIC page — a clipper's private portal: submit + their own scoreboard. */
+export default async function SubmitPage({ params }) {
+  const portal = await clipperPortal(params.token);
+
+  if (!portal) {
     return (
       <div className="center-screen">
         <div className="card" style={{ maxWidth: 380 }}>
-          <h2>Link not valid</h2>
-          <p className="muted">This submission link doesn’t work anymore. Ask the campaign manager for a fresh one.</p>
+          <Brand size={16} />
+          <h2 style={{ marginTop: 12 }}>Link not valid</h2>
+          <p className="muted">This link doesn’t work anymore. Ask the campaign manager for a fresh one.</p>
         </div>
       </div>
     );
   }
 
-  const { cycle, clipperName } = resolved;
+  const { cycle, clipperName, clips, stats } = portal;
   const closed = cycle.status !== 'active';
+  const showEngagement = (c) => c.engagement !== null && c.engagement !== undefined;
 
   return (
-    <div className="center-screen">
-      <div className="card grid" style={{ width: 420, maxWidth: '94vw', gap: 14 }}>
-        <div>
-          <Brand size={18} />
-          <h2 style={{ margin: '10px 0 2px', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <BeeMascot size={30} /> Hey {clipperName} 👋
-          </h2>
-          <div className="muted" style={{ fontSize: 14 }}>
-            Drop your clip links for <strong>{cycle.name}</strong>
-            {' '}({String(cycle.starts_on).slice(0, 10)} → {String(cycle.ends_on).slice(0, 10)}).
+    <div className="center-screen" style={{ alignItems: 'flex-start', paddingTop: 40, paddingBottom: 60 }}>
+      <div className="grid" style={{ width: 520, maxWidth: '94vw', gap: 14 }}>
+        {/* Header + submit */}
+        <div className="card grid" style={{ gap: 14 }}>
+          <div>
+            <Brand size={18} />
+            <h2 style={{ margin: '10px 0 2px', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <BeeMascot size={30} /> Hey {clipperName} 👋
+            </h2>
+            <div className="muted" style={{ fontSize: 14 }}>
+              Drop your clip links for <strong>{cycle.name}</strong>
+              {' '}({String(cycle.starts_on).slice(0, 10)} → {String(cycle.ends_on).slice(0, 10)}).
+            </div>
+          </div>
+
+          {closed ? (
+            <div className="muted">Submissions are closed for this cycle — your stats below stay live.</div>
+          ) : (
+            <SubmitForm token={params.token} />
+          )}
+
+          <div className="muted" style={{ fontSize: 12.5 }}>
+            Paste one link at a time — TikTok, YouTube, Instagram or X. Your submissions go to the manager for review.
           </div>
         </div>
 
-        {closed ? (
-          <div className="muted">Submissions are closed for this cycle.</div>
-        ) : (
-          <SubmitForm token={params.token} />
-        )}
+        {/* Their scoreboard */}
+        <div className="card grid" style={{ gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+            <h2 style={{ margin: 0 }}>Your hive stats</h2>
+            {stats.rank && stats.rosterSize > 1 && (
+              <span style={{ marginLeft: 'auto', fontFamily: 'var(--mono)', fontSize: 13, color: stats.rank <= 3 ? 'var(--honey)' : 'var(--text-3)' }}>
+                #{stats.rank} of {stats.rosterSize} in the hive
+              </span>
+            )}
+          </div>
 
-        <div className="muted" style={{ fontSize: 12.5 }}>
-          Paste one link at a time — TikTok, YouTube, Instagram or X. Your submissions go to the manager for review.
+          <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
+            {[
+              ['Views', nf(stats.views)],
+              ['Clips live', String(stats.approved)],
+              ['In review', String(stats.pending)],
+              ['Earned so far', formatCents(stats.estimatedCents), true],
+            ].map(([k, v, accent]) => (
+              <div key={k} style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--surface-2)' }}>
+                <div className="eyebrow" style={{ letterSpacing: '0.08em' }}>{k}</div>
+                <div style={{ fontSize: 19, fontWeight: 700, marginTop: 3, fontVariantNumeric: 'tabular-nums', color: accent ? 'var(--honey)' : 'var(--text)' }}>{v}</div>
+              </div>
+            ))}
+          </div>
+          <div className="muted" style={{ fontSize: 12 }}>
+            “Earned so far” is a live estimate — it moves with views until the cycle is paid out.
+            {stats.paidCents > 0 && <> Already paid this cycle: <strong style={{ color: 'var(--text)' }}>{formatCents(stats.paidCents)}</strong>.</>}
+          </div>
+
+          {clips.length > 0 && (
+            <div className="grid" style={{ gap: 0 }}>
+              {clips.map((c, i) => (
+                <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 2px', borderTop: i ? '1px solid var(--line)' : '1px solid var(--line)', flexWrap: 'wrap' }}>
+                  <span className="muted" style={{ fontSize: 12.5, fontFamily: 'var(--mono)', width: 76, flexShrink: 0 }}>{PLAT_LABEL[c.platform] || c.platform}</span>
+                  <a href={c.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, maxWidth: 170, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {c.url.replace(/^https?:\/\/(www\.)?/, '')}
+                  </a>
+                  <span style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center', fontVariantNumeric: 'tabular-nums' }}>
+                    {c.status === 'approved' && <span style={{ fontSize: 13.5 }}>{nf(c.views)} views</span>}
+                    {c.status === 'approved' && showEngagement(c) && (
+                      <span className="muted" style={{ fontSize: 12.5 }}>{(Number(c.engagement) * 100).toFixed(1)}% eng</span>
+                    )}
+                    <span style={{ fontSize: 12, color: STATUS[c.status]?.color || 'var(--text-3)', fontFamily: 'var(--mono)' }}>
+                      {STATUS[c.status]?.label || c.status}
+                    </span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-        <div className="brand" style={{ fontSize: 12, letterSpacing: '0.04em' }}>Post the clip. Keep the honey. 🍯</div>
+
+        <div className="brand" style={{ fontSize: 12, letterSpacing: '0.04em', textAlign: 'center' }}>{BRAND.taglineFun} 🍯</div>
       </div>
     </div>
   );

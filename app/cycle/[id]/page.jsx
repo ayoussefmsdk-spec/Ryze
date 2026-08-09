@@ -8,8 +8,7 @@ import { formatCents, formatEngagement } from '../../../core/payout.mjs';
 import CycleActions from '../../../components/CycleActions.jsx';
 import MembersPanel from '../../../components/MembersPanel.jsx';
 import AddClipForm from '../../../components/AddClipForm.jsx';
-import ClipActions from '../../../components/ClipActions.jsx';
-import FlagBadges from '../../../components/FlagBadges.jsx';
+import TriageQueue from '../../../components/TriageQueue.jsx';
 import TrendChart from '../../../components/TrendChart.jsx';
 import { cycleDailySeries, projectSpend } from '../../../lib/history.mjs';
 import Shell from '../../../components/Shell.jsx';
@@ -284,30 +283,8 @@ export default async function CyclePage({ params }) {
           </div>
         )}
 
-        {/* Pending queue */}
-        {pending.length > 0 && (
-          <div className="card grid" style={{ gap: 12 }}>
-            <h2 style={{ margin: 0 }}>Pending review ({pending.length})</h2>
-            {pending.map((c) => (
-              <div key={c.id} style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', borderTop: '1px solid var(--line)', paddingTop: 10 }}>
-                {c.thumbnail_url && <img loading="lazy" src={c.thumbnail_url} alt="" style={{ width: 52, height: 70, objectFit: 'cover', borderRadius: 8 }} />}
-                <div className="grid" style={{ gap: 3, flex: 1, minWidth: 220 }}>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                    <strong>{c.clipper_name}</strong>
-                    <span className="muted" style={{ fontSize: 13, textTransform: 'capitalize' }}>{PLATFORM_ICON[c.platform]} {c.platform}</span>
-                    {c.account_handle && <span className="muted" style={{ fontSize: 13 }}>@{c.account_handle}</span>}
-                    <FlagBadges flags={c.flags} />
-                  </div>
-                  <a href={c.url} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, wordBreak: 'break-all' }}>{c.url}</a>
-                  <div className="muted" style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
-                    {nfmt(c.views)} views · {c.likes == null ? '—' : nfmt(c.likes)} likes · {c.comments == null ? '—' : nfmt(c.comments)} comments · {formatEngagement(c.engagement)}
-                  </div>
-                </div>
-                <ClipActions clip={c} compact />
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Pending queue — keyboard triage (j/k/a/r/o) */}
+        {pending.length > 0 && <TriageQueue clips={pending} />}
 
         {/* All clips — filterable explorer */}
         <div className="card grid" style={{ gap: 6 }}>

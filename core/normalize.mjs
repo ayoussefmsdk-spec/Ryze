@@ -1,5 +1,5 @@
 // ============================================================================
-// Ryze — response normalizers (pure, no I/O)
+// ClipHive — response normalizers (pure, no I/O)
 // ============================================================================
 // Each source (YouTube Data API, Apify TikTok, Apify Instagram) returns a
 // different shape. These map them onto ONE common ClipStats object so the rest
