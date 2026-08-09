@@ -75,6 +75,18 @@ export default async function CyclePage({ params }) {
   ]);
 
   const members = membersRes.rows;
+  // Linked accounts per member — powers the scan panel's account picker.
+  const accountsByClipper = {};
+  if (members.length) {
+    const { rows: accRows } = await query(
+      `select clipper_id, platform, handle from clipper_accounts
+        where clipper_id = any($1) order by platform, handle`,
+      [members.map((m) => m.clipper_id)],
+    );
+    for (const a of accRows) {
+      (accountsByClipper[a.clipper_id] ??= []).push({ platform: a.platform, handle: a.handle });
+    }
+  }
   const clips = clipsRes.rows;
   const roster = rosterRes.rows;
   const changes = changesRes.rows;
@@ -183,7 +195,7 @@ export default async function CyclePage({ params }) {
         )}
 
         {/* Intelligence band: recap, ROI proof, pace, money pipeline */}
-        <IntelBand facts={intel.facts} roi={intel.roi} pace={intel.pace} moneyStates={intel.moneyStates} />
+        <IntelBand facts={intel.facts} pace={intel.pace} moneyStates={intel.moneyStates} />
 
         {/* Summary ticker */}
         <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
@@ -261,41 +273,70 @@ export default async function CyclePage({ params }) {
         )}
 
         {/* Leaderboard */}
-        <div className="card grid" style={{ gap: 4 }}>
-          <h2 style={{ margin: '0 0 8px' }}>Leaderboard</h2>
+        <div className="card grid" style={{ gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+            <h2 style={{ margin: 0 }}>Leaderboard</h2>
+            {payouts.perClipper.length > 0 && (
+              <span className="muted" style={{ marginLeft: 'auto', fontSize: 12.5, fontFamily: 'var(--mono)' }}>
+                share of {nfmt(payouts.totalViews)} views
+              </span>
+            )}
+          </div>
           {payouts.perClipper.length === 0 && <div className="muted" style={{ fontSize: 14 }}>No approved clips yet — approve some below and check views.</div>}
-          {payouts.perClipper.map((p, i) => (
-            <details key={p.clipperId} style={{ borderTop: i ? '1px solid var(--line)' : 'none' }}>
-              <summary style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '10px 4px', cursor: 'pointer', listStyle: 'none' }}>
-                <span style={{ fontFamily: 'var(--mono)', color: i < 3 ? 'var(--gold)' : 'var(--text-3)', width: 26 }}>#{i + 1}</span>
-                <Link href={`/cycle/${cycleRow.id}/clipper/${p.clipperId}`} style={{ color: 'inherit', fontWeight: 650 }}>{p.name}</Link>
-                <Link href={`/cycle/${cycleRow.id}/clipper/${p.clipperId}`} className="muted" style={{ fontSize: 12.5, border: '1px solid var(--line-2)', borderRadius: 999, padding: '2px 9px', whiteSpace: 'nowrap' }}>
-                  details ↗
-                </Link>
-                <span className="muted" style={{ fontSize: 13 }}>{p.clipCount} clips</span>
-                <span className="muted" style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums' }} title="engagement — (likes+comments)/views">
-                  ♥ {formatEngagement(engagementByClipper.get(p.clipperId))}
-                </span>
-                <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>{nfmt(p.views)} views</span>
-                <span style={{ fontWeight: 700, color: 'var(--gold)', fontVariantNumeric: 'tabular-nums', minWidth: 84, textAlign: 'right' }}>{formatCents(p.payoutCents)}</span>
-              </summary>
-              <div style={{ padding: '2px 4px 12px 38px' }} className="grid">
-                {Object.entries(p.byPlatform).map(([plat, d]) => (
-                  <div key={plat} style={{ display: 'flex', gap: 12, fontSize: 13.5 }} className="muted">
-                    <span style={{ textTransform: 'capitalize', width: 90 }}>{PLATFORM_ICON[plat]} {plat}</span>
-                    <span>{d.clips} clips</span>
-                    <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>{nfmt(d.views)} views</span>
-                    {!isPot && <span style={{ fontVariantNumeric: 'tabular-nums', minWidth: 80, textAlign: 'right' }}>{formatCents(d.payoutCents)}</span>}
+          {payouts.perClipper.map((p, i) => {
+            const MEDAL = ['#f0b64a', '#c8ccd6', '#cd8f57'];
+            const rankColor = i < 3 ? MEDAL[i] : 'var(--text-3)';
+            const share = payouts.totalViews > 0 ? p.views / payouts.totalViews : 0;
+            return (
+              <details key={p.clipperId} style={{ borderTop: i ? '1px solid var(--line)' : 'none' }}>
+                <summary style={{ cursor: 'pointer', listStyle: 'none', padding: '11px 4px 9px' }}>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span style={{
+                      fontFamily: 'var(--mono)', fontWeight: 700, fontSize: i < 3 ? 15 : 13,
+                      color: rankColor, width: 30, textAlign: 'center', flexShrink: 0,
+                      textShadow: i === 0 ? '0 0 12px rgba(240,182,74,0.5)' : 'none',
+                    }}>#{i + 1}</span>
+                    <Link href={`/cycle/${cycleRow.id}/clipper/${p.clipperId}`} style={{ color: 'inherit', fontWeight: 680, fontSize: 15 }}>{p.name}</Link>
+                    <Link href={`/cycle/${cycleRow.id}/clipper/${p.clipperId}`} className="muted" style={{ fontSize: 12, border: '1px solid var(--line-2)', borderRadius: 999, padding: '2px 9px', whiteSpace: 'nowrap' }}>
+                      details ↗
+                    </Link>
+                    <span style={{ display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap' }}>
+                      {Object.keys(p.byPlatform).map((plat) => (
+                        <span key={plat} className="muted" title={plat} style={{ fontSize: 12, border: '1px solid var(--line)', borderRadius: 999, padding: '1px 7px' }}>
+                          {PLATFORM_ICON[plat]} {p.byPlatform[plat].clips}
+                        </span>
+                      ))}
+                    </span>
+                    <span className="muted" style={{ fontSize: 12.5, fontVariantNumeric: 'tabular-nums' }} title="engagement — (likes+comments)/views">
+                      ♥ {formatEngagement(engagementByClipper.get(p.clipperId))}
+                    </span>
+                    <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+                      {nfmt(p.views)} <span className="muted" style={{ fontWeight: 400, fontSize: 12.5 }}>({Math.round(share * 100)}%)</span>
+                    </span>
+                    <span style={{ fontWeight: 750, color: 'var(--gold)', fontVariantNumeric: 'tabular-nums', minWidth: 84, textAlign: 'right', fontSize: 15 }}>{formatCents(p.payoutCents)}</span>
                   </div>
-                ))}
-                {isPot && <div className="muted" style={{ fontSize: 12.5 }}>Pot/placement models pay per clipper, not per clip.</div>}
-                <div style={{ display: 'flex', gap: 14, fontSize: 12.5 }}>
-                  <Link href={`/cycle/${cycleRow.id}/clipper/${p.clipperId}`}>Charts &amp; details for this cycle →</Link>
-                  <Link href={`/clipper/${p.clipperId}`} className="muted">All-time profile →</Link>
+                  <div style={{ height: 5, borderRadius: 999, background: 'var(--surface-2)', overflow: 'hidden', marginTop: 8, marginLeft: 42 }}>
+                    <div style={{ width: `${Math.max(2, share * 100)}%`, height: '100%', background: `linear-gradient(90deg, ${rankColor}, color-mix(in srgb, ${rankColor} 45%, transparent))` }} />
+                  </div>
+                </summary>
+                <div style={{ padding: '4px 4px 12px 42px' }} className="grid">
+                  {Object.entries(p.byPlatform).map(([plat, d]) => (
+                    <div key={plat} style={{ display: 'flex', gap: 12, fontSize: 13.5 }} className="muted">
+                      <span style={{ textTransform: 'capitalize', width: 90 }}>{PLATFORM_ICON[plat]} {plat}</span>
+                      <span>{d.clips} clips</span>
+                      <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>{nfmt(d.views)} views</span>
+                      {!isPot && <span style={{ fontVariantNumeric: 'tabular-nums', minWidth: 80, textAlign: 'right' }}>{formatCents(d.payoutCents)}</span>}
+                    </div>
+                  ))}
+                  {isPot && <div className="muted" style={{ fontSize: 12.5 }}>Pot/placement models pay per clipper, not per clip.</div>}
+                  <div style={{ display: 'flex', gap: 14, fontSize: 12.5 }}>
+                    <Link href={`/cycle/${cycleRow.id}/clipper/${p.clipperId}`}>Charts &amp; details for this cycle →</Link>
+                    <Link href={`/clipper/${p.clipperId}`} className="muted">All-time profile →</Link>
+                  </div>
                 </div>
-              </div>
-            </details>
-          ))}
+              </details>
+            );
+          })}
         </div>
 
         {/* Clippers in this cycle + submission links */}
@@ -310,7 +351,7 @@ export default async function CyclePage({ params }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <h2 style={{ margin: 0 }}>Add clips</h2>
               <div style={{ marginLeft: 'auto' }}>
-                <ScanPanel cycleId={cycleRow.id} members={members} />
+                <ScanPanel cycleId={cycleRow.id} members={members} accountsByClipper={accountsByClipper} />
               </div>
             </div>
             <AddClipForm cycleId={cycleRow.id} members={members} />

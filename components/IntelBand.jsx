@@ -26,13 +26,12 @@ function Case({ label, value, sub, color = 'var(--text)', accent = 'var(--line-2
   );
 }
 
-export default function IntelBand({ facts, roi, pace, moneyStates }) {
-  const hasRoi = roi && roi.multiple != null && roi.multiple >= 1.5;
+export default function IntelBand({ facts, pace, moneyStates }) {
   const hasPace = pace && pace.viewsPerDay != null && pace.viewsPerDay > 0;
   const states = (moneyStates || []).filter((s) => s.cents > 0 && STATE_META[s.state]);
   const stateTotal = states.reduce((a, s) => a + s.cents, 0);
 
-  if (!facts && !hasRoi && !hasPace && !states.length) return null;
+  if (!facts && !hasPace && !states.length) return null;
 
   return (
     <div className="card grid" style={{ gap: 14, borderColor: 'rgba(240,182,74,.3)' }}>
@@ -55,10 +54,6 @@ export default function IntelBand({ facts, roi, pace, moneyStates }) {
             )}
             <Case label="Invested" value={formatCents(facts.investedCents)} accent="var(--honey)"
               sub={facts.costPer1kCents != null ? `${formatCents(facts.costPer1kCents)} per 1k views` : null} />
-            {hasRoi && (
-              <Case label="Ad-spend value" value={formatCents(facts.adEquivalentCents)} color="var(--good)" accent="var(--good)"
-                sub={`${roi.multiple}× cheaper than ads`} />
-            )}
           </div>
         </div>
       )}
