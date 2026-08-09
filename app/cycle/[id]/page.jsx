@@ -20,7 +20,7 @@ import IntelBand from '../../../components/IntelBand.jsx';
 import { cycleIntel } from '../../../lib/intel.mjs';
 import CycleSettings from '../../../components/CycleSettings.jsx';
 import { gmtLabel } from '../../../lib/tz.mjs';
-import ClipExplorer from '../../../components/ClipExplorer.jsx';
+import ClipGallery from '../../../components/ClipGallery.jsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -183,7 +183,7 @@ export default async function CyclePage({ params }) {
         )}
 
         {/* Intelligence band: recap, ROI proof, pace, money pipeline */}
-        <IntelBand recap={intel.recap} roi={intel.roi} pace={intel.pace} moneyStates={intel.moneyStates} />
+        <IntelBand facts={intel.facts} roi={intel.roi} pace={intel.pace} moneyStates={intel.moneyStates} />
 
         {/* Summary ticker */}
         <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
@@ -325,7 +325,7 @@ export default async function CyclePage({ params }) {
           <h2 style={{ margin: '0 0 6px' }}>All clips</h2>
           {clips.length === 0
             ? <div className="muted" style={{ fontSize: 14 }}>No clips yet — add one above or send your clippers their submission links.</div>
-            : <ClipExplorer clips={clips} clipPayouts={payouts.clipPayouts} isPot={isPot} />}
+            : <ClipGallery clips={clips} clipPayouts={payouts.clipPayouts} isPot={isPot} />}
         </div>
 
         {/* Change log */}

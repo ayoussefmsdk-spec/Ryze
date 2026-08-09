@@ -1,8 +1,10 @@
-// Server component: the cycle "intelligence band" — recap prose, ROI proof,
-// pace/ETA, and the money-state pipeline. Pure render over precomputed data.
+// Server component: the cycle "intelligence band" — stat cases instead of
+// prose, plus ROI, pace and the money-state pipeline. Pure render.
 import { formatCents } from '../core/payout.mjs';
 
 const nf = (n) => Number(n || 0).toLocaleString('en-US');
+const nfc = (n) => new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(n || 0));
+const PLAT_LABEL = { youtube: 'YouTube', tiktok: 'TikTok', instagram: 'Instagram', twitter: 'X', other: 'Other' };
 
 const STATE_META = {
   estimating: { label: 'Estimating', color: 'var(--violet)', hint: 'still growing' },
@@ -11,42 +13,62 @@ const STATE_META = {
   paid: { label: 'Paid', color: 'var(--honey)', hint: 'settled' },
 };
 
-export default function IntelBand({ recap, roi, pace, moneyStates }) {
+function Case({ label, value, sub, color = 'var(--text)', accent = 'var(--line-2)' }) {
+  return (
+    <div style={{
+      padding: '11px 14px', borderRadius: 11, background: 'var(--surface-2)',
+      borderLeft: `3px solid ${accent}`, minWidth: 0,
+    }}>
+      <div className="eyebrow" style={{ letterSpacing: '0.08em', fontSize: 10.5 }}>{label}</div>
+      <div style={{ fontSize: 18, fontWeight: 720, marginTop: 3, fontVariantNumeric: 'tabular-nums', color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</div>
+      {sub && <div className="muted" style={{ fontSize: 11.5, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub}</div>}
+    </div>
+  );
+}
+
+export default function IntelBand({ facts, roi, pace, moneyStates }) {
   const hasRoi = roi && roi.multiple != null && roi.multiple >= 1.5;
   const hasPace = pace && pace.viewsPerDay != null && pace.viewsPerDay > 0;
   const states = (moneyStates || []).filter((s) => s.cents > 0 && STATE_META[s.state]);
   const stateTotal = states.reduce((a, s) => a + s.cents, 0);
 
-  if (!recap && !hasRoi && !hasPace && !states.length) return null;
+  if (!facts && !hasRoi && !hasPace && !states.length) return null;
 
   return (
     <div className="card grid" style={{ gap: 14, borderColor: 'rgba(240,182,74,.3)' }}>
-      {recap && (
-        <p style={{ margin: 0, fontSize: 15, lineHeight: 1.65 }}>
-          <span style={{ fontFamily: 'var(--mono)', color: 'var(--honey)', fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
-            🐝 The story so far
+      {facts && (
+        <div className="grid" style={{ gap: 10 }}>
+          <span style={{ fontFamily: 'var(--mono)', color: 'var(--honey)', fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            🐝 The cycle in numbers
           </span>
-          {recap}
-        </p>
+          <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
+            <Case label="Reach" value={`${nf(facts.totalViews)} views`} color="var(--honey)" accent="var(--honey)"
+              sub={facts.deltaPct != null ? `${facts.deltaPct >= 0 ? '▲' : '▼'} ${Math.abs(facts.deltaPct)}% vs last cycle` : `${facts.clipCount} live clips`} />
+            <Case label="Hive" value={`${facts.clipperCount} clipper${facts.clipperCount === 1 ? '' : 's'}`} sub={`${facts.clipCount} clips live`} />
+            {facts.topPlatform && (
+              <Case label="Top platform" value={PLAT_LABEL[facts.topPlatform.platform] || facts.topPlatform.platform}
+                sub={`${facts.topPlatform.sharePct}% of all views`} accent="#2ad4c8" />
+            )}
+            {facts.bestClip && (
+              <Case label="Breakout clip" value={`${nfc(facts.bestClip.views)} views`}
+                sub={facts.bestClip.handle ? `@${facts.bestClip.handle}` : facts.bestClip.clipper} accent="var(--violet)" color="var(--violet)" />
+            )}
+            <Case label="Invested" value={formatCents(facts.investedCents)} accent="var(--honey)"
+              sub={facts.costPer1kCents != null ? `${formatCents(facts.costPer1kCents)} per 1k views` : null} />
+            {hasRoi && (
+              <Case label="Ad-spend value" value={formatCents(facts.adEquivalentCents)} color="var(--good)" accent="var(--good)"
+                sub={`${roi.multiple}× cheaper than ads`} />
+            )}
+          </div>
+        </div>
       )}
 
-      {(hasRoi || hasPace) && (
-        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', fontSize: 14 }}>
-          {hasRoi && (
-            <span>
-              💰 This reach ≈ <b style={{ color: 'var(--honey)' }}>{formatCents(roi.adEquivalentCents)}</b> in paid ads
-              — you're <b style={{ color: 'var(--good)' }}>{roi.multiple}× cheaper</b>
-              {roi.costPer1kCents != null && <span className="muted"> ({formatCents(roi.costPer1kCents)} per 1k views)</span>}
-            </span>
-          )}
-          {hasPace && (
-            <span>
-              ⚡ Pace: <b>{nf(pace.viewsPerDay)}</b> views/day
-              {pace.daysToCap != null && (
-                <span style={{ color: pace.capBeforeEnd ? 'var(--crit)' : 'var(--text-2)' }}>
-                  {' '}· budget cap in ~{pace.daysToCap} day{pace.daysToCap === 1 ? '' : 's'}{pace.capBeforeEnd ? ' — before the cycle ends!' : ''}
-                </span>
-              )}
+      {hasPace && (
+        <div style={{ fontSize: 14 }}>
+          ⚡ Pace: <b>{nf(pace.viewsPerDay)}</b> views/day
+          {pace.daysToCap != null && (
+            <span style={{ color: pace.capBeforeEnd ? 'var(--crit)' : 'var(--text-2)' }}>
+              {' '}· budget cap in ~{pace.daysToCap} day{pace.daysToCap === 1 ? '' : 's'}{pace.capBeforeEnd ? ' — before the cycle ends!' : ''}
             </span>
           )}
         </div>

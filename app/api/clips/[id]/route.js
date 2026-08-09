@@ -3,6 +3,32 @@ import { hasSession } from '../../../../lib/auth.mjs';
 import { query } from '../../../../lib/db.mjs';
 import { fetchSingleClip } from '../../../../lib/check.mjs';
 
+/** GET — one clip + its full check history (powers the per-clip analytics). */
+export async function GET(req, { params }) {
+  if (!hasSession()) return NextResponse.json({ ok: false }, { status: 401 });
+  const clip = (await query(
+    `select c.*, cl.name as clipper_name from clips c
+       join clippers cl on cl.id = c.clipper_id where c.id = $1`,
+    [params.id],
+  )).rows[0];
+  if (!clip) return NextResponse.json({ ok: false, error: 'Not found' }, { status: 404 });
+  const { rows: history } = await query(
+    `select checked_at, views, likes, comments from view_history
+      where clip_id = $1 order by checked_at asc limit 500`,
+    [params.id],
+  );
+  return NextResponse.json({
+    ok: true,
+    clip: { id: clip.id, views: Number(clip.views), likes: clip.likes, comments: clip.comments, engagement: clip.engagement },
+    history: history.map((h) => ({
+      t: new Date(h.checked_at).toISOString(),
+      views: Number(h.views),
+      likes: h.likes == null ? null : Number(h.likes),
+      comments: h.comments == null ? null : Number(h.comments),
+    })),
+  });
+}
+
 /** PATCH — approve / reject / set manual views / clear a flag. */
 export async function PATCH(req, { params }) {
   if (!hasSession()) return NextResponse.json({ ok: false }, { status: 401 });

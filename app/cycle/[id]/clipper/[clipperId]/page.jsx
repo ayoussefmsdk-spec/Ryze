@@ -9,7 +9,7 @@ import { formatCents, formatEngagement } from '../../../../../core/payout.mjs';
 import Shell from '../../../../../components/Shell.jsx';
 import TrendChart from '../../../../../components/TrendChart.jsx';
 import DayBars from '../../../../../components/DayBars.jsx';
-import FlagBadges from '../../../../../components/FlagBadges.jsx';
+import ClipGallery from '../../../../../components/ClipGallery.jsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,12 +33,14 @@ export default async function ClipperInCyclePage({ params }) {
 
   const { rows: clips } = await query(
     `select id, platform, url, status, views, likes, comments, engagement, flags,
-            account_handle, thumbnail_url, created_at, last_checked_at
+            account_handle, thumbnail_url, caption, posted_at, created_at,
+            last_checked_at, manual_override
        from clips
       where cycle_id = $1 and clipper_id = $2
       order by views desc, created_at desc`,
     [params.id, params.clipperId],
   );
+  const clipsForGallery = clips.map((c) => ({ ...c, clipper_name: clipper?.name }));
 
   let pay = null;
   let mine = null;
@@ -150,27 +152,11 @@ export default async function ClipperInCyclePage({ params }) {
           </div>
         )}
 
-        <div className="card grid" style={{ gap: 4 }}>
-          <h2 style={{ margin: '0 0 8px' }}>Their clips this cycle ({clips.length})</h2>
-          {clips.length === 0 && <div className="muted" style={{ fontSize: 14 }}>No clips from {clipper.name} in this cycle yet.</div>}
-          {clips.map((c, i) => (
-            <div key={c.id} style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', padding: '9px 2px', borderTop: i ? '1px solid var(--line)' : 'none', opacity: c.status === 'rejected' ? 0.45 : 1 }}>
-              {c.thumbnail_url && <img loading="lazy" src={c.thumbnail_url} alt="" style={{ width: 38, height: 51, objectFit: 'cover', borderRadius: 6 }} />}
-              <span className="muted" style={{ fontSize: 13, width: 24, textAlign: 'center' }}>{PLATFORM_ICON[c.platform]}</span>
-              <a href={c.url} target="_blank" rel="noreferrer" style={{ fontSize: 13.5, maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {c.account_handle ? `@${c.account_handle}` : c.url.replace(/^https?:\/\/(www\.)?/, '')}
-              </a>
-              <span className="muted" style={{ fontSize: 12, fontFamily: 'var(--mono)' }}>{c.status}</span>
-              <FlagBadges flags={c.flags} />
-              <span style={{ marginLeft: 'auto', display: 'flex', gap: 14, alignItems: 'center', fontVariantNumeric: 'tabular-nums' }}>
-                <span style={{ fontSize: 14 }}>{nf(c.views)} views</span>
-                <span className="muted" style={{ fontSize: 13 }}>♥ {formatEngagement(c.engagement)}</span>
-                {pay?.clipPayouts?.[c.id] != null && c.status === 'approved' && (
-                  <span style={{ color: 'var(--honey)', fontWeight: 650, fontSize: 13.5 }}>{formatCents(pay.clipPayouts[c.id])}</span>
-                )}
-              </span>
-            </div>
-          ))}
+        <div className="card grid" style={{ gap: 10 }}>
+          <h2 style={{ margin: 0 }}>Their clips this cycle ({clips.length})</h2>
+          {clips.length === 0
+            ? <div className="muted" style={{ fontSize: 14 }}>No clips from {clipper.name} in this cycle yet.</div>
+            : <ClipGallery clips={clipsForGallery} clipPayouts={pay?.clipPayouts || {}} isPot={false} />}
         </div>
       </div>
 
