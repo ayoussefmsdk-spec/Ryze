@@ -8,7 +8,7 @@ export default function SubmitForm({ token }) {
   const [msg, setMsg] = useState(null); // {kind:'ok'|'err'|'dup', text}
   const [sent, setSent] = useState([]);
 
-  async function submit(e, confirmDuplicate = false) {
+  async function submit(e) {
     e?.preventDefault();
     if (!url.trim()) return;
     setBusy(true);
@@ -16,7 +16,7 @@ export default function SubmitForm({ token }) {
     const res = await fetch(`/api/submit/${token}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ url, confirmDuplicate }),
+      body: JSON.stringify({ url }),
     });
     const d = await res.json().catch(() => ({}));
     setBusy(false);
@@ -27,10 +27,10 @@ export default function SubmitForm({ token }) {
       setMsg({ kind: 'ok', text: '✓ Submitted — it’s in review.' });
     } else if (d.code === 'duplicate') {
       setMsg({
-        kind: 'dup',
+        kind: 'err',
         text: d.sameClipper
-          ? 'You already submitted this exact clip. Add it again anyway?'
-          : 'This clip was already submitted for this cycle. Add it anyway?',
+          ? 'You already submitted this exact clip — it only counts once.'
+          : 'This clip is already in this cycle — each video only counts once.',
       });
     } else {
       setMsg({ kind: 'err', text: d.error || 'Something went wrong — check the link and try again.' });
@@ -51,14 +51,8 @@ export default function SubmitForm({ token }) {
       </button>
 
       {msg && (
-        <div style={{ fontSize: 14, color: msg.kind === 'ok' ? 'var(--good)' : msg.kind === 'err' ? 'var(--crit)' : 'var(--text)' }}>
+        <div style={{ fontSize: 14, color: msg.kind === 'ok' ? 'var(--good)' : 'var(--crit)' }}>
           {msg.text}
-          {msg.kind === 'dup' && (
-            <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-              <button className="btn secondary" type="button" onClick={(e) => submit(e, true)}>Yes, add anyway</button>
-              <button className="btn secondary" type="button" onClick={() => { setUrl(''); setMsg(null); }}>No, skip it</button>
-            </div>
-          )}
         </div>
       )}
 

@@ -54,7 +54,7 @@ export default async function CyclePage({ params }) {
   const [payouts, membersRes, clipsRes, rosterRes, changesRes] = await Promise.all([
     computeCyclePayouts(params.id),
     query(
-      `select cc.clipper_id, cc.submission_token, cl.name
+      `select cc.clipper_id, cc.submission_token, cc.token_revoked, cc.token_expires_at, cl.name
          from cycle_clippers cc join clippers cl on cl.id = cc.clipper_id
         where cc.cycle_id = $1 order by cl.name`,
       [params.id],

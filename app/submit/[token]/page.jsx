@@ -2,16 +2,11 @@ import { clipperPortal } from '../../../lib/portal.mjs';
 import SubmitForm from '../../../components/SubmitForm.jsx';
 import Brand, { BRAND, BeeMascot } from '../../../components/Brand.jsx';
 import { formatCents } from '../../../core/payout.mjs';
+import PortalPlatforms from '../../../components/PortalPlatforms.jsx';
 
 export const dynamic = 'force-dynamic';
 
 const nf = (n) => Number(n || 0).toLocaleString('en-US');
-const PLAT_LABEL = { tiktok: 'TikTok', youtube: 'YouTube', instagram: 'Instagram', twitter: 'X', other: 'Other' };
-const STATUS = {
-  approved: { label: 'approved', color: 'var(--good)' },
-  pending: { label: 'in review', color: 'var(--honey)' },
-  rejected: { label: 'not accepted', color: 'var(--text-3)' },
-};
 
 /** PUBLIC page — a clipper's private portal: submit + their own scoreboard. */
 export default async function SubmitPage({ params }) {
@@ -31,7 +26,6 @@ export default async function SubmitPage({ params }) {
 
   const { cycle, clipperName, clips, stats } = portal;
   const closed = cycle.status !== 'active';
-  const showEngagement = (c) => c.engagement !== null && c.engagement !== undefined;
 
   return (
     <div className="center-screen" style={{ alignItems: 'flex-start', paddingTop: 40, paddingBottom: 60 }}>
@@ -90,24 +84,9 @@ export default async function SubmitPage({ params }) {
           </div>
 
           {clips.length > 0 && (
-            <div className="grid" style={{ gap: 0 }}>
-              {clips.map((c, i) => (
-                <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 2px', borderTop: i ? '1px solid var(--line)' : '1px solid var(--line)', flexWrap: 'wrap' }}>
-                  <span className="muted" style={{ fontSize: 12.5, fontFamily: 'var(--mono)', width: 76, flexShrink: 0 }}>{PLAT_LABEL[c.platform] || c.platform}</span>
-                  <a href={c.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, maxWidth: 170, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {c.url.replace(/^https?:\/\/(www\.)?/, '')}
-                  </a>
-                  <span style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center', fontVariantNumeric: 'tabular-nums' }}>
-                    {c.status === 'approved' && <span style={{ fontSize: 13.5 }}>{nf(c.views)} views</span>}
-                    {c.status === 'approved' && showEngagement(c) && (
-                      <span className="muted" style={{ fontSize: 12.5 }}>{(Number(c.engagement) * 100).toFixed(1)}% eng</span>
-                    )}
-                    <span style={{ fontSize: 12, color: STATUS[c.status]?.color || 'var(--text-3)', fontFamily: 'var(--mono)' }}>
-                      {STATUS[c.status]?.label || c.status}
-                    </span>
-                  </span>
-                </div>
-              ))}
+            <div style={{ borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+              <div className="eyebrow" style={{ letterSpacing: '0.08em', marginBottom: 8 }}>Your platforms — tap one to see its clips</div>
+              <PortalPlatforms clips={clips} byPlatform={portal.byPlatform} />
             </div>
           )}
         </div>

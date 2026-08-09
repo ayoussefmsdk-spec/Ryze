@@ -21,12 +21,14 @@ export async function POST(req, { params }) {
   }
 
   const b = await req.json().catch(() => ({}));
+  // Clippers can NEVER force a duplicate through — only the manager's manual
+  // add has that override. confirmDuplicate from this endpoint is ignored.
   const result = await addClip({
     cycle: resolved.cycle,
     clipperId: resolved.clipperId,
     url: b.url,
     addedVia: 'submission',
-    confirmDuplicate: Boolean(b.confirmDuplicate),
+    confirmDuplicate: false,
   });
 
   if (!result.ok) {

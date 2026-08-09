@@ -213,3 +213,8 @@ create table app_settings (
 insert into app_settings (id) values (1) on conflict do nothing;
 -- Note: the app password is NOT stored here — it lives as a hashed environment
 -- variable on the host, never in the database.
+
+-- ---- Incremental migrations (idempotent — safe to re-run on live DBs) ------
+-- Submission-link controls: revoke a clipper's link and/or give it an expiry.
+alter table cycle_clippers add column if not exists token_revoked boolean not null default false;
+alter table cycle_clippers add column if not exists token_expires_at timestamptz;
