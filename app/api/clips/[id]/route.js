@@ -78,8 +78,34 @@ export async function PATCH(req, { params }) {
   }
 
   if (b.action === 'clearFlag' && typeof b.flag === 'string') {
-    await query(`update clips set flags = array_remove(flags, $1) where id = $2`, [b.flag, params.id]);
+    // Sticky: remember the dismissal so later checks never re-add this flag.
+    await query(
+      `update clips set flags = array_remove(flags, $1),
+              dismissed_flags = (select array(select distinct unnest(dismissed_flags || $1)))
+        where id = $2`,
+      [b.flag, params.id],
+    );
     return NextResponse.json({ ok: true });
+  }
+
+  if (b.action === 'markInWindow') {
+    // "Count it as in-cycle": clamp posted_at to the nearest cycle edge so the
+    // outside_dates flag stays gone on every future check.
+    const row = (await query(
+      `select c.posted_at, cy.starts_on, cy.ends_on from clips c
+         join cycles cy on cy.id = c.cycle_id where c.id = $1`,
+      [params.id],
+    )).rows[0];
+    if (!row) return NextResponse.json({ ok: false, error: 'Clip not found' }, { status: 404 });
+    const posted = row.posted_at ? new Date(row.posted_at).getTime() : null;
+    const start = Date.parse(`${String(row.starts_on)}T12:00:00Z`);
+    const end = Date.parse(`${String(row.ends_on)}T12:00:00Z`);
+    const clamped = posted == null || posted < start ? start : posted > end ? end : posted;
+    await query(
+      `update clips set posted_at = $1, flags = array_remove(flags, 'outside_dates') where id = $2`,
+      [new Date(clamped).toISOString(), params.id],
+    );
+    return NextResponse.json({ ok: true, postedAt: new Date(clamped).toISOString() });
   }
 
   if (b.action === 'recheck') {

@@ -218,3 +218,5 @@ insert into app_settings (id) values (1) on conflict do nothing;
 -- Submission-link controls: revoke a clipper's link and/or give it an expiry.
 alter table cycle_clippers add column if not exists token_revoked boolean not null default false;
 alter table cycle_clippers add column if not exists token_expires_at timestamptz;
+-- Manager-dismissed flags: cleared once, never auto re-added on later checks.
+alter table clips add column if not exists dismissed_flags text[] not null default '{}';

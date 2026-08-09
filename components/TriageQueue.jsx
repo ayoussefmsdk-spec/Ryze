@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ClipActions from './ClipActions.jsx';
-import FlagBadges from './FlagBadges.jsx';
+import FlagControls from './FlagControls.jsx';
 
 const PLATFORM_ICON = { youtube: '▶', tiktok: '♪', instagram: '◎', twitter: '𝕏', other: '∙' };
 const nf = (n) => Number(n || 0).toLocaleString('en-US');
@@ -87,7 +87,7 @@ export default function TriageQueue({ clips }) {
               <strong>{c.clipper_name}</strong>
               <span className="muted" style={{ fontSize: 13, textTransform: 'capitalize' }}>{PLATFORM_ICON[c.platform]} {c.platform}</span>
               {c.account_handle && <span className="muted" style={{ fontSize: 13 }}>@{c.account_handle}</span>}
-              <FlagBadges flags={c.flags} />
+              <FlagControls clip={c} />
             </div>
             <a href={c.url} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, wordBreak: 'break-all' }}>{c.url}</a>
             <div className="muted" style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>

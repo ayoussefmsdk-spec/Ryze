@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import ClipActions from './ClipActions.jsx';
-import FlagBadges from './FlagBadges.jsx';
+import FlagControls from './FlagControls.jsx';
 
 const PLAT = {
   youtube: { label: 'YouTube', glyph: '▶', color: '#f6524f' },
@@ -184,7 +184,7 @@ function ClipModal({ clip, payoutCents, canModerate, onClose }) {
               <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: 13 }}>
                 <span style={{ color: st.color, fontFamily: 'var(--mono)', fontSize: 12, border: `1px solid ${st.color}`, borderRadius: 999, padding: '2px 10px' }}>{st.label}</span>
                 {payoutCents != null && clip.status === 'approved' && <span style={{ color: 'var(--honey)', fontWeight: 700 }}>{money(payoutCents)}</span>}
-                <FlagBadges flags={clip.flags} />
+                <FlagControls clip={clip} />
               </div>
               <div className="muted" style={{ fontSize: 12.5 }}>
                 Posted {postDay(clip)}{clip.last_checked_at ? ` · last check ${new Date(clip.last_checked_at).toLocaleString()}` : ' · not checked yet'}

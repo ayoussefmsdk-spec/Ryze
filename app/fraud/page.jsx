@@ -4,7 +4,7 @@ import { query } from '../../lib/db.mjs';
 import { computeCyclePayouts } from '../../lib/payouts.mjs';
 import { formatCents, formatEngagement } from '../../core/payout.mjs';
 import Shell from '../../components/Shell.jsx';
-import FlagBadges from '../../components/FlagBadges.jsx';
+import FlagControls from '../../components/FlagControls.jsx';
 import ClipActions from '../../components/ClipActions.jsx';
 
 export const dynamic = 'force-dynamic';
@@ -77,7 +77,7 @@ export default async function FraudPage() {
                 <span className="muted" style={{ fontSize: 13 }}>{c.campaign_name} · <Link href={`/cycle/${c.cycle_id}`}>{c.cycle_name}</Link></span>
                 <span className="muted" style={{ fontSize: 12.5, fontFamily: 'var(--mono)' }}>{c.status}</span>
               </div>
-              <FlagBadges flags={c.flags} />
+              <FlagControls clip={c} />
               <a href={c.url} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, wordBreak: 'break-all' }}>{c.url}</a>
               <div className="muted" style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
                 {nf(c.views)} views · {c.likes == null ? '—' : nf(c.likes)} likes · ♥ {formatEngagement(c.engagement)}
