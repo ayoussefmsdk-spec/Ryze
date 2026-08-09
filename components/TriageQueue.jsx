@@ -77,7 +77,11 @@ export default function TriageQueue({ clips }) {
             opacity: busy && i === idx ? 0.6 : 1,
           }}
         >
-          {c.thumbnail_url && <img loading="lazy" src={c.thumbnail_url} alt="" style={{ width: 52, height: 70, objectFit: 'cover', borderRadius: 8 }} />}
+          {c.thumbnail_url && (
+            <a href={c.url} target="_blank" rel="noreferrer" title="Open the clip" style={{ flexShrink: 0 }}>
+              <img loading="lazy" src={c.thumbnail_url} alt="" style={{ width: 110, height: 147, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--line)', display: 'block' }} />
+            </a>
+          )}
           <div className="grid" style={{ gap: 3, flex: 1, minWidth: 220 }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
               <strong>{c.clipper_name}</strong>
