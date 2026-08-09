@@ -8,17 +8,22 @@
 // ============================================================================
 
 /**
- * computeClipPayoutCents({ views, cpmCents, minViewFloor, maxPerClipCents })
- *   payout = round(views / 1000 * cpmCents), then:
+ * computeClipPayoutCents({ views, cpmCents, minViewFloor, maxPerClipCents, maxPaidViews })
+ *   payout = round(paidViews / 1000 * cpmCents), where paidViews = min(views, maxPaidViews):
  *     - 0 if views are below an enabled floor
- *     - capped at maxPerClipCents when that cap is set
+ *     - maxPaidViews caps how many views get PAID (fair across platforms with
+ *       different CPMs — a $ cap would need 3× the views on a cheap platform).
+ *       The clip still counts its FULL views everywhere else.
+ *     - maxPerClipCents (money cap) still applies afterwards when set.
  */
-export function computeClipPayoutCents({ views, cpmCents, minViewFloor = 0, maxPerClipCents = null }) {
+export function computeClipPayoutCents({ views, cpmCents, minViewFloor = 0, maxPerClipCents = null, maxPaidViews = null }) {
   const v = toNonNegInt(views);
   const cpm = toNonNegInt(cpmCents);
   if (minViewFloor && v < minViewFloor) return 0;
-  // views * cpm / 1000, rounded to the nearest cent.
-  let cents = Math.round((v * cpm) / 1000);
+  const cap = maxPaidViews != null ? toNonNegInt(maxPaidViews) : 0;
+  const paidViews = cap > 0 && v > cap ? cap : v;
+  // paidViews * cpm / 1000, rounded to the nearest cent.
+  let cents = Math.round((paidViews * cpm) / 1000);
   if (maxPerClipCents != null && cents > maxPerClipCents) cents = maxPerClipCents;
   return cents;
 }

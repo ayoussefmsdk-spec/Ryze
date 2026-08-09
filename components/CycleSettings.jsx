@@ -27,15 +27,18 @@ export default function CycleSettings({ cycle, cpm }) {
   const cfg = cycle.payout_config || {};
   const [maxClip, setMaxClip] = useState(cfg.maxPerClipCents ? String(cfg.maxPerClipCents / 100) : '');
   const [maxClipper, setMaxClipper] = useState(cfg.maxPerClipperCents ? String(cfg.maxPerClipperCents / 100) : '');
+  const [maxPaidViews, setMaxPaidViews] = useState(cfg.maxPaidViewsPerClip ? String(cfg.maxPaidViewsPerClip) : '');
 
   async function save() {
     setBusy(true);
     setMsg('');
     const optCents = (v) => { const n = Number(v); return v !== '' && Number.isFinite(n) && n > 0 ? Math.round(n * 100) : undefined; };
     const newCfg = { ...cfg };
-    delete newCfg.maxPerClipCents; delete newCfg.maxPerClipperCents;
+    delete newCfg.maxPerClipCents; delete newCfg.maxPerClipperCents; delete newCfg.maxPaidViewsPerClip;
     if (optCents(maxClip)) newCfg.maxPerClipCents = optCents(maxClip);
     if (optCents(maxClipper)) newCfg.maxPerClipperCents = optCents(maxClipper);
+    const mpv = Math.trunc(Number(maxPaidViews));
+    if (maxPaidViews !== '' && Number.isFinite(mpv) && mpv > 0) newCfg.maxPaidViewsPerClip = mpv;
     if (['pot_proportional', 'pot_equal'].includes(cycle.payout_model)) {
       newCfg.potCents = Math.round(Number(budget || 0) * 100);
     }
@@ -108,6 +111,13 @@ export default function CycleSettings({ cycle, cpm }) {
         <label className="grid" style={{ gap: 5 }}><span className="muted" style={{ fontSize: 13 }}>Max per clipper ($, blank = none)</span>
           <input className="field" inputMode="decimal" value={maxClipper} onChange={(e) => setMaxClipper(e.target.value)} /></label>
       </div>
+      <label className="grid" style={{ gap: 5 }}>
+        <span className="muted" style={{ fontSize: 13 }}>
+          Max PAID views per clip (blank = none) — pays only up to this many views at each platform's CPM;
+          extra views still count in stats, they just don't add money. Fair across platforms.
+        </span>
+        <input className="field" inputMode="numeric" placeholder="e.g. 700000" value={maxPaidViews} onChange={(e) => setMaxPaidViews(e.target.value)} style={{ maxWidth: 220 }} />
+      </label>
 
       <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
         <label style={{ display: 'flex', gap: 7, alignItems: 'center', fontSize: 14 }}>

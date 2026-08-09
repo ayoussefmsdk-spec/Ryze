@@ -5,6 +5,7 @@ import { getSystemStatus } from '../lib/system.mjs';
 import { formatCents } from '../core/payout.mjs';
 import Shell from '../components/Shell.jsx';
 import TrendChart from '../components/TrendChart.jsx';
+import FlagBadges from '../components/FlagBadges.jsx';
 import { hiveDailySeries } from '../lib/history.mjs';
 
 export const dynamic = 'force-dynamic';
@@ -159,6 +160,29 @@ export default async function DashboardPage() {
             {needs.map((n, i) => (
               <Link key={i} href={n.href} className="pillbtn" style={{ color: n.kind === 'pending' ? 'var(--text)' : 'var(--crit)' }}>
                 {n.kind === 'pending' ? '◔' : '⚑'} {n.t} →
+              </Link>
+            ))}
+          </div>
+        )}
+
+        {/* Flag alerts — every flagged clip, impossible to miss */}
+        {d.flaggedClips.length > 0 && (
+          <div className="card grid" style={{ gap: 2, borderColor: 'rgba(240,115,111,0.45)' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
+              <h2 style={{ margin: 0, color: 'var(--crit)' }}>⚑ Flag alerts</h2>
+              <Link href="/fraud" className="muted" style={{ marginLeft: 'auto', fontSize: 13 }}>Fraud radar →</Link>
+            </div>
+            {d.flaggedClips.map((f, i) => (
+              <Link key={f.id} href={`/cycle/${f.cycle_id}`} style={{ color: 'inherit' }}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 2px', borderTop: i ? '1px solid var(--line)' : 'none', flexWrap: 'wrap', fontSize: 13.5 }}>
+                  <FlagBadges flags={f.flags} />
+                  <span style={{ fontWeight: 600 }}>{f.clipper_name}</span>
+                  <span className="muted">{PLAT[f.platform]?.label || f.platform} · {f.campaign_name}</span>
+                  <span style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
+                    {Number(f.views) > 0 && <span style={{ fontVariantNumeric: 'tabular-nums' }}>{nf(f.views)} views</span>}
+                    <span className="muted" style={{ fontSize: 12, fontFamily: 'var(--mono)' }}>{timeAgo(f.last_checked_at || f.created_at)}</span>
+                  </span>
+                </div>
               </Link>
             ))}
           </div>

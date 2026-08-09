@@ -77,3 +77,26 @@ test('formatCents renders money correctly', () => {
   assert.equal(formatCents(0), '$0.00');
   assert.equal(formatCents(350000), '$3500.00');
 });
+
+test('maxPaidViews: pays only capped views, full views still reported', () => {
+  // 1.2M views, $0.50 CPM, cap paid views at 700k -> pays 700k * 50 / 1000 = $350.00
+  assert.equal(
+    computeClipPayoutCents({ views: 1_200_000, cpmCents: 50, maxPaidViews: 700_000 }),
+    35000,
+  );
+  // under the cap -> unchanged
+  assert.equal(
+    computeClipPayoutCents({ views: 500_000, cpmCents: 50, maxPaidViews: 700_000 }),
+    25000,
+  );
+  // same views cap is fair across CPMs: cheap platform pays less money, same view ceiling
+  assert.equal(
+    computeClipPayoutCents({ views: 2_000_000, cpmCents: 20, maxPaidViews: 700_000 }),
+    14000,
+  );
+  // money cap still applies after the views cap
+  assert.equal(
+    computeClipPayoutCents({ views: 1_200_000, cpmCents: 50, maxPaidViews: 700_000, maxPerClipCents: 10000 }),
+    10000,
+  );
+});

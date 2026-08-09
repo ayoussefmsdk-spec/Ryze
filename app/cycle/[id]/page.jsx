@@ -205,6 +205,7 @@ export default async function CyclePage({ params }) {
             }),
             engagement: cycleEngagement,
             roster: members.length,
+            totalClips: clips.length,
             pendingCount: pending.length,
             isPot,
           }}

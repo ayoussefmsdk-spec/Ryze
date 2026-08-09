@@ -1,8 +1,11 @@
 // Server-rendered SVG bar chart: one bar per calendar day. No client JS.
 // points: [{label:'YYYY-MM-DD', value}] — hover a bar for its exact numbers.
+import { formatCents } from '../core/payout.mjs';
+
 const nf = (n) => Number(n || 0).toLocaleString('en-US');
 
-export default function DayBars({ points, height = 110, color = 'var(--gold)', unit = 'views', emptyNote = null }) {
+export default function DayBars({ points, height = 110, color = 'var(--gold)', unit = 'views', emptyNote = null, money = false }) {
+  const fmt = (v) => (money ? formatCents(v) : `${nf(v)} ${unit}`);
   if (!points || points.length < 2) {
     return <div className="muted" style={{ fontSize: 13 }}>{emptyNote || 'Day-by-day bars appear once there is data on at least two days.'}</div>;
   }
@@ -34,14 +37,14 @@ export default function DayBars({ points, height = 110, color = 'var(--gold)', u
             fill={color}
             opacity={p.value === best.value ? 1 : 0.55}
           >
-            <title>{`${p.label} — ${nf(p.value)} ${unit}`}</title>
+            <title>{`${p.label} — ${fmt(p.value)}`}</title>
           </rect>
         ))}
         <line x1={PAD} y1={H - PAD} x2={W - PAD} y2={H - PAD} stroke="var(--line-2)" strokeWidth="1" />
       </svg>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }} className="muted">
         <span>{points[0].label}</span>
-        <span>best day: <strong style={{ color: 'var(--text)' }}>{best.label}</strong> · {nf(best.value)} {unit}</span>
+        <span>best day: <strong style={{ color: 'var(--text)' }}>{best.label}</strong> · {fmt(best.value)}</span>
         <span>{points[points.length - 1].label}</span>
       </div>
     </div>

@@ -95,6 +95,8 @@ export async function POST(req, { params }) {
     const perClipper = optCents(b.maxPerClipperDollars);
     if (perClip) payoutConfig.maxPerClipCents = perClip;
     if (perClipper) payoutConfig.maxPerClipperCents = perClipper;
+    const mpv = Math.trunc(Number(b.maxPaidViewsPerClip));
+    if (Number.isFinite(mpv) && mpv > 0) payoutConfig.maxPaidViewsPerClip = mpv;
   }
   if (payoutModel === 'pot_proportional' || payoutModel === 'pot_equal') {
     payoutConfig.potCents = budgetCents;

@@ -32,6 +32,7 @@ export default function CycleForm({ campaignId, campaignTimezone }) {
   const [flatAmountDollars, setFlat] = useState('5');
   const [maxPerClipDollars, setMaxClip] = useState('');
   const [maxPerClipperDollars, setMaxClipper] = useState('');
+  const [maxPaidViews, setMaxPaidViews] = useState('');
   const [allowedPlatforms, setAllowed] = useState([...PLATFORMS]);
   const [minViewEnabled, setMinEnabled] = useState(false);
   const [minViewFloor, setMinFloor] = useState('1000');
@@ -53,7 +54,7 @@ export default function CycleForm({ campaignId, campaignTimezone }) {
       body: JSON.stringify({
         name, startsOn, endsOn, timezone, payoutModel, budgetDollars, cpm,
         prizesDollars: prizes.split(',').map((s) => s.trim()).filter(Boolean),
-        flatAmountDollars, maxPerClipDollars, maxPerClipperDollars,
+        flatAmountDollars, maxPerClipDollars, maxPerClipperDollars, maxPaidViewsPerClip: maxPaidViews,
         allowedPlatforms, minViewEnabled, minViewFloor,
         enforcePostWindow, hashtagMode, requiredHashtags,
       }),
@@ -141,6 +142,16 @@ export default function CycleForm({ campaignId, campaignTimezone }) {
             <input className="field" inputMode="decimal" placeholder="e.g. 500" value={maxPerClipperDollars} onChange={(e) => setMaxClipper(e.target.value)} />
           </label>
         </div>
+      )}
+
+      {payoutModel === 'cpm' && (
+        <label className="grid" style={{ gap: 6 }}>
+          <span className="muted" style={{ fontSize: 13 }}>
+            Max PAID views per clip (blank = none) — pays up to this many views at each platform's CPM;
+            extra views still count in stats, they just don't add money.
+          </span>
+          <input className="field" inputMode="numeric" placeholder="e.g. 700000" value={maxPaidViews} onChange={(e) => setMaxPaidViews(e.target.value)} style={{ maxWidth: 220 }} />
+        </label>
       )}
 
       {payoutModel === 'placement' && (

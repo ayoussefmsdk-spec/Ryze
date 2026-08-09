@@ -42,13 +42,17 @@ export default function IntelBand({ facts, pace, moneyStates }) {
           </span>
           <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
             <Case label="Reach" value={`${nf(facts.totalViews)} views`} color="var(--honey)" accent="var(--honey)"
-              sub={facts.deltaPct != null ? `${facts.deltaPct >= 0 ? '▲' : '▼'} ${Math.abs(facts.deltaPct)}% vs last cycle` : `${facts.clipCount} live clips`} />
+              sub={facts.deltaPct != null ? `${facts.deltaPct >= 0 ? '▲' : '▼'} ${Math.abs(facts.deltaPct)}% vs last cycle` : null} />
+            {facts.totalClips != null && (
+              <Case label="Clips" value={nf(facts.totalClips)}
+                sub={`${facts.clipCount} live${facts.pendingCount ? ` · ${facts.pendingCount} in review` : ''}`} accent="#2ad4c8" />
+            )}
             {facts.engagement != null && (
               <Case label="Engagement" value={formatEngagement(facts.engagement)} accent="#e1568f"
                 sub="likes + comments / views" />
             )}
             <Case label="Hive" value={`${facts.roster ?? facts.clipperCount} clipper${(facts.roster ?? facts.clipperCount) === 1 ? '' : 's'}`}
-              sub={`${facts.clipCount} live${facts.pendingCount ? ` · ${facts.pendingCount} in review` : ''}`} />
+              sub="on this cycle's roster" />
             {facts.topPlatform && (
               <Case label="Top platform" value={PLAT_LABEL[facts.topPlatform.platform] || facts.topPlatform.platform}
                 sub={`${facts.topPlatform.sharePct}% of all views`} accent="#2ad4c8" />
