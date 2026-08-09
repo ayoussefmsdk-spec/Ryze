@@ -43,10 +43,8 @@ export default function IntelBand({ facts, pace, moneyStates }) {
           <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
             <Case label="Reach" value={`${nf(facts.totalViews)} views`} color="var(--honey)" accent="var(--honey)"
               sub={facts.deltaPct != null ? `${facts.deltaPct >= 0 ? '▲' : '▼'} ${Math.abs(facts.deltaPct)}% vs last cycle` : null} />
-            {facts.totalClips != null && (
-              <Case label="Clips" value={nf(facts.totalClips)}
-                sub={`${facts.clipCount} live${facts.pendingCount ? ` · ${facts.pendingCount} in review` : ''}`} accent="#2ad4c8" />
-            )}
+            <Case label="Clips live" value={nf(facts.clipCount)}
+              sub={facts.pendingCount ? `${facts.pendingCount} in review` : null} accent="#2ad4c8" />
             {facts.engagement != null && (
               <Case label="Engagement" value={formatEngagement(facts.engagement)} accent="#e1568f"
                 sub="likes + comments / views" />
