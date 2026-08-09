@@ -90,7 +90,8 @@ export default async function DashboardPage() {
   const tiles = [
     { k: 'Views · active cycles', v: nf(d.totalViews), sub: week > 0 ? `+${nf(week)} this week` : null, accent: false },
     { k: 'Owed right now', v: formatCents(d.owedCents), sub: 'across active cycles', accent: true },
-    { k: 'Paid all-time', v: formatCents(d.paidCents), sub: `${nf(c.clips)} clips tracked`, accent: false },
+    { k: 'Paid all-time', v: formatCents(d.paidCents), sub: 'settled payouts', accent: false },
+    { k: 'Clips all-time', v: nf(c.clips), sub: `${nf(c.approved_clips)} live across everything`, accent: false },
     { k: 'In the hive', v: `${nf(c.clippers)}`, sub: `${nf(c.campaigns)} campaign${Number(c.campaigns) === 1 ? '' : 's'}`, accent: false },
   ];
 
