@@ -144,6 +144,90 @@ export default function ScanPanel({ cycleId, members, accountsByClipper = {} }) 
             : `✗ ${result.error}`}
         </div>
       )}
+
+      {/* Skipped posts — rescue any of them individually */}
+      {result?.ok && result.skipped?.length > 0 && (
+        <SkippedList
+          skipped={result.skipped}
+          cycleId={cycleId}
+          clipperId={clipperId}
+          autoApprove={autoApprove}
+          onAdded={() => router.refresh()}
+        />
+      )}
+    </div>
+  );
+}
+
+const REASON_META = {
+  duplicate: { label: 'already in', color: 'var(--warn, #f6a64b)' },
+  outside_dates: { label: 'outside dates', color: 'var(--crit)' },
+  missing_hashtag: { label: 'missing hashtag', color: 'var(--crit)' },
+};
+const nfc = (n) => new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(n || 0));
+
+function SkippedList({ skipped, cycleId, clipperId, autoApprove, onAdded }) {
+  const [added, setAdded] = useState({});   // url -> 'busy' | 'done' | 'error'
+
+  async function addOne(c) {
+    setAdded((m) => ({ ...m, [c.url]: 'busy' }));
+    const r = await fetch(`/api/cycles/${cycleId}/scan`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'addSkipped', clipperId, candidate: c, autoApprove }),
+    });
+    setAdded((m) => ({ ...m, [c.url]: r.ok ? 'done' : 'error' }));
+    if (r.ok) onAdded();
+  }
+
+  async function addAll(reason) {
+    for (const c of skipped) {
+      if (c.reason === reason && !added[c.url]) await addOne(c); // sequential, gentle
+    }
+  }
+
+  const reasons = [...new Set(skipped.map((c) => c.reason))];
+
+  return (
+    <div className="grid" style={{ gap: 8, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span className="eyebrow" style={{ letterSpacing: '0.08em' }}>Skipped — add any of them anyway</span>
+        <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}>
+          {reasons.map((r) => (
+            <button key={r} className="btn secondary" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => addAll(r)}>
+              + all {REASON_META[r]?.label || r}
+            </button>
+          ))}
+        </span>
+      </div>
+      <div className="grid" style={{ gap: 2, maxHeight: 340, overflowY: 'auto' }}>
+        {skipped.map((c, i) => {
+          const meta = REASON_META[c.reason] || { label: c.reason, color: 'var(--text-3)' };
+          const state = added[c.url];
+          return (
+            <div key={c.url} style={{ display: 'flex', gap: 9, alignItems: 'center', padding: '7px 2px', borderTop: i ? '1px solid var(--line)' : 'none', fontSize: 13, flexWrap: 'wrap' }}>
+              {c.thumbnailUrl && <img loading="lazy" src={c.thumbnailUrl} alt="" style={{ width: 34, height: 45, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />}
+              <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: meta.color, border: `1px solid ${meta.color}`, borderRadius: 999, padding: '1px 8px', whiteSpace: 'nowrap' }}>{meta.label}</span>
+              <a href={c.url} target="_blank" rel="noreferrer" style={{ maxWidth: 190, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {c.accountHandle ? `@${c.accountHandle}` : c.url.replace(/^https?:\/\/(www\.)?/, '')}
+              </a>
+              {c.postedAt && <span className="muted" style={{ fontSize: 12 }}>{String(c.postedAt).slice(0, 10)}</span>}
+              <span className="muted" style={{ fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>👁 {nfc(c.views)}</span>
+              <span style={{ marginLeft: 'auto' }}>
+                {state === 'done'
+                  ? <span style={{ color: 'var(--good)', fontSize: 12.5 }}>added ✓</span>
+                  : state === 'error'
+                    ? <span style={{ color: 'var(--crit)', fontSize: 12.5 }}>failed</span>
+                    : <button className="btn secondary" style={{ padding: '3px 11px', fontSize: 12 }} disabled={state === 'busy'} onClick={() => addOne(c)}>
+                        {state === 'busy' ? '…' : '+ Add'}
+                      </button>}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="muted" style={{ fontSize: 11.5 }}>
+        Added clips keep their skip reason as a flag so you remember why they were held. No extra API cost — the scan's numbers are reused.
+      </div>
     </div>
   );
 }

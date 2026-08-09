@@ -5,7 +5,7 @@
  * selectScanCandidates({ candidates, requiredHashtags, startsOn, endsOn,
  *                        enforceWindow, existingKeys })
  * candidate: { key, platform, url, postedAt (ISO|null), hashtags: string[] }
- * Returns { accept: [candidate], reject: [{ key, reason }] }
+ * Returns { accept: [candidate], reject: [{ ...candidate, reason }] }
  * Rules (in order): skip if already ingested; drop if missing a required
  * hashtag; drop if posted outside the cycle window (when enforced).
  */
@@ -26,17 +26,17 @@ export function selectScanCandidates({
 
   for (const c of candidates) {
     if (!c || !c.key) { reject.push({ key: c?.key ?? null, reason: 'invalid' }); continue; }
-    if (existingKeys.has(c.key) || seen.has(c.key)) { reject.push({ key: c.key, reason: 'duplicate' }); continue; }
+    if (existingKeys.has(c.key) || seen.has(c.key)) { reject.push({ ...c, reason: 'duplicate' }); continue; }
     seen.add(c.key);
 
     if (need.length) {
       const have = new Set((c.hashtags || []).map((h) => String(h).toLowerCase()));
-      if (need.some((h) => !have.has(h))) { reject.push({ key: c.key, reason: 'missing_hashtag' }); continue; }
+      if (need.some((h) => !have.has(h))) { reject.push({ ...c, reason: 'missing_hashtag' }); continue; }
     }
 
     if (enforceWindow && c.postedAt && start != null && end != null) {
       const t = Date.parse(c.postedAt);
-      if (Number.isFinite(t) && (t < start || t > end)) { reject.push({ key: c.key, reason: 'outside_dates' }); continue; }
+      if (Number.isFinite(t) && (t < start || t > end)) { reject.push({ ...c, reason: 'outside_dates' }); continue; }
     }
 
     accept.push(c);

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { hasSession } from '../../../../../lib/auth.mjs';
-import { scanClipper } from '../../../../../lib/scan.mjs';
+import { scanClipper, ingestScannedClip } from '../../../../../lib/scan.mjs';
 
 /** POST — scan a clipper's linked accounts for matching recent posts.
  *  Body: { clipperId, perAccount?, autoApprove?, onlyAccounts?: ["platform:handle"] } */
@@ -8,6 +8,24 @@ export async function POST(req, { params }) {
   if (!hasSession()) return NextResponse.json({ ok: false }, { status: 401 });
   const b = await req.json().catch(() => ({}));
   if (!b.clipperId) return NextResponse.json({ ok: false, error: 'clipperId required' }, { status: 400 });
+
+  // Rescue one skipped post from a previous scan (uses its already-fetched stats).
+  if (b.action === 'addSkipped') {
+    try {
+      const r = await ingestScannedClip({
+        cycleId: params.id,
+        clipperId: b.clipperId,
+        candidate: b.candidate || {},
+        autoApprove: Boolean(b.autoApprove),
+      });
+      return r.ok
+        ? NextResponse.json(r)
+        : NextResponse.json(r, { status: 400 });
+    } catch (err) {
+      return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
+    }
+  }
+
   try {
     const result = await scanClipper({
       cycleId: params.id,
