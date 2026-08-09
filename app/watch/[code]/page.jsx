@@ -25,9 +25,19 @@ function Gate({ title, msg }) {
   );
 }
 
+// Link-preview crawlers (Discord, WhatsApp, Slack, iMessage…) fetch shared URLs
+// to build embeds. They must see a branded teaser WITHOUT consuming the
+// single-use code, or the streamer's link is burned before they ever click it.
+const BOT_UA = /bot|crawler|spider|preview|facebookexternalhit|whatsapp|telegram|slack|discord|twitterbot|linkedin|skype|pinterest|vkshare|embedly|quora|snapchat|applebot/i;
+
 export default async function WatchPage({ params }) {
+  const h = headers();
+  if (BOT_UA.test(h.get('user-agent') || '')) {
+    return <Gate title="Live campaign report" msg="A private, read-only performance room. Open the link to step inside." />;
+  }
+
   // Brake code-scanning: plenty for real viewers refreshing, fatal for sweeps.
-  const ip = clientIp(headers());
+  const ip = clientIp(h);
   if (limited(`watch:${ip}`, { max: 60, windowMs: 15 * 60 * 1000 })) {
     return <Gate title="Slow down" msg="Too many attempts from your network — try again in a few minutes." />;
   }
