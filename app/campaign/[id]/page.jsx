@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { requireSession } from '../../../lib/auth.mjs';
 import { query } from '../../../lib/db.mjs';
 import CycleForm from '../../../components/CycleForm.jsx';
+import CampaignSettings from '../../../components/CampaignSettings.jsx';
 import CloneCycleForm from '../../../components/CloneCycleForm.jsx';
 import { formatCents } from '../../../core/payout.mjs';
 import Shell from '../../../components/Shell.jsx';
@@ -44,6 +45,11 @@ export default async function CampaignPage({ params }) {
     </>}>
       <div className="grid" style={{ gap: 22 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          {campaign.avatar_url && (
+            /^https?:\/\//i.test(campaign.avatar_url)
+              ? <img src={campaign.avatar_url} alt="" style={{ width: 52, height: 52, borderRadius: 13, objectFit: 'cover', border: '1px solid var(--line-2)' }} />
+              : <span style={{ fontSize: 40, lineHeight: 1 }}>{campaign.avatar_url}</span>
+          )}
           <div>
             <div className="eyebrow">Campaign · {gmtLabel(campaign.timezone)}</div>
             <h1>{campaign.name}</h1>
@@ -60,12 +66,29 @@ export default async function CampaignPage({ params }) {
           </div>
         </div>
 
-        {series.length >= 2 && (
-          <div className="card grid" style={{ gap: 10 }}>
-            <h2 style={{ margin: 0 }}>Campaign views — all cycles</h2>
-            <TrendChart points={series} />
+        <div className="camp-cols">
+          <div>
+            <CampaignSettings campaign={{
+              id: campaign.id,
+              name: campaign.name,
+              streamer_handle: campaign.streamer_handle,
+              avatar_url: campaign.avatar_url,
+              timezone: campaign.timezone,
+              notes: campaign.notes,
+              archived: campaign.archived,
+            }} />
           </div>
-        )}
+          {series.length >= 2 && (
+            <div className="card grid" style={{ gap: 10, minWidth: 0 }}>
+              <h2 style={{ margin: 0 }}>Campaign views — all cycles</h2>
+              <TrendChart points={series} />
+            </div>
+          )}
+        </div>
+        <style>{`
+          .camp-cols { display: grid; gap: 16px; grid-template-columns: 1fr; align-items: start; }
+          @media (min-width: 1100px) { .camp-cols { grid-template-columns: minmax(340px, 620px) 1fr; } }
+        `}</style>
 
         {cycles.length === 0 && (
           <div className="card">

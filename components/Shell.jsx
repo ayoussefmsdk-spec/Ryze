@@ -133,7 +133,7 @@ export default function Shell({ children, breadcrumb }) {
           backdrop-filter: blur(10px);
         }
         .main-top-mark { display: none; }
-        .main-body { padding: 24px 22px 64px; max-width: 1100px; width: 100%; }
+        .main-body { padding: 24px 28px 64px; max-width: 1560px; width: 100%; margin: 0 auto; }
         @media (max-width: 760px) {
           .shell { grid-template-columns: 1fr; }
           .side {

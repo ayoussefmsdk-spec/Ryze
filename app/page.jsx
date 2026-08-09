@@ -19,6 +19,16 @@ const PLAT = {
   x: { label: 'X', color: '#9aa0aa' },
 };
 
+const VIA = { manual: 'added by you', submission: 'submitted', scan: 'via scan' };
+const STATUS_COLOR = { approved: 'var(--good)', pending: 'var(--honey)', rejected: 'var(--text-3)' };
+
+function timeAgo(d) {
+  const s = Math.max(0, (Date.now() - new Date(d).getTime()) / 1000);
+  if (s < 3600) return `${Math.max(1, Math.floor(s / 60))}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
+}
+
 /** Views added over the trailing `days` window from a cumulative daily series. */
 function windowGain(series, days) {
   if (!series || series.length < 2) return 0;
@@ -198,6 +208,26 @@ export default async function DashboardPage() {
                 </div>
               </div>
             )}
+
+            {/* Latest buzz — live activity feed */}
+            {d.recentClips.length > 0 && (
+              <div className="card grid" style={{ gap: 2 }}>
+                <h2 style={{ margin: '0 0 6px' }}>Latest buzz</h2>
+                {d.recentClips.map((c, i) => (
+                  <Link key={c.id} href={`/cycle/${c.cycle_id}`} style={{ color: 'inherit' }}>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '7px 2px', borderTop: i ? '1px solid var(--line)' : 'none', fontSize: 13.5 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: 999, background: STATUS_COLOR[c.status] || 'var(--text-3)', flexShrink: 0 }} />
+                      <span style={{ fontWeight: 600 }}>{c.clipper_name}</span>
+                      <span className="muted">{VIA[c.added_via] || c.added_via} · {PLAT[c.platform]?.label || c.platform} · {c.campaign_name}</span>
+                      <span style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
+                        {Number(c.views) > 0 && <span style={{ fontVariantNumeric: 'tabular-nums' }}>{nf(c.views)} views</span>}
+                        <span className="muted" style={{ fontSize: 12, fontFamily: 'var(--mono)' }}>{timeAgo(c.created_at)}</span>
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Right rail: system + top clippers */}
@@ -287,6 +317,7 @@ export default async function DashboardPage() {
         .pillbtn:hover { border-color: var(--honey); text-decoration: none; }
         .dash-cols { grid-template-columns: 1fr; }
         @media (min-width: 900px) { .dash-cols { grid-template-columns: 1.6fr 1fr; align-items: start; } }
+        @media (min-width: 1400px) { .dash-cols { grid-template-columns: 2.1fr 1fr; } }
       `}</style>
     </Shell>
   );
