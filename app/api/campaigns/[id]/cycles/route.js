@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { hasSession } from '../../../../../lib/auth.mjs';
 import { query } from '../../../../../lib/db.mjs';
+import { sanitizeCheckSchedule } from '../../../../../core/normalize.mjs';
 
 const MODELS = ['cpm', 'pot_proportional', 'pot_equal', 'placement', 'flat_per_clip'];
 const PLATFORMS = ['youtube', 'tiktok', 'instagram', 'twitter', 'other'];
@@ -121,8 +122,8 @@ export async function POST(req, { params }) {
       `insert into cycles
          (campaign_id, name, timezone, starts_on, ends_on, payout_model, payout_config,
           budget_cap_cents, min_view_enabled, min_view_floor,
-          allowed_platforms, enforce_post_window, hashtag_mode, required_hashtags, status)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'active')
+          allowed_platforms, enforce_post_window, hashtag_mode, required_hashtags, status, check_schedule)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'active',$15)
        returning id`,
       [
         params.id,
@@ -139,6 +140,7 @@ export async function POST(req, { params }) {
         b.enforcePostWindow !== false,
         hashtagMode,
         requiredHashtags,
+        JSON.stringify(sanitizeCheckSchedule(b.checkSchedule)),
       ],
     );
     const cycleId = rows[0].id;

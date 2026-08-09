@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { hasSession } from '../../../../lib/auth.mjs';
 import { query } from '../../../../lib/db.mjs';
+import { verifyAccountExists } from '../../../../lib/verifyAccount.mjs';
 
 const PLATFORMS = ['youtube', 'tiktok', 'instagram', 'twitter', 'other'];
 
@@ -15,13 +16,26 @@ export async function PATCH(req, { params }) {
     if (!platform || !handle) {
       return NextResponse.json({ ok: false, error: 'Platform and handle are required' }, { status: 400 });
     }
+    // Existence check — a typo'd handle would silently break scans + matching.
+    // force:true skips it (private accounts / temporary blocks).
+    let verified = 'skipped';
+    if (!b.force) {
+      verified = await verifyAccountExists(platform, handle);
+      if (verified === 'notfound') {
+        return NextResponse.json({
+          ok: false,
+          code: 'invalid_handle',
+          error: `@${handle} doesn't seem to exist on ${platform} — double-check the spelling.`,
+        }, { status: 422 });
+      }
+    }
     try {
       const { rows } = await query(
         `insert into clipper_accounts (clipper_id, platform, handle) values ($1,$2,$3)
            returning id, platform, handle`,
         [params.id, platform, handle],
       );
-      return NextResponse.json({ ok: true, account: rows[0] });
+      return NextResponse.json({ ok: true, account: rows[0], verified });
     } catch (err) {
       if (/unique/i.test(err.message)) {
         return NextResponse.json({ ok: false, error: 'That handle is already linked to a clipper' }, { status: 409 });

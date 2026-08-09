@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import ScheduleEditor from './ScheduleEditor.jsx';
 
 const PLATFORMS = ['youtube', 'tiktok', 'instagram', 'twitter', 'other'];
 
@@ -28,6 +29,10 @@ export default function CycleSettings({ cycle, cpm }) {
   const [maxClip, setMaxClip] = useState(cfg.maxPerClipCents ? String(cfg.maxPerClipCents / 100) : '');
   const [maxClipper, setMaxClipper] = useState(cfg.maxPerClipperCents ? String(cfg.maxPerClipperCents / 100) : '');
   const [maxPaidViews, setMaxPaidViews] = useState(cfg.maxPaidViewsPerClip ? String(cfg.maxPaidViewsPerClip) : '');
+  const [checkSchedule, setCheckSchedule] = useState(cycle.check_schedule || {
+    free: { mode: 'daily', atLocal: ['06:00', '12:00', '18:00', '23:00'] },
+    paid: { mode: 'daily', atLocal: ['06:00'] },
+  });
 
   async function save() {
     setBusy(true);
@@ -50,6 +55,7 @@ export default function CycleSettings({ cycle, cpm }) {
         minViewEnabled: minOn, minViewFloor: minFloor,
         hashtagMode, requiredHashtags: tags, enforcePostWindow: window_,
         payoutConfig: newCfg,
+        checkSchedule,
       }),
     });
     // CPM rates go through their own action (one change-log line per platform).
@@ -118,6 +124,11 @@ export default function CycleSettings({ cycle, cpm }) {
         </span>
         <input className="field" inputMode="numeric" placeholder="e.g. 700000" value={maxPaidViews} onChange={(e) => setMaxPaidViews(e.target.value)} style={{ maxWidth: 220 }} />
       </label>
+
+      <div className="grid" style={{ gap: 8 }}>
+        <span className="muted" style={{ fontSize: 13 }}>Automatic view checks — how many per day, and when (cycle timezone)</span>
+        <ScheduleEditor value={checkSchedule} onChange={setCheckSchedule} />
+      </div>
 
       <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
         <label style={{ display: 'flex', gap: 7, alignItems: 'center', fontSize: 14 }}>

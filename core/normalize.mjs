@@ -152,3 +152,28 @@ export function evaluateFlags({ stats, cycle, clipperAccounts, previousViews }) 
 
   return [...flags];
 }
+
+/**
+ * sanitizeCheckSchedule(v) — validate a per-cycle check schedule from the UI.
+ * Shape: { free: {mode, atLocal?, everyMinutes?}, paid: {...} }
+ * mode: 'daily' (fires once per atLocal time, in the cycle tz) | 'manual' |
+ * 'interval' (legacy). Unknown input falls back to sane defaults.
+ */
+export function sanitizeCheckSchedule(v) {
+  const group = (g, defTimes) => {
+    if (!g || typeof g !== 'object') return { mode: 'daily', atLocal: defTimes };
+    if (g.mode === 'manual') return { mode: 'manual' };
+    if (g.mode === 'interval') {
+      const m = Math.min(1440, Math.max(15, Math.trunc(Number(g.everyMinutes)) || 360));
+      return { mode: 'interval', everyMinutes: m };
+    }
+    const times = [...new Set((Array.isArray(g.atLocal) ? g.atLocal : [])
+      .map((t) => String(t).trim())
+      .filter((t) => /^([01]\d|2[0-3]):[0-5]\d$/.test(t)))].sort().slice(0, 48);
+    return { mode: 'daily', atLocal: times.length ? times : defTimes };
+  };
+  return {
+    free: group(v?.free, ['06:00', '12:00', '18:00', '23:00']),
+    paid: group(v?.paid, ['06:00']),
+  };
+}

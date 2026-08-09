@@ -48,17 +48,24 @@ export function AccountsEditor({ clipperId, accounts }) {
   const [platform, setPlatform] = useState('tiktok');
   const [handle, setHandle] = useState('');
   const [error, setError] = useState('');
+  const [invalid, setInvalid] = useState(false); // handle failed the existence check
+  const [busy, setBusy] = useState(false);
 
-  async function add(e) {
-    e.preventDefault();
+  async function add(e, force = false) {
+    e?.preventDefault();
     setError('');
+    setInvalid(false);
+    setBusy(true);
     const res = await fetch(`/api/clippers/${clipperId}`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ action: 'addAccount', platform, handle }),
+      body: JSON.stringify({ action: 'addAccount', platform, handle, force }),
     });
-    if (res.ok) { setHandle(''); router.refresh(); }
-    else setError((await res.json().catch(() => ({}))).error || 'Failed');
+    setBusy(false);
+    if (res.ok) { setHandle(''); router.refresh(); return; }
+    const d = await res.json().catch(() => ({}));
+    setError(d.error || 'Failed');
+    setInvalid(d.code === 'invalid_handle');
   }
 
   async function remove(accountId) {
@@ -86,10 +93,22 @@ export function AccountsEditor({ clipperId, accounts }) {
         <select className="field" style={{ width: 130 }} value={platform} onChange={(e) => setPlatform(e.target.value)}>
           {PLATFORMS.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
-        <input className="field" style={{ flex: 1, minWidth: 160 }} placeholder="@handle or channel name" value={handle} onChange={(e) => setHandle(e.target.value)} />
-        <button className="btn secondary" type="submit">Link account</button>
+        <input className="field" style={{ flex: 1, minWidth: 160 }} placeholder="@handle or channel name" value={handle} onChange={(e) => { setHandle(e.target.value); setError(''); setInvalid(false); }} />
+        <button className="btn secondary" type="submit" disabled={busy}>{busy ? 'Checking…' : 'Link account'}</button>
       </form>
-      {error && <div style={{ color: 'var(--crit)', fontSize: 13 }}>{error}</div>}
+      {error && (
+        <div style={{ fontSize: 13, color: 'var(--crit)' }}>
+          ⚠ {error}
+          {invalid && (
+            <button type="button" className="btn secondary" disabled={busy}
+              style={{ marginLeft: 10, padding: '3px 10px', fontSize: 12 }}
+              onClick={(e) => add(e, true)}
+              title="Skip the existence check — for private accounts or if the platform blocked our check">
+              Link anyway
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

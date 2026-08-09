@@ -14,6 +14,7 @@ const MODEL_LABELS = {
 const PLATFORMS = ['youtube', 'tiktok', 'instagram', 'twitter', 'other'];
 
 import { zoneChoices, gmtLabel } from '../lib/tz.mjs';
+import ScheduleEditor from './ScheduleEditor.jsx';
 
 export default function CycleForm({ campaignId, campaignTimezone }) {
   const router = useRouter();
@@ -39,6 +40,10 @@ export default function CycleForm({ campaignId, campaignTimezone }) {
   const [enforcePostWindow, setEnforceWindow] = useState(true);
   const [hashtagMode, setHashtagMode] = useState('off');
   const [requiredHashtags, setTags] = useState('');
+  const [checkSchedule, setCheckSchedule] = useState({
+    free: { mode: 'daily', atLocal: ['06:00', '12:00', '18:00', '23:00'] },
+    paid: { mode: 'daily', atLocal: ['06:00'] },
+  });
 
   function togglePlatform(p) {
     setAllowed((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]));
@@ -57,6 +62,7 @@ export default function CycleForm({ campaignId, campaignTimezone }) {
         flatAmountDollars, maxPerClipDollars, maxPerClipperDollars, maxPaidViewsPerClip: maxPaidViews,
         allowedPlatforms, minViewEnabled, minViewFloor,
         enforcePostWindow, hashtagMode, requiredHashtags,
+        checkSchedule,
       }),
     });
     setBusy(false);
@@ -205,6 +211,11 @@ export default function CycleForm({ campaignId, campaignTimezone }) {
         {hashtagMode !== 'off' && (
           <input className="field" value={requiredHashtags} onChange={(e) => setTags(e.target.value)} placeholder="#camy (separate several with commas)" />
         )}
+      </div>
+
+      <div className="grid" style={{ gap: 8 }}>
+        <span className="muted" style={{ fontSize: 13 }}>Automatic view checks — how many per day, and when</span>
+        <ScheduleEditor value={checkSchedule} onChange={setCheckSchedule} />
       </div>
 
       {error && <div style={{ color: 'var(--crit)', fontSize: 14 }}>{error}</div>}

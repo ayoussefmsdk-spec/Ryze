@@ -74,12 +74,21 @@ export default async function SystemPage() {
               ))}
             </div>
 
-            <div className="card">
-              <h2 style={{ margin: '0 0 6px' }}>Automatic checker</h2>
+            <div className="card grid" style={{ gap: 8 }}>
+              <h2 style={{ margin: 0 }}>Automatic checker</h2>
               <p className="muted" style={{ fontSize: 14, margin: 0 }}>
-                Runs inside the app every 5 minutes, firing each active cycle's schedule in its own timezone —
-                YouTube on its (free) cadence, TikTok/Instagram on their paid cadence. Frozen cycles are skipped.
-                Set the schedule per cycle in <Link href="/campaigns">its settings</Link>.
+                YOU decide how many checks run and when — per cycle, per platform, in the cycle's timezone
+                (e.g. 10× a day for YouTube, 1× a day at 18:00 for TikTok/IG). Set it when creating a cycle
+                or any time in <Link href="/campaigns">Cycle settings</Link>. The "every 5 minutes" part is
+                just the alarm clock: the app wakes up, looks at each cycle's schedule, and only actually
+                checks when one of YOUR scheduled times has arrived. Frozen cycles are skipped.
+              </p>
+              <p className="muted" style={{ fontSize: 14, margin: 0 }}>
+                <strong style={{ color: 'var(--text)' }}>What's a “paid check”?</strong> One TikTok or Instagram
+                clip having its views fetched once through Apify — costs about 0.16¢ each (≈ $1.60 per 1,000).
+                YouTube checks are free through Google's API. The daily cap above is a hard stop so a busy
+                cycle can never run up a surprise bill; see the <Link href="/spending">Spending hub</Link> for
+                exact numbers.
               </p>
             </div>
           </>

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { hasSession } from '../../../../lib/auth.mjs';
 import { query } from '../../../../lib/db.mjs';
+import { sanitizeCheckSchedule } from '../../../../core/normalize.mjs';
 
 // Editable-mid-cycle fields -> column + how to store the value.
 const EDITABLE = {
@@ -19,7 +20,7 @@ const EDITABLE = {
   },
   payoutConfig: { col: 'payout_config', map: (v) => JSON.stringify(v && typeof v === 'object' ? v : {}) },
   autoCheckEnabled: { col: 'auto_check_enabled', map: Boolean },
-  checkSchedule: { col: 'check_schedule', map: (v) => JSON.stringify(v && typeof v === 'object' ? v : {}) },
+  checkSchedule: { col: 'check_schedule', map: (v) => JSON.stringify(sanitizeCheckSchedule(v)) },
 };
 
 /** PATCH — edit cycle settings mid-flight (logged), stop/resume tracking, set CPM. */
