@@ -10,7 +10,9 @@ import MembersPanel from '../../../components/MembersPanel.jsx';
 import AddClipForm from '../../../components/AddClipForm.jsx';
 import TriageQueue from '../../../components/TriageQueue.jsx';
 import TrendChart from '../../../components/TrendChart.jsx';
+import DayBars from '../../../components/DayBars.jsx';
 import { cycleDailySeries, projectSpend } from '../../../lib/history.mjs';
+import { fillDailySeries, dailyGains, minIso } from '../../../core/series.mjs';
 import Shell from '../../../components/Shell.jsx';
 import ViewerCodePanel from '../../../components/ViewerCodePanel.jsx';
 import ScanPanel from '../../../components/ScanPanel.jsx';
@@ -78,6 +80,13 @@ export default async function CyclePage({ params }) {
   const changes = changesRes.rows;
 
   const series = await cycleDailySeries(params.id);
+  // Charts run on real calendar days — cycle start through today (or its end).
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const filledSeries = fillDailySeries(series, {
+    from: String(cycleRow.starts_on),
+    to: minIso(todayIso, String(cycleRow.ends_on)),
+  });
+  const gainSeries = dailyGains(filledSeries);
   const projectedCents = ['cpm', 'flat_per_clip'].includes(cycleRow.payout_model) && cycleRow.status !== 'frozen'
     ? projectSpend({ series, endsOn: cycleRow.ends_on, totalPayoutCents: payouts.totalPayoutCents, totalViews: payouts.totalViews })
     : null;
@@ -202,18 +211,24 @@ export default async function CyclePage({ params }) {
           </div>
         )}
 
-        {/* Views growth chart + projection */}
-        {series.length >= 2 && (
-          <div className="card grid" style={{ gap: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
-              <h2 style={{ margin: 0 }}>Views over time</h2>
-              {projectedCents != null && (
-                <span className="muted" style={{ fontSize: 13, marginLeft: 'auto' }}>
-                  At this pace ≈ <strong style={{ color: 'var(--gold)' }}>{formatCents(projectedCents)}</strong> by {cycleRow.ends_on} (rough estimate)
-                </span>
-              )}
+        {/* Views growth: cumulative + gained-per-day, on real calendar dates */}
+        {series.length >= 1 && (
+          <div className="grid chart-cols" style={{ gap: 16 }}>
+            <div className="card grid" style={{ gap: 10, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+                <h2 style={{ margin: 0 }}>Total views — day by day</h2>
+                {projectedCents != null && (
+                  <span className="muted" style={{ fontSize: 13, marginLeft: 'auto' }}>
+                    At this pace ≈ <strong style={{ color: 'var(--gold)' }}>{formatCents(projectedCents)}</strong> by {cycleRow.ends_on} (rough estimate)
+                  </span>
+                )}
+              </div>
+              <TrendChart points={filledSeries} />
             </div>
-            <TrendChart points={series} />
+            <div className="card grid" style={{ gap: 10, minWidth: 0 }}>
+              <h2 style={{ margin: 0 }}>Views gained each day</h2>
+              <DayBars points={gainSeries} />
+            </div>
           </div>
         )}
 
@@ -241,7 +256,10 @@ export default async function CyclePage({ params }) {
             <details key={p.clipperId} style={{ borderTop: i ? '1px solid var(--line)' : 'none' }}>
               <summary style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '10px 4px', cursor: 'pointer', listStyle: 'none' }}>
                 <span style={{ fontFamily: 'var(--mono)', color: i < 3 ? 'var(--gold)' : 'var(--text-3)', width: 26 }}>#{i + 1}</span>
-                <Link href={`/clipper/${p.clipperId}`} style={{ color: 'inherit', fontWeight: 650 }}>{p.name}</Link>
+                <Link href={`/cycle/${cycleRow.id}/clipper/${p.clipperId}`} style={{ color: 'inherit', fontWeight: 650 }}>{p.name}</Link>
+                <Link href={`/cycle/${cycleRow.id}/clipper/${p.clipperId}`} className="muted" style={{ fontSize: 12.5, border: '1px solid var(--line-2)', borderRadius: 999, padding: '2px 9px', whiteSpace: 'nowrap' }}>
+                  details ↗
+                </Link>
                 <span className="muted" style={{ fontSize: 13 }}>{p.clipCount} clips</span>
                 <span className="muted" style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums' }} title="engagement — (likes+comments)/views">
                   ♥ {formatEngagement(engagementByClipper.get(p.clipperId))}
@@ -259,6 +277,10 @@ export default async function CyclePage({ params }) {
                   </div>
                 ))}
                 {isPot && <div className="muted" style={{ fontSize: 12.5 }}>Pot/placement models pay per clipper, not per clip.</div>}
+                <div style={{ display: 'flex', gap: 14, fontSize: 12.5 }}>
+                  <Link href={`/cycle/${cycleRow.id}/clipper/${p.clipperId}`}>Charts &amp; details for this cycle →</Link>
+                  <Link href={`/clipper/${p.clipperId}`} className="muted">All-time profile →</Link>
+                </div>
               </div>
             </details>
           ))}
@@ -309,6 +331,11 @@ export default async function CyclePage({ params }) {
           </details>
         )}
       </div>
+
+      <style>{`
+        .chart-cols { grid-template-columns: 1fr; }
+        @media (min-width: 1100px) { .chart-cols { grid-template-columns: 1.25fr 1fr; align-items: start; } }
+      `}</style>
     </Shell>
   );
 }

@@ -6,7 +6,9 @@ import { query } from '../../../lib/db.mjs';
 import { formatCents } from '../../../core/payout.mjs';
 import { AccountsEditor } from '../../../components/RosterManager.jsx';
 import TrendChart from '../../../components/TrendChart.jsx';
+import DayBars from '../../../components/DayBars.jsx';
 import { clipperDailySeries } from '../../../lib/history.mjs';
+import { fillDailySeries, dailyGains } from '../../../core/series.mjs';
 import Shell from '../../../components/Shell.jsx';
 
 export const dynamic = 'force-dynamic';
@@ -45,6 +47,7 @@ export default async function ClipperPage({ params }) {
     ),
   ]);
 
+  const clipperSeries = await clipperDailySeries(params.id);
   const paidByCycle = new Map(paidRes.rows.map((r) => [r.cycle_id, r]));
   const lifetimePaid = paidRes.rows.reduce((a, r) => a + Number(r.amount_cents), 0);
   const lifetimeViews = cyclesRes.rows.reduce((a, r) => a + Number(r.views), 0);
@@ -105,11 +108,26 @@ export default async function ClipperPage({ params }) {
           </div>
         )}
 
-        {/* Views path chart */}
-        <div className="card grid" style={{ gap: 10 }}>
-          <h2 style={{ margin: 0 }}>Views path</h2>
-          <TrendChart points={await clipperDailySeries(params.id)} />
-        </div>
+        {/* Views path chart — real calendar days */}
+        {(() => {
+          const filled = fillDailySeries(clipperSeries, { to: new Date().toISOString().slice(0, 10) });
+          return (
+            <div className="grid clip-chart-cols" style={{ gap: 16 }}>
+              <div className="card grid" style={{ gap: 10, minWidth: 0 }}>
+                <h2 style={{ margin: 0 }}>Total views — day by day</h2>
+                <TrendChart points={filled} />
+              </div>
+              <div className="card grid" style={{ gap: 10, minWidth: 0 }}>
+                <h2 style={{ margin: 0 }}>Views gained each day</h2>
+                <DayBars points={dailyGains(filled)} />
+              </div>
+              <style>{`
+                .clip-chart-cols { grid-template-columns: 1fr; }
+                @media (min-width: 1100px) { .clip-chart-cols { grid-template-columns: 1.25fr 1fr; align-items: start; } }
+              `}</style>
+            </div>
+          );
+        })()}
 
         {/* Cycle history — their "path" */}
         <div className="card grid" style={{ gap: 4 }}>
