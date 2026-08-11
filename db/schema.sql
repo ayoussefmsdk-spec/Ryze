@@ -235,3 +235,9 @@ create table if not exists clipper_codes (
   created_at   timestamptz not null default now()
 );
 create index if not exists clipper_codes_clipper_idx on clipper_codes (clipper_id);
+-- Stats-only twin of the submission link: view their cycle stats, can't submit.
+alter table cycle_clippers add column if not exists stats_token text unique;
+alter table cycle_clippers add column if not exists stats_token_revoked boolean not null default false;
+alter table cycle_clippers add column if not exists stats_token_expires_at timestamptz;
+alter table cycle_clippers add column if not exists stats_token_uses int not null default 0;
+alter table cycle_clippers add column if not exists stats_token_last_used_at timestamptz;

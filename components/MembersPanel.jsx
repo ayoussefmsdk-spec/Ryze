@@ -3,16 +3,18 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-function linkStatus(m) {
-  if (m.token_revoked) return { label: 'revoked', color: 'var(--crit)' };
-  if (m.token_expires_at) {
-    const ms = new Date(m.token_expires_at).getTime() - Date.now();
+function tokenStatus(revoked, expiresAt) {
+  if (revoked) return { label: 'revoked', color: 'var(--crit)' };
+  if (expiresAt) {
+    const ms = new Date(expiresAt).getTime() - Date.now();
     if (ms <= 0) return { label: 'expired', color: 'var(--crit)' };
     const days = Math.ceil(ms / 86400000);
     return { label: days > 1 ? `expires in ${days}d` : 'expires today', color: 'var(--warn, #f6a64b)' };
   }
   return { label: 'active', color: 'var(--good)' };
 }
+const linkStatus = (m) => tokenStatus(m.token_revoked, m.token_expires_at);
+const statsStatus = (m) => tokenStatus(m.stats_token_revoked, m.stats_token_expires_at);
 
 export default function MembersPanel({ cycleId, members, roster }) {
   const router = useRouter();
@@ -52,6 +54,15 @@ export default function MembersPanel({ cycleId, members, roster }) {
       `Hey ${m.name}! Submit your clips for this cycle here (your personal link, don't share it): ${url}`,
     );
     setCopied(m.clipper_id);
+    setTimeout(() => setCopied(''), 1500);
+  }
+
+  function copyStatsLink(m) {
+    const url = `${window.location.origin}/stats/${m.stats_token}`;
+    navigator.clipboard.writeText(
+      `Hey ${m.name}! Your live stats for this cycle (view-only, don't share it): ${url}`,
+    );
+    setCopied(`stats-${m.clipper_id}`);
     setTimeout(() => setCopied(''), 1500);
   }
 
@@ -113,7 +124,48 @@ export default function MembersPanel({ cycleId, members, roster }) {
               ))}
             </div>
             <div className="muted" style={{ fontSize: 12 }}>
-              Revoking or expiring a link locks the clipper out of submitting AND their stats page until you restore it or send a new link.
+              Revoking or expiring this link locks the clipper out of submitting (and the submit page's stats) until you restore it or send a new link.
+            </div>
+
+            {/* Stats-only twin: see their cycle stats + clips, cannot submit */}
+            <div className="grid" style={{ gap: 8, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <strong style={{ fontSize: 13.5 }}>Stats-only link</strong>
+                <span className="muted" style={{ fontSize: 12 }}>view-only — no submitting</span>
+                {m.stats_token && (() => { const st2 = statsStatus(m); return (
+                  <span style={{ fontSize: 11.5, fontFamily: 'var(--mono)', color: st2.color, border: `1px solid ${st2.color}`, borderRadius: 999, padding: '1px 9px' }}>{st2.label}</span>
+                ); })()}
+                {m.stats_token && (
+                  <span className="muted" style={{ fontSize: 11.5 }}>
+                    opened {m.stats_token_uses ?? 0}×{m.stats_token_last_used_at ? ` · last ${new Date(m.stats_token_last_used_at).toLocaleDateString()}` : ''}
+                  </span>
+                )}
+              </div>
+              {!m.stats_token ? (
+                <div>
+                  <button className="btn secondary" style={{ padding: '5px 12px', fontSize: 12.5 }}
+                    onClick={() => api({ clipperId: m.clipper_id, action: 'regenerate', kind: 'stats' })}>
+                    + Create stats link
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <button className="btn secondary" style={{ padding: '5px 12px', fontSize: 12.5, color: 'var(--gold)' }} onClick={() => copyStatsLink(m)}>
+                    {copied === `stats-${m.clipper_id}` ? 'copied ✓' : 'copy link'}
+                  </button>
+                  {m.stats_token_revoked
+                    ? <button className="btn secondary" style={{ padding: '5px 12px', fontSize: 12.5, color: 'var(--good)' }} onClick={() => api({ clipperId: m.clipper_id, action: 'restore', kind: 'stats' })}>Turn back on</button>
+                    : <button className="btn secondary" style={{ padding: '5px 12px', fontSize: 12.5, color: 'var(--crit)' }} onClick={() => api({ clipperId: m.clipper_id, action: 'revoke', kind: 'stats' })}>Revoke</button>}
+                  <button className="btn secondary" style={{ padding: '5px 12px', fontSize: 12.5 }} onClick={() => api({ clipperId: m.clipper_id, action: 'regenerate', kind: 'stats' })}>↻ New link</button>
+                  <span className="muted" style={{ fontSize: 12.5 }}>· Timer:</span>
+                  {[['7', '7 days'], ['30', '30 days'], [null, 'never']].map(([d, label]) => (
+                    <button key={label} className="btn secondary" style={{ padding: '4px 10px', fontSize: 12 }}
+                      onClick={() => api({ clipperId: m.clipper_id, action: 'expiry', kind: 'stats', expiresDays: d === null ? null : Number(d) })}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         );
