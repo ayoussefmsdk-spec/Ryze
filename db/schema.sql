@@ -220,3 +220,18 @@ alter table cycle_clippers add column if not exists token_revoked boolean not nu
 alter table cycle_clippers add column if not exists token_expires_at timestamptz;
 -- Manager-dismissed flags: cleared once, never auto re-added on later checks.
 alter table clips add column if not exists dismissed_flags text[] not null default '{}';
+
+-- Personal clipper stats links: multi-use, live-data, revocable, tracked.
+create table if not exists clipper_codes (
+  id           uuid primary key default gen_random_uuid(),
+  clipper_id   uuid not null references clippers(id) on delete cascade,
+  code         text not null unique,
+  label        text,
+  show_money   boolean not null default true,
+  expires_at   timestamptz,                             -- null = never
+  revoked      boolean not null default false,
+  uses         int not null default 0,                  -- opens, for tracking
+  last_used_at timestamptz,
+  created_at   timestamptz not null default now()
+);
+create index if not exists clipper_codes_clipper_idx on clipper_codes (clipper_id);
