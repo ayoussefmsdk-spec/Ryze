@@ -12,6 +12,8 @@ export default function ScanPanel({ cycleId, members, accountsByClipper = {} }) 
   const [clipperId, setClipperId] = useState('');
   const [perAccount, setPer] = useState('20');
   const [autoApprove, setAuto] = useState(false);
+  const [hashtagMode, setHashtagMode] = useState('cycle'); // cycle | none | custom
+  const [hashtags, setHashtags] = useState('');
   const [picked, setPicked] = useState(null); // null = all accounts; Set = manual selection
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
@@ -46,6 +48,8 @@ export default function ScanPanel({ cycleId, members, accountsByClipper = {} }) 
       clipperId,
       perAccount: n,
       autoApprove,
+      hashtagMode,
+      ...(hashtagMode === 'custom' ? { hashtags } : {}),
       // Only send the filter when it's an actual subset — "all" stays default.
       ...(selectedKeys.size < allScannable.length ? { onlyAccounts: [...selectedKeys] } : {}),
     };
@@ -129,6 +133,22 @@ export default function ScanPanel({ cycleId, members, accountsByClipper = {} }) 
           </div>
         )
       )}
+
+      {/* Scan-only hashtag rule — doesn't change the cycle's setting */}
+      <div className="grid" style={{ gap: 6 }}>
+        <div className="eyebrow" style={{ letterSpacing: '0.08em' }}>Hashtag rule for this scan</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <select className="field" style={{ width: 230, padding: '7px 10px', fontSize: 13 }} value={hashtagMode} onChange={(e) => setHashtagMode(e.target.value)}>
+            <option value="cycle">Use the cycle's hashtag rule</option>
+            <option value="none">No hashtag needed — take everything</option>
+            <option value="custom">Custom hashtag for this scan…</option>
+          </select>
+          {hashtagMode === 'custom' && (
+            <input className="field" style={{ flex: 1, minWidth: 160, padding: '7px 10px', fontSize: 13 }}
+              placeholder="#camy (several: comma-separated)" value={hashtags} onChange={(e) => setHashtags(e.target.value)} />
+          )}
+        </div>
+      </div>
 
       <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 14 }}>
         <input type="checkbox" checked={autoApprove} onChange={(e) => setAuto(e.target.checked)} />

@@ -26,6 +26,15 @@ export async function POST(req, { params }) {
     }
   }
 
+  // Scan-only hashtag rule: 'cycle' (default) follows the cycle's setting,
+  // 'none' skips the requirement, 'custom' uses tags from this request only.
+  let scanHashtags;
+  if (b.hashtagMode === 'none') scanHashtags = [];
+  else if (b.hashtagMode === 'custom') {
+    scanHashtags = String(b.hashtags || '')
+      .split(/[,\s]+/).map((t) => t.replace(/^#/, '').toLowerCase()).filter(Boolean).slice(0, 10);
+  }
+
   try {
     const result = await scanClipper({
       cycleId: params.id,
@@ -33,6 +42,7 @@ export async function POST(req, { params }) {
       perAccount: Math.min(100, Math.max(1, Math.trunc(Number(b.perAccount)) || 20)),
       autoApprove: Boolean(b.autoApprove),
       onlyAccounts: Array.isArray(b.onlyAccounts) ? b.onlyAccounts.map(String).slice(0, 30) : null,
+      scanHashtags,
     });
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
