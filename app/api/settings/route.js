@@ -10,5 +10,9 @@ export async function POST(req) {
     const cap = Math.max(0, Math.min(100000, Math.trunc(Number(b.apifyDailyCap) || 0)));
     await query(`update app_settings set apify_daily_cap = $1, updated_at = now() where id = 1`, [cap]);
   }
+  if (b.apifyCentsPer1k !== undefined) {
+    const rate = Math.max(10, Math.min(5000, Math.trunc(Number(b.apifyCentsPer1k) || 420)));
+    await query(`update app_settings set apify_cents_per_1k = $1, updated_at = now() where id = 1`, [rate]);
+  }
   return NextResponse.json({ ok: true });
 }

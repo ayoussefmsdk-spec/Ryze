@@ -243,3 +243,6 @@ alter table cycle_clippers add column if not exists stats_token_uses int not nul
 alter table cycle_clippers add column if not exists stats_token_last_used_at timestamptz;
 -- Partial payouts: a clipper can be paid in several installments per cycle.
 alter table payouts drop constraint if exists payouts_cycle_id_clipper_id_key;
+-- Calibratable Apify cost estimate (cents per 1,000 paid checks). Default from
+-- observed real-world usage; tune it in System to match the Apify console.
+alter table app_settings add column if not exists apify_cents_per_1k int not null default 420;

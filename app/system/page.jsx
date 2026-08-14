@@ -3,6 +3,7 @@ import { requireSession } from '../../lib/auth.mjs';
 import { getSystemStatus } from '../../lib/system.mjs';
 import Shell from '../../components/Shell.jsx';
 import ApifyCapEditor from '../../components/ApifyCapEditor.jsx';
+import ApifyRateEditor from '../../components/ApifyRateEditor.jsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,6 +59,16 @@ export default async function SystemPage() {
                 <span className="muted" style={{ fontSize: 13 }}>Daily cap (hard stop on paid TikTok/IG checks):</span>
                 <ApifyCapEditor current={s.apifyDailyCap} />
               </div>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+                <span className="muted" style={{ fontSize: 13 }}>Cost per 1,000 paid checks (for Spending estimates):</span>
+                <ApifyRateEditor currentCents={s.apifyCentsPer1k} />
+              </div>
+              <p className="muted" style={{ fontSize: 12.5, margin: 0 }}>
+                Tune the rate to match your real bill: open your Apify console, divide what it says you've
+                spent by the paid checks the <Link href="/spending">Spending hub</Link> counted for the same
+                period, and save the result here. Small runs cost more per check (startup overhead), big
+                daily batches cost less — re-check after a week of real usage.
+              </p>
             </div>
 
             <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
@@ -85,10 +96,11 @@ export default async function SystemPage() {
               </p>
               <p className="muted" style={{ fontSize: 14, margin: 0 }}>
                 <strong style={{ color: 'var(--text)' }}>What's a “paid check”?</strong> One TikTok or Instagram
-                clip having its views fetched once through Apify — costs about 0.16¢ each (≈ $1.60 per 1,000).
-                YouTube checks are free through Google's API. The daily cap above is a hard stop so a busy
-                cycle can never run up a surprise bill; see the <Link href="/spending">Spending hub</Link> for
-                exact numbers.
+                clip having its views fetched once through Apify — currently estimated at
+                ${(s.apifyCentsPer1k / 100).toFixed(2)} per 1,000 checks (editable above, so the estimate always
+                matches your real Apify bill). YouTube checks are free through Google's API. The daily cap above
+                is a hard stop so a busy cycle can never run up a surprise bill; see
+                the <Link href="/spending">Spending hub</Link> for exact numbers.
               </p>
             </div>
           </>

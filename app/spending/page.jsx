@@ -77,7 +77,10 @@ export default async function SpendingPage({ searchParams }) {
               <div className="card grid" style={{ gap: 10, minWidth: 0 }}>
                 <h2 style={{ margin: 0 }}>API spend per day</h2>
                 <DayBars points={fillMonth(s.apiDaily, month)} color="var(--violet)" money emptyNote="No paid checks this month." />
-                <div className="muted" style={{ fontSize: 12 }}>Estimated at $1.60 per 1,000 paid TikTok/IG post-checks.</div>
+                <div className="muted" style={{ fontSize: 12 }}>
+                  Estimated at {formatCents(s.rateCentsPer1k)} per 1,000 paid TikTok/IG post-checks — tune this
+                  rate in <Link href="/system">System</Link> to match your real Apify bill.
+                </div>
               </div>
               <div className="card grid" style={{ gap: 10, minWidth: 0 }}>
                 <h2 style={{ margin: 0 }}>YouTube checks per day</h2>
