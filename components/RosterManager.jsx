@@ -93,7 +93,7 @@ export function AccountsEditor({ clipperId, accounts }) {
         <select className="field" style={{ width: 130 }} value={platform} onChange={(e) => setPlatform(e.target.value)}>
           {PLATFORMS.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
-        <input className="field" style={{ flex: 1, minWidth: 160 }} placeholder="@handle or channel name" value={handle} onChange={(e) => { setHandle(e.target.value); setError(''); setInvalid(false); }} />
+        <input className="field" style={{ flex: 1, minWidth: 160 }} placeholder="@handle or paste the profile URL" value={handle} onChange={(e) => { setHandle(e.target.value); setError(''); setInvalid(false); }} />
         <button className="btn secondary" type="submit" disabled={busy}>{busy ? 'Checking…' : 'Link account'}</button>
       </form>
       {error && (

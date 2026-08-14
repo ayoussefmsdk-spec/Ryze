@@ -114,6 +114,24 @@ export default async function DashboardPage() {
           </div>
         </div>
 
+        {/* Apify outage warning — impossible to miss when tracking is degraded */}
+        {d.apify?.apifyFailing && (
+          <div className="card" style={{ borderColor: 'var(--crit)', display: 'grid', gap: 6 }}>
+            <div style={{ fontWeight: 700, color: 'var(--crit)' }}>
+              ⚠ Apify (TikTok / Instagram tracking) is failing
+              <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>
+                {' '}— last error {new Date(d.apify.apifyErrorAt).toLocaleString()}
+              </span>
+            </div>
+            <div className="muted" style={{ fontSize: 13.5 }}>{d.apify.apifyError}</div>
+            <div className="muted" style={{ fontSize: 13 }}>
+              Your numbers are safe: bad fetches are caught, every clip keeps its last good views, and anything
+              suspicious gets a "stats glitch" flag instead of dropping to zero. Details in{' '}
+              <Link href="/system">System</Link>.
+            </div>
+          </div>
+        )}
+
         {/* Onboarding checklist — shows until fully set up */}
         {!setupComplete && (
           <div className="card grid" style={{ gap: 12 }}>

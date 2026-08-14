@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { hasSession } from '../../../../lib/auth.mjs';
 import { query } from '../../../../lib/db.mjs';
 import { verifyAccountExists } from '../../../../lib/verifyAccount.mjs';
+import { normalizeHandleInput } from '../../../../core/platform.mjs';
 
 const PLATFORMS = ['youtube', 'tiktok', 'instagram', 'twitter', 'other'];
 
@@ -12,7 +13,9 @@ export async function PATCH(req, { params }) {
 
   if (b.action === 'addAccount') {
     const platform = PLATFORMS.includes(b.platform) ? b.platform : null;
-    const handle = String(b.handle || '').replace(/^@/, '').trim().toLowerCase();
+    // Accepts "@Handle", " @handle ", plain handles, or pasted profile URLs —
+    // always stored clean (lowercase, no @, no spaces) so matching never misses.
+    const handle = normalizeHandleInput(platform, b.handle);
     if (!platform || !handle) {
       return NextResponse.json({ ok: false, error: 'Platform and handle are required' }, { status: 400 });
     }

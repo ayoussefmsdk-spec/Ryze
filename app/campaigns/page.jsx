@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireSession } from '../../lib/auth.mjs';
 import { query } from '../../lib/db.mjs';
 import CampaignForm from '../../components/CampaignForm.jsx';
+import RestoreCampaignButton from '../../components/RestoreCampaignButton.jsx';
 import Shell from '../../components/Shell.jsx';
 
 export const dynamic = 'force-dynamic';
@@ -28,6 +29,7 @@ function CampaignAvatar({ avatar, name }) {
 export default async function CampaignsPage() {
   requireSession();
   let rows = [];
+  let archived = [];
   let error = null;
   try {
     ({ rows } = await query(
@@ -35,6 +37,11 @@ export default async function CampaignsPage() {
               (select count(*) from cycles cy where cy.campaign_id = c.id) as cycle_count,
               (select count(*) from cycles cy where cy.campaign_id = c.id and cy.status='active') as active_count
          from campaigns c where not c.archived order by c.created_at desc`,
+    ));
+    ({ rows: archived } = await query(
+      `select c.id, c.name, c.streamer_handle,
+              (select count(*) from cycles cy where cy.campaign_id = c.id) as cycle_count
+         from campaigns c where c.archived order by c.created_at desc`,
     ));
   } catch (e) { error = e.message; }
 
@@ -76,6 +83,25 @@ export default async function CampaignsPage() {
               </Link>
             ))}
           </div>
+        )}
+
+        {/* Archived — nothing is ever lost; restore brings a campaign back whole */}
+        {archived.length > 0 && (
+          <details>
+            <summary className="muted" style={{ cursor: 'pointer', fontSize: 13.5 }}>
+              Archived campaigns ({archived.length}) — click to show
+            </summary>
+            <div className="card grid" style={{ gap: 4, marginTop: 10 }}>
+              {archived.map((c, i) => (
+                <div key={c.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 2px', borderTop: i ? '1px solid var(--line)' : 'none' }}>
+                  <Link href={`/campaign/${c.id}`} style={{ color: 'inherit', fontWeight: 650 }}>{c.name}</Link>
+                  {c.streamer_handle && <span className="muted" style={{ fontSize: 13 }}>{c.streamer_handle}</span>}
+                  <span className="muted" style={{ fontSize: 13 }}>{c.cycle_count} cycle{Number(c.cycle_count) === 1 ? '' : 's'}</span>
+                  <span style={{ marginLeft: 'auto' }}><RestoreCampaignButton campaignId={c.id} /></span>
+                </div>
+              ))}
+            </div>
+          </details>
         )}
       </div>
       <style>{`.tagchip{font-size:12px;font-family:var(--mono);padding:3px 10px;border-radius:999px;border:1px solid var(--line-2);color:var(--text-2)}`}</style>

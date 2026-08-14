@@ -159,6 +159,24 @@ export function evaluateFlags({ stats, cycle, clipperAccounts, previousViews }) 
 }
 
 /**
+ * classifyStatsAnomaly({ prevViews, newViews }) — is this fetched number almost
+ * certainly a scraper glitch rather than reality? Short-form views basically
+ * never collapse; a sudden zero or a >30% one-check drop on an established post
+ * means the scraper (Apify) returned bad/incomplete data.
+ *  - 'zero_glitch': the post had real views (≥100) and suddenly reads 0
+ *  - 'big_drop':    an established post (≥1,000) lost >30% in one check
+ * Small posts and small dips pass through untouched (real corrections happen).
+ */
+export function classifyStatsAnomaly({ prevViews, newViews }) {
+  const prev = Number(prevViews);
+  const next = Number(newViews);
+  if (!Number.isFinite(prev) || !Number.isFinite(next)) return null;
+  if (prev >= 100 && next === 0) return 'zero_glitch';
+  if (prev >= 1000 && next < prev * 0.7) return 'big_drop';
+  return null;
+}
+
+/**
  * sanitizeCheckSchedule(v) — validate a per-cycle check schedule from the UI.
  * Shape: { free: {mode, atLocal?, everyMinutes?}, paid: {...} }
  * mode: 'daily' (fires once per atLocal time, in the cycle tz) | 'manual' |

@@ -3,10 +3,16 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-export default function CycleActions({ cycleId, status, hasPaidPlatforms }) {
+export default function CycleActions({ cycleId, status, hasPaidPlatforms, endsOn }) {
   const router = useRouter();
-  const [busy, setBusy] = useState(null); // 'free' | 'all' | 'toggle'
+  const [busy, setBusy] = useState(null); // 'free' | 'all' | 'toggle' | 'revive'
   const [result, setResult] = useState('');
+  const today = new Date().toISOString().slice(0, 10);
+  const ended = endsOn && String(endsOn) < today;
+  // Sensible default for revival: keep the date if it's still ahead, else one more week.
+  const [reviveEnds, setReviveEnds] = useState(
+    ended ? new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10) : String(endsOn || ''),
+  );
 
   async function check(scope) {
     setBusy(scope);
@@ -33,10 +39,24 @@ export default function CycleActions({ cycleId, status, hasPaidPlatforms }) {
     await fetch(`/api/cycles/${cycleId}`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ action: status === 'active' ? 'stopTracking' : 'resumeTracking' }),
+      body: JSON.stringify({ action: 'stopTracking' }),
     });
     setBusy(null);
     router.refresh();
+  }
+
+  async function revive() {
+    setBusy('revive');
+    setResult('');
+    const res = await fetch(`/api/cycles/${cycleId}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'revive', endsOn: reviveEnds }),
+    });
+    const d = await res.json().catch(() => ({}));
+    setBusy(null);
+    if (res.ok) { setResult('✓ Cycle is live again — tracking resumed.'); router.refresh(); }
+    else setResult(`✗ ${d.error || 'Revive failed'}`);
   }
 
   const frozen = status === 'frozen';
@@ -56,9 +76,21 @@ export default function CycleActions({ cycleId, status, hasPaidPlatforms }) {
             )}
           </>
         )}
-        <button className="btn secondary" disabled={busy !== null} onClick={toggleTracking}>
-          {frozen ? 'Resume tracking' : 'Stop tracking'}
-        </button>
+        {!frozen && (
+          <button className="btn secondary" disabled={busy !== null} onClick={toggleTracking}>
+            Stop tracking
+          </button>
+        )}
+        {frozen && (
+          <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span className="muted" style={{ fontSize: 13 }}>{ended ? 'Ended — revive until:' : 'Track again until:'}</span>
+            <input className="field" type="date" style={{ padding: '6px 9px' }} value={reviveEnds} onChange={(e) => setReviveEnds(e.target.value)} />
+            <button className="btn" disabled={busy !== null} onClick={revive}
+              title="Reopen this cycle: tracking, checks and submissions run again until the chosen end date">
+              {busy === 'revive' ? 'Reviving…' : '🔄 Revive cycle'}
+            </button>
+          </span>
+        )}
       </div>
       {result && <div className="muted" style={{ fontSize: 13 }}>{result}</div>}
     </div>

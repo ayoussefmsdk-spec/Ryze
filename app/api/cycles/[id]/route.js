@@ -47,6 +47,28 @@ export async function PATCH(req, { params }) {
     return NextResponse.json({ ok: true });
   }
 
+  if (b.action === 'revive') {
+    // Bring a frozen / ended cycle back to life. Also moves the end date when
+    // one is given — otherwise a cycle past its end would instantly re-freeze
+    // on the next check.
+    const endsOn = /^\d{4}-\d{2}-\d{2}$/.test(String(b.endsOn || '')) ? String(b.endsOn) : String(current.ends_on).slice(0, 10);
+    if (endsOn < String(current.starts_on).slice(0, 10)) {
+      return NextResponse.json({ ok: false, error: 'End date must be on or after the start date.' }, { status: 400 });
+    }
+    await query(
+      `update cycles set status = 'active', freeze_at = null, ends_on = $1 where id = $2`,
+      [endsOn, params.id],
+    );
+    const dateChanged = endsOn !== String(current.ends_on).slice(0, 10);
+    await query(
+      `insert into cycle_changes (cycle_id, field, old_value, new_value, note)
+         values ($1, 'status', $2, 'active', $3)`,
+      [params.id, current.status,
+       `Revived — tracking is running again${dateChanged ? `, end date moved to ${endsOn}` : ''}`],
+    );
+    return NextResponse.json({ ok: true });
+  }
+
   if (b.action === 'setCpm') {
     const cents = Math.max(0, Math.round(Number(b.dollars || 0) * 100));
     await query(

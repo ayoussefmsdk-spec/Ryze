@@ -75,3 +75,24 @@ test('two clippers posting the same video are detected as duplicate', () => {
   const clipperB = 'https://www.tiktok.com/@a/video/7300000000000000009?_t=zzz';
   assert.ok(isSameClip(clipperA, clipperB));
 });
+
+// ---- normalizeHandleInput ---------------------------------------------------
+import { normalizeHandleInput } from './platform.mjs';
+
+test('normalizeHandleInput cleans plain handles', () => {
+  assert.equal(normalizeHandleInput('tiktok', '@CoolClips'), 'coolclips');
+  assert.equal(normalizeHandleInput('tiktok', '  @cool clips  '), 'coolclips');
+  assert.equal(normalizeHandleInput('youtube', ' @Handle '), 'handle'); // leading space + @ (the old bug)
+  assert.equal(normalizeHandleInput('instagram', 'name.here_'), 'name.here_');
+  assert.equal(normalizeHandleInput('tiktok', ''), '');
+  assert.equal(normalizeHandleInput('tiktok', '@@'), '');
+});
+
+test('normalizeHandleInput extracts handles from pasted profile URLs', () => {
+  assert.equal(normalizeHandleInput('tiktok', 'https://www.tiktok.com/@coolclips'), 'coolclips');
+  assert.equal(normalizeHandleInput('tiktok', 'tiktok.com/@CoolClips?lang=en'), 'coolclips');
+  assert.equal(normalizeHandleInput('youtube', 'https://youtube.com/@MrClips'), 'mrclips');
+  assert.equal(normalizeHandleInput('youtube', 'https://www.youtube.com/c/MrClips'), 'mrclips');
+  assert.equal(normalizeHandleInput('instagram', 'https://www.instagram.com/cool.clips/'), 'cool.clips');
+  assert.equal(normalizeHandleInput('twitter', 'https://x.com/clipper_one'), 'clipper_one');
+});

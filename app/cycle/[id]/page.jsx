@@ -175,7 +175,7 @@ export default async function CyclePage({ params }) {
             </h1>
           </div>
           <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
-            <CycleActions cycleId={cycleRow.id} status={cycleRow.status} hasPaidPlatforms={hasPaid} />
+            <CycleActions cycleId={cycleRow.id} status={cycleRow.status} hasPaidPlatforms={hasPaid} endsOn={String(cycleRow.ends_on)} />
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               <CycleSettings cycle={cycleRow} cpm={cpmMap} />
               <ViewerCodePanel cycleId={cycleRow.id} />

@@ -44,7 +44,23 @@ export default async function SystemPage() {
               <h2 style={{ margin: '0 0 4px' }}>Integrations</h2>
               <Dot ok={s.dbOk} label="Database (Postgres)" />
               <Dot ok={s.youtubeKey} label="YouTube Data API key" />
-              <Dot ok={s.apifyToken} label="Apify token (TikTok / Instagram)" />
+              <Dot ok={s.apifyToken && !s.apifyFailing} warn={s.apifyToken && s.apifyFailing} label="Apify token (TikTok / Instagram)" />
+              {s.apifyFailing && (
+                <div style={{ borderTop: '1px solid var(--line)', padding: '10px 2px', fontSize: 13 }}>
+                  <span style={{ color: 'var(--crit)', fontWeight: 650 }}>⚠ Apify's last call failed</span>
+                  <span className="muted"> ({new Date(s.apifyErrorAt).toLocaleString()})</span>
+                  <div className="muted" style={{ marginTop: 4 }}>{s.apifyError}</div>
+                  <div className="muted" style={{ marginTop: 4 }}>
+                    TikTok/IG numbers may be stale until it recovers — clips are never zeroed: bad fetches are
+                    caught, last good numbers are kept, and affected clips get a "stats glitch" flag.
+                  </div>
+                </div>
+              )}
+              {!s.apifyFailing && s.apifyOkAt && (
+                <div className="muted" style={{ borderTop: '1px solid var(--line)', padding: '8px 2px', fontSize: 12.5 }}>
+                  Last successful Apify call: {new Date(s.apifyOkAt).toLocaleString()}
+                </div>
+              )}
             </div>
 
             <div className="card grid" style={{ gap: 12 }}>

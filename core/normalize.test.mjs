@@ -154,3 +154,28 @@ test('account matching ignores @, case and spaces', () => {
   const f3 = evaluateFlags({ stats: { accountHandle: 'someoneelse', views: 10 }, cycle, clipperAccounts: ['theinvestigator00'], previousViews: null });
   assert.ok(f3.includes('unknown_account'));
 });
+
+// ---- classifyStatsAnomaly (Apify glitch shield) -----------------------------
+import { classifyStatsAnomaly } from './normalize.mjs';
+
+test('anomaly: sudden zero on an established post is a zero_glitch', () => {
+  assert.equal(classifyStatsAnomaly({ prevViews: 5000, newViews: 0 }), 'zero_glitch');
+  assert.equal(classifyStatsAnomaly({ prevViews: 100, newViews: 0 }), 'zero_glitch');
+});
+
+test('anomaly: >30% one-check drop on an established post is a big_drop', () => {
+  assert.equal(classifyStatsAnomaly({ prevViews: 10000, newViews: 6000 }), 'big_drop');
+  assert.equal(classifyStatsAnomaly({ prevViews: 1000, newViews: 500 }), 'big_drop');
+});
+
+test('anomaly: small posts and small dips pass through untouched', () => {
+  assert.equal(classifyStatsAnomaly({ prevViews: 50, newViews: 0 }), null);      // tiny post, zero plausible
+  assert.equal(classifyStatsAnomaly({ prevViews: 10000, newViews: 8000 }), null); // 20% dip = correction
+  assert.equal(classifyStatsAnomaly({ prevViews: 500, newViews: 200 }), null);   // below big_drop floor
+  assert.equal(classifyStatsAnomaly({ prevViews: 1000, newViews: 1500 }), null); // growth is never a glitch
+});
+
+test('anomaly: bad inputs are never flagged', () => {
+  assert.equal(classifyStatsAnomaly({ prevViews: null, newViews: 0 }), null);
+  assert.equal(classifyStatsAnomaly({ prevViews: 1000, newViews: undefined }), null);
+});

@@ -70,6 +70,30 @@ function stripHandle(h) {
 }
 
 /**
+ * normalizeHandleInput(platform, raw) — turn whatever a manager pastes into a
+ * clean handle, or '' when nothing usable is there. Accepts:
+ *   "@Handle", " @handle ", "handle", full profile URLs
+ *   (youtube.com/@h, tiktok.com/@h, instagram.com/h/, x.com/h?lang=en)
+ * Always: trimmed, lowercased, no '@', no spaces, no trailing junk.
+ */
+export function normalizeHandleInput(platform, raw) {
+  let s = String(raw ?? '').trim();
+  if (!s) return '';
+  // A pasted profile URL — pull the handle out of the path.
+  if (/^(https?:\/\/|www\.)/i.test(s) || /^[a-z0-9.-]+\.[a-z]{2,}\//i.test(s)) {
+    const u = safeUrl(s);
+    if (u) {
+      const parts = u.pathname.split('/').filter(Boolean);
+      // Skip non-profile path segments (e.g. instagram.com/reel/..., youtube.com/channel/...)
+      const NOT_PROFILE = new Set(['reel', 'reels', 'p', 'watch', 'shorts', 'video', 'channel', 'c', 'user', 'embed', 'status']);
+      const seg = parts.find((p) => !NOT_PROFILE.has(p.toLowerCase())) || parts[parts.length - 1] || '';
+      s = seg;
+    }
+  }
+  return s.replace(/^@+/, '').replace(/\/+$/, '').replace(/[?#].*$/, '').replace(/\s+/g, '').toLowerCase();
+}
+
+/**
  * parseClip(url) -> {
  *   valid, platform, id, handle, key, canonicalUrl
  * }

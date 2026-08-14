@@ -63,17 +63,36 @@ export async function PATCH(req, { params }) {
   }
 
   if (b.action === 'trustAccount') {
-    // Link this clip's account to its clipper and clear the unknown-account flag.
+    // Link this clip's account to its clipper and clear the unknown-account
+    // flag — here AND on the clipper's other clips from the same handle.
     const clip = (await query(`select clipper_id, platform, account_handle from clips where id = $1`, [params.id])).rows[0];
     if (!clip?.account_handle) {
       return NextResponse.json({ ok: false, error: 'No account handle on this clip yet' }, { status: 400 });
     }
+    const handle = clip.account_handle.toLowerCase();
+    // If the handle already belongs to a DIFFERENT clipper, say so instead of
+    // silently clearing the flag — that's exactly the fraud the flag catches.
+    const owner = (await query(
+      `select cl.id, cl.name from clipper_accounts a join clippers cl on cl.id = a.clipper_id
+        where a.platform = $1 and a.handle = $2`,
+      [clip.platform, handle],
+    )).rows[0];
+    if (owner && owner.id !== clip.clipper_id) {
+      return NextResponse.json({
+        ok: false,
+        error: `@${handle} is already linked to ${owner.name} — unlink it there first if it really belongs to this clipper.`,
+      }, { status: 409 });
+    }
     await query(
       `insert into clipper_accounts (clipper_id, platform, handle) values ($1,$2,$3)
          on conflict (platform, handle) do nothing`,
-      [clip.clipper_id, clip.platform, clip.account_handle.toLowerCase()],
+      [clip.clipper_id, clip.platform, handle],
     );
-    await query(`update clips set flags = array_remove(flags, 'unknown_account') where id = $1`, [params.id]);
+    await query(
+      `update clips set flags = array_remove(flags, 'unknown_account')
+        where clipper_id = $1 and platform = $2 and lower(account_handle) = $3`,
+      [clip.clipper_id, clip.platform, handle],
+    );
     return NextResponse.json({ ok: true });
   }
 

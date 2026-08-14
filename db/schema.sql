@@ -246,3 +246,9 @@ alter table payouts drop constraint if exists payouts_cycle_id_clipper_id_key;
 -- Calibratable Apify cost estimate (cents per 1,000 paid checks). Default from
 -- observed real-world usage; tune it in System to match the Apify console.
 alter table app_settings add column if not exists apify_cents_per_1k int not null default 420;
+-- Apify glitch shield: consecutive-miss counter (one missing batch item is a
+-- hiccup, two in a row means the post is really gone) + integration health.
+alter table clips add column if not exists miss_streak int not null default 0;
+alter table app_settings add column if not exists apify_ok_at timestamptz;
+alter table app_settings add column if not exists apify_error_at timestamptz;
+alter table app_settings add column if not exists apify_error text;
