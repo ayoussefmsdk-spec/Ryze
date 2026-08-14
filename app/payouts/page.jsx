@@ -24,21 +24,28 @@ export default async function PayoutsPage() {
       order by cy.ends_on desc`,
   );
 
-  const paidRows = (await query(`select cycle_id, clipper_id from payouts`)).rows;
-  const paidSet = new Set(paidRows.map((r) => `${r.cycle_id}:${r.clipper_id}`));
+  // Paid so far per (cycle, clipper) — partial payments are normal now.
+  const paidRows = (await query(
+    `select cycle_id, clipper_id, coalesce(sum(amount_cents),0)::bigint as paid
+       from payouts group by cycle_id, clipper_id`,
+  )).rows;
+  const paidBy = new Map(paidRows.map((r) => [`${r.cycle_id}:${r.clipper_id}`, Number(r.paid)]));
 
-  // Compute pending per cycle.
+  // Compute pending per cycle: remaining = computed − already paid.
   const pendingBlocks = [];
   for (const cy of cycleRows) {
     const computed = await computeCyclePayouts(cy.id);
-    const unpaid = computed.perClipper.filter(
-      (p) => p.payoutCents > 0 && !paidSet.has(`${cy.id}:${p.clipperId}`),
-    );
+    const unpaid = computed.perClipper
+      .map((p) => {
+        const paidCents = paidBy.get(`${cy.id}:${p.clipperId}`) || 0;
+        return { ...p, paidCents, remainingCents: Math.max(0, p.payoutCents - paidCents) };
+      })
+      .filter((p) => p.remainingCents > 0);
     if (unpaid.length) {
       pendingBlocks.push({
         cycle: cy,
         unpaid,
-        totalCents: unpaid.reduce((a, p) => a + p.payoutCents, 0),
+        totalCents: unpaid.reduce((a, p) => a + p.remainingCents, 0),
       });
     }
   }
@@ -108,13 +115,20 @@ export default async function PayoutsPage() {
               <div className="grid" style={{ gap: 4 }}>
                 {unpaid.map((p) => (
                   <details key={p.clipperId} style={{ borderTop: '1px solid var(--line)' }}>
-                    <summary style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '8px 2px', cursor: 'pointer', listStyle: 'none' }}>
+                    <summary style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '8px 2px', cursor: 'pointer', listStyle: 'none', flexWrap: 'wrap' }}>
                       <Link href={`/clipper/${p.clipperId}`} style={{ color: 'inherit', fontWeight: 650 }}>{p.name}</Link>
                       {p.paymentHandle && <span className="muted" style={{ fontSize: 13 }}>→ {p.paymentHandle}</span>}
                       <span className="muted" style={{ fontSize: 13 }}>{p.clipCount} clips · {nfmt(p.views)} views</span>
-                      <span style={{ marginLeft: 'auto', fontWeight: 700, color: 'var(--gold)', fontVariantNumeric: 'tabular-nums' }}>{formatCents(p.payoutCents)}</span>
+                      <span style={{ marginLeft: 'auto', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                        <span style={{ fontWeight: 700, color: 'var(--gold)' }}>{formatCents(p.remainingCents)}</span>
+                        {p.paidCents > 0 && (
+                          <span className="muted" style={{ display: 'block', fontSize: 11.5 }}>
+                            paid {formatCents(p.paidCents)} of {formatCents(p.payoutCents)}
+                          </span>
+                        )}
+                      </span>
                       <AdjustmentForm cycleId={cycle.id} clipperId={p.clipperId} />
-                      <PayCycleButton cycleId={cycle.id} clipperId={p.clipperId} label={p.name} amount={formatCents(p.payoutCents)} />
+                      <PayCycleButton cycleId={cycle.id} clipperId={p.clipperId} label={p.name} amount={formatCents(p.remainingCents)} remainingCents={p.remainingCents} />
                     </summary>
                     <div className="grid" style={{ gap: 3, padding: '2px 2px 10px 14px' }}>
                       {Object.entries(p.byPlatform).map(([plat, d]) => (

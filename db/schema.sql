@@ -241,3 +241,5 @@ alter table cycle_clippers add column if not exists stats_token_revoked boolean 
 alter table cycle_clippers add column if not exists stats_token_expires_at timestamptz;
 alter table cycle_clippers add column if not exists stats_token_uses int not null default 0;
 alter table cycle_clippers add column if not exists stats_token_last_used_at timestamptz;
+-- Partial payouts: a clipper can be paid in several installments per cycle.
+alter table payouts drop constraint if exists payouts_cycle_id_clipper_id_key;
