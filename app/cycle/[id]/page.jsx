@@ -90,6 +90,22 @@ export default async function CyclePage({ params }) {
     }
   }
   const clips = clipsRes.rows;
+
+  // Per clipper+platform → per-ACCOUNT views/clips (approved only). Powers the
+  // leaderboard's expandable platform rows: which handle carried the views, and
+  // its proportional share of that platform's money.
+  const accountSplit = new Map(); // `${clipperId}:${platform}` -> Map(handle -> {views, clips})
+  for (const c of clips) {
+    if (c.status !== 'approved') continue;
+    const k = `${c.clipper_id}:${c.platform}`;
+    const m = accountSplit.get(k) || new Map();
+    const h = String(c.account_handle || '').toLowerCase();
+    const a = m.get(h) || { views: 0, clips: 0 };
+    a.views += Number(c.views || 0);
+    a.clips += 1;
+    m.set(h, a);
+    accountSplit.set(k, m);
+  }
   const roster = rosterRes.rows;
   const changes = changesRes.rows;
 
@@ -322,14 +338,41 @@ export default async function CyclePage({ params }) {
                   </div>
                 </summary>
                 <div style={{ padding: '4px 4px 12px 42px' }} className="grid">
-                  {Object.entries(p.byPlatform).map(([plat, d]) => (
-                    <div key={plat} style={{ display: 'flex', gap: 12, fontSize: 13.5 }} className="muted">
-                      <span style={{ textTransform: 'capitalize', width: 90 }}>{PLATFORM_ICON[plat]} {plat}</span>
-                      <span>{d.clips} clips</span>
-                      <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>{nfmt(d.views)} views</span>
-                      {!isPot && <span style={{ fontVariantNumeric: 'tabular-nums', minWidth: 80, textAlign: 'right' }}>{formatCents(d.payoutCents)}</span>}
-                    </div>
-                  ))}
+                  {Object.entries(p.byPlatform).map(([plat, d]) => {
+                    const accs = [...(accountSplit.get(`${p.clipperId}:${plat}`) || new Map()).entries()]
+                      .sort((a, b) => b[1].views - a[1].views);
+                    return (
+                      <details key={plat}>
+                        <summary style={{ display: 'flex', gap: 12, fontSize: 13.5, cursor: 'pointer', listStyle: 'none', alignItems: 'baseline' }} className="muted"
+                          title="Click for the per-account split">
+                          <span style={{ textTransform: 'capitalize', width: 110 }}>{PLATFORM_ICON[plat]} {plat} <span style={{ fontSize: 10 }}>▾</span></span>
+                          <span>{d.clips} clips</span>
+                          {accs.length > 0 && <span style={{ fontSize: 11.5 }}>{accs.length} account{accs.length === 1 ? '' : 's'}</span>}
+                          <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>{nfmt(d.views)} views</span>
+                          {!isPot && <span style={{ fontVariantNumeric: 'tabular-nums', minWidth: 80, textAlign: 'right' }}>{formatCents(d.payoutCents)}</span>}
+                        </summary>
+                        <div className="grid" style={{ gap: 3, padding: '4px 0 7px 26px' }}>
+                          {accs.length === 0 && <div className="muted" style={{ fontSize: 12 }}>No account info on these clips yet — it fills in as views get checked.</div>}
+                          {accs.map(([h, a]) => {
+                            const moneyShare = d.views > 0 ? Math.round(d.payoutCents * (a.views / d.views)) : 0;
+                            return (
+                              <div key={h || '?'} style={{ display: 'flex', gap: 12, fontSize: 12.5, alignItems: 'baseline' }} className="muted">
+                                <span style={{ fontFamily: 'var(--mono)', color: 'var(--text)' }}>{h ? `@${h}` : 'account unknown'}</span>
+                                <span style={{ fontSize: 11.5 }}>{a.clips} clip{a.clips === 1 ? '' : 's'}</span>
+                                <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>{nfmt(a.views)} views</span>
+                                {!isPot && (
+                                  <span style={{ fontVariantNumeric: 'tabular-nums', minWidth: 80, textAlign: 'right', color: 'var(--gold)' }}
+                                    title="This account's share of the platform payout, split by views">
+                                    {formatCents(moneyShare)}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </details>
+                    );
+                  })}
                   {isPot && <div className="muted" style={{ fontSize: 12.5 }}>Pot/placement models pay per clipper, not per clip.</div>}
                   <div style={{ display: 'flex', gap: 14, fontSize: 12.5 }}>
                     <Link href={`/cycle/${cycleRow.id}/clipper/${p.clipperId}`}>Charts &amp; details for this cycle →</Link>
