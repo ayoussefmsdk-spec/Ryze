@@ -10,6 +10,7 @@ import DayBars from '../../../components/DayBars.jsx';
 import { clipperDailySeries, clipsPostedPerDay } from '../../../lib/history.mjs';
 import { fillDailySeries, zeroFillDaily, dailyGains } from '../../../core/series.mjs';
 import Shell from '../../../components/Shell.jsx';
+import AccountBreakdown from '../../../components/AccountBreakdown.jsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,8 +22,10 @@ export default async function ClipperPage({ params }) {
   const clipper = (await query(`select * from clippers where id = $1`, [params.id])).rows[0];
   if (!clipper) notFound();
 
-  const [accountsRes, cyclesRes, paidRes] = await Promise.all([
+  const [accountsRes, allClipsRes, cyclesRes, paidRes] = await Promise.all([
     query(`select id, platform, handle from clipper_accounts where clipper_id = $1 order by platform, handle`, [params.id]),
+    // Every clip they've ever made — feeds the per-platform / per-account split.
+    query(`select platform, account_handle, views, status from clips where clipper_id = $1`, [params.id]),
     // Per-cycle activity: views/clips from this clipper's clips in each cycle.
     query(
       `select cy.id as cycle_id, cy.name as cycle_name, cy.starts_on, cy.ends_on, cy.status,
@@ -95,6 +98,17 @@ export default async function ClipperPage({ params }) {
             </div>
           ))}
         </div>
+
+        {/* Platforms & accounts — lifetime views per posting account */}
+        {allClipsRes.rows.length > 0 && (
+          <div className="grid" style={{ gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+              <h2 style={{ margin: 0 }}>Platforms &amp; accounts</h2>
+              <span className="muted" style={{ fontSize: 12.5 }}>lifetime views per posting account</span>
+            </div>
+            <AccountBreakdown clips={allClipsRes.rows} />
+          </div>
+        )}
 
         {/* Per-campaign earnings */}
         {perCampaign.size > 0 && (

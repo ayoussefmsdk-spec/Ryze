@@ -8,11 +8,11 @@ import { formatCents, formatEngagement } from '../../../core/payout.mjs';
 import Brand, { BRAND, BeeMascot } from '../../../components/Brand.jsx';
 import TrendChart from '../../../components/TrendChart.jsx';
 import DayBars from '../../../components/DayBars.jsx';
+import AccountBreakdown from '../../../components/AccountBreakdown.jsx';
 
 export const dynamic = 'force-dynamic';
 
 const nf = (n) => Number(n || 0).toLocaleString('en-US');
-const PLAT = { youtube: '▶ YouTube', tiktok: '♪ TikTok', instagram: '◎ Instagram', twitter: '𝕏 X', other: '∙ Other' };
 const BOT_UA = /bot|crawler|spider|preview|facebookexternalhit|whatsapp|telegram|slack|discord|twitterbot|linkedin|skype|pinterest|vkshare|embedly|quora|snapchat|applebot/i;
 
 function Gate({ title, msg }) {
@@ -71,9 +71,8 @@ export default async function ClipperStatsPage({ params }) {
     ),
     query(`select coalesce(sum(amount_cents),0)::bigint as paid from payouts where clipper_id = $1`, [clipper.id]),
     query(
-      `select platform, coalesce(sum(views),0)::bigint as views, count(*)::int as clips
-         from clips where clipper_id = $1 and status = 'approved'
-        group by platform order by views desc`,
+      `select platform, account_handle, views, status
+         from clips where clipper_id = $1`,
       [clipper.id],
     ),
     clipperDailySeries(clipper.id),
@@ -150,13 +149,12 @@ export default async function ClipperStatsPage({ params }) {
         )}
 
         {platRes.rows.length > 0 && (
-          <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
-            {platRes.rows.map((p) => (
-              <div key={p.platform} className="card" style={{ padding: '13px 16px' }}>
-                <div className="muted" style={{ fontSize: 13 }}>{PLAT[p.platform] || p.platform} · {p.clips} clips</div>
-                <div style={{ fontSize: 18, fontWeight: 680, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>{nf(p.views)} views</div>
-              </div>
-            ))}
+          <div className="grid" style={{ gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+              <h2 style={{ margin: 0 }}>Your platforms &amp; accounts</h2>
+              <span className="muted" style={{ fontSize: 12.5 }}>views per posting account</span>
+            </div>
+            <AccountBreakdown clips={platRes.rows} showMoney={false} />
           </div>
         )}
 

@@ -10,10 +10,10 @@ import Shell from '../../../../../components/Shell.jsx';
 import TrendChart from '../../../../../components/TrendChart.jsx';
 import DayBars from '../../../../../components/DayBars.jsx';
 import ClipGallery from '../../../../../components/ClipGallery.jsx';
+import AccountBreakdown from '../../../../../components/AccountBreakdown.jsx';
 
 export const dynamic = 'force-dynamic';
 
-const PLATFORM_ICON = { youtube: '▶', tiktok: '♪', instagram: '◎', twitter: '𝕏', other: '∙' };
 const nf = (n) => Number(n || 0).toLocaleString('en-US');
 
 /** One clipper's performance inside ONE cycle — charts on real calendar days. */
@@ -139,16 +139,13 @@ export default async function ClipperInCyclePage({ params }) {
           </div>
         </div>
 
-        {mine && Object.keys(mine.byPlatform).length > 0 && (
-          <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-            {Object.entries(mine.byPlatform).map(([plat, d]) => (
-              <div key={plat} className="card" style={{ padding: '13px 16px' }}>
-                <div className="muted" style={{ fontSize: 13, textTransform: 'capitalize' }}>{PLATFORM_ICON[plat]} {plat} · {d.clips} clips</div>
-                <div style={{ fontSize: 17, fontWeight: 650, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
-                  {nf(d.views)} views{d.payoutCents > 0 && <span className="muted"> · {formatCents(d.payoutCents)}</span>}
-                </div>
-              </div>
-            ))}
+        {clips.length > 0 && (
+          <div className="grid" style={{ gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+              <h2 style={{ margin: 0 }}>Platforms &amp; accounts</h2>
+              <span className="muted" style={{ fontSize: 12.5 }}>views per posting account, this cycle</span>
+            </div>
+            <AccountBreakdown clips={clips} byPlatform={mine?.byPlatform || {}} />
           </div>
         )}
 

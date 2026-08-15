@@ -71,6 +71,39 @@ export default function PortalPlatforms({ clips, byPlatform, showMoney = true })
         })}
       </div>
 
+      {open && groups.has(open) && (() => {
+        // Per-account split for the opened platform — which of their accounts
+        // is carrying the views.
+        const accs = new Map();
+        for (const c of groups.get(open)) {
+          if (c.status !== 'approved') continue;
+          const h = String(c.account_handle || '').toLowerCase();
+          const a = accs.get(h) || { views: 0, clips: 0 };
+          a.views += Number(c.views || 0); a.clips += 1;
+          accs.set(h, a);
+        }
+        const rows = [...accs.entries()].sort((a, b) => b[1].views - a[1].views);
+        const total = rows.reduce((s, [, a]) => s + a.views, 0);
+        const p = PLAT[open] || PLAT.other;
+        if (rows.length === 0) return null;
+        return (
+          <div className="grid" style={{ gap: 6, border: '1px solid var(--line)', borderRadius: 11, padding: '10px 13px', background: 'var(--surface)' }}>
+            <div className="muted" style={{ fontSize: 11.5, fontFamily: 'var(--mono)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>By account</div>
+            {rows.map(([h, a]) => (
+              <div key={h || '?'}>
+                <div style={{ display: 'flex', gap: 8, fontSize: 12.5, alignItems: 'baseline' }}>
+                  <span style={{ fontFamily: 'var(--mono)' }}>{h ? `@${h}` : <span className="muted">account unknown</span>}</span>
+                  <span className="muted" style={{ fontSize: 11.5 }}>{a.clips} clip{a.clips === 1 ? '' : 's'}</span>
+                  <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums', fontWeight: 650 }}>{nf(a.views)}</span>
+                </div>
+                <div style={{ height: 4, borderRadius: 999, background: 'var(--surface-2)', overflow: 'hidden', marginTop: 3 }}>
+                  <div style={{ width: `${total > 0 ? Math.round((a.views / total) * 100) : 0}%`, height: '100%', background: p.color, opacity: 0.75 }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
       {open && groups.has(open) && (
         <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
           {groups.get(open).map((c) => {
