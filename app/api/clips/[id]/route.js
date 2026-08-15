@@ -139,9 +139,16 @@ export async function PATCH(req, { params }) {
   return NextResponse.json({ ok: false, error: 'Unknown action' }, { status: 400 });
 }
 
-/** DELETE — remove a clip entirely. */
+/** DELETE — remove a clip entirely, leaving a tombstone so the same video
+ *  can't quietly re-enter this cycle (clippers blocked, manager confirms). */
 export async function DELETE(_req, { params }) {
   if (!hasSession()) return NextResponse.json({ ok: false }, { status: 401 });
+  await query(
+    `insert into deleted_clips (cycle_id, normalized_key, url, platform, clipper_id)
+       select cycle_id, normalized_key, url, platform, clipper_id from clips where id = $1
+     on conflict (cycle_id, normalized_key) do update set deleted_at = now()`,
+    [params.id],
+  );
   await query(`delete from clips where id = $1`, [params.id]);
   return NextResponse.json({ ok: true });
 }

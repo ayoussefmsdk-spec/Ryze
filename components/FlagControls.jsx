@@ -16,6 +16,7 @@ const FLAG_LABELS = {
   engagement_suspect: ['engagement too low — bought views?', 'var(--crit)'],
   velocity_suspect: ['unnatural view spike', 'var(--crit)'],
   api_glitch: ['stats glitch — kept last good numbers (likely Apify, not the video)', 'var(--warn, #f6a64b)'],
+  previously_deleted: ['was deleted from this cycle before — re-added', 'var(--crit)'],
 };
 
 /**

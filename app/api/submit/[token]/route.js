@@ -40,7 +40,7 @@ export async function POST(req, { params }) {
         { status },
       );
     }
-    return NextResponse.json({ ok: false, error: result.error }, { status });
+    return NextResponse.json({ ok: false, code: result.code, error: result.error }, { status });
   }
 
   try { await fetchSingleClip(result.clip.id); } catch { /* non-fatal */ }

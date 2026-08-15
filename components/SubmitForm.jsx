@@ -32,6 +32,11 @@ export default function SubmitForm({ token }) {
           ? 'You already submitted this exact clip — it only counts once.'
           : 'This clip is already in this cycle — each video only counts once.',
       });
+    } else if (d.code === 'deleted_before') {
+      setMsg({
+        kind: 'err',
+        text: 'This clip was removed from this cycle by the manager — it can’t be submitted again.',
+      });
     } else {
       setMsg({ kind: 'err', text: d.error || 'Something went wrong — check the link and try again.' });
     }

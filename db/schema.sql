@@ -252,3 +252,29 @@ alter table clips add column if not exists miss_streak int not null default 0;
 alter table app_settings add column if not exists apify_ok_at timestamptz;
 alter table app_settings add column if not exists apify_error_at timestamptz;
 alter table app_settings add column if not exists apify_error text;
+-- Duplicate hard-guarantee: first flag any historical extra copies (all but the
+-- earliest per cycle+key), then enforce at the database level that a cycle can
+-- hold at most ONE un-flagged copy of a clip. Intentional manager re-adds carry
+-- the 'duplicate' flag, so they stay possible — silent doubles do not.
+update clips c set flags = (select array(select distinct unnest(c.flags || '{duplicate}'::text[])))
+ where not ('duplicate' = any(c.flags))
+   and exists (select 1 from clips e
+                where e.cycle_id = c.cycle_id and e.normalized_key = c.normalized_key and e.id <> c.id
+                  and (e.created_at < c.created_at or (e.created_at = c.created_at and e.id < c.id)));
+-- (drop + recreate keeps the predicate current across deploys)
+drop index if exists clips_one_per_cycle;
+create unique index if not exists clips_one_per_cycle
+  on clips (cycle_id, normalized_key)
+  where not ('duplicate' = any(flags)) and not ('duplicate' = any(dismissed_flags));
+-- Deleted-clip memory: deleting a clip leaves a tombstone so the same video
+-- can't quietly re-enter the cycle (clippers are blocked; managers confirm).
+create table if not exists deleted_clips (
+  id             uuid primary key default gen_random_uuid(),
+  cycle_id       uuid not null references cycles(id) on delete cascade,
+  normalized_key text not null,
+  url            text,
+  platform       text,
+  clipper_id     uuid,
+  deleted_at     timestamptz not null default now(),
+  unique (cycle_id, normalized_key)
+);

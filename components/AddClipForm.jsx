@@ -33,6 +33,11 @@ export default function AddClipForm({ cycleId, members }) {
           ? 'This clipper already submitted this clip. Add anyway?'
           : `⚠️ Already submitted by ${d.existing?.clipperName || 'another clipper'}. Add anyway (it will be flagged)?`,
       });
+    } else if (d.code === 'deleted_before') {
+      setMsg({
+        kind: 'dup',
+        text: '⚠️ You deleted this exact clip from this cycle before. Add it back (it will be flagged)?',
+      });
     } else {
       setMsg({ kind: 'err', text: d.error || 'Could not add the clip.' });
     }
