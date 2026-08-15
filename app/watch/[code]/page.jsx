@@ -62,7 +62,7 @@ export default async function WatchPage({ params }) {
   }
 
   const { cycle, showMoney } = res;
-  const [pay, series, clipsRes, postedSparse] = await Promise.all([
+  const [pay, series, clipsRes, postedSparse, aggRes] = await Promise.all([
     computeCyclePayouts(cycle.id),
     cycleDailySeries(cycle.id),
     query(
@@ -70,12 +70,23 @@ export default async function WatchPage({ params }) {
               c.thumbnail_url, c.caption, c.posted_at, c.created_at, cl.name as clipper_name
          from clips c join clippers cl on cl.id = c.clipper_id
         where c.cycle_id = $1 and c.status = 'approved'
-        order by c.views desc limit 200`,
+        order by c.views desc limit 1000`,
       [cycle.id],
     ),
     clipsPostedPerDay({ cycleId: cycle.id }),
+    // Truthful totals over ALL approved clips — never derived from a capped list.
+    query(
+      `select count(*)::int as approved,
+              coalesce(sum(coalesce(likes,0) + coalesce(comments,0))
+                filter (where likes is not null or comments is not null), 0)::bigint as inter,
+              coalesce(sum(views)
+                filter (where likes is not null or comments is not null), 0)::bigint as eng_views
+         from clips where cycle_id = $1 and status = 'approved'`,
+      [cycle.id],
+    ),
   ]);
   const clips = clipsRes.rows;
+  const agg = aggRes.rows[0];
 
   // Real calendar days from the cycle's start through today (or its end).
   const todayIso = new Date().toISOString().slice(0, 10);
@@ -96,19 +107,12 @@ export default async function WatchPage({ params }) {
     });
   } catch { /* the room renders fine without intel */ }
 
-  // Weighted engagement across clips that have real like/comment data.
-  let engInter = 0;
-  let engViews = 0;
-  for (const c of clips) {
-    if (c.likes == null && c.comments == null) continue;
-    engInter += Number(c.likes || 0) + Number(c.comments || 0);
-    engViews += Number(c.views || 0);
-  }
-  const avgEngagement = engViews > 0 ? engInter / engViews : null;
+  // Weighted engagement across ALL approved clips with real like/comment data.
+  const avgEngagement = Number(agg.eng_views) > 0 ? Number(agg.inter) / Number(agg.eng_views) : null;
 
   const tiles = [
     ['Total views', nf(pay.totalViews)],
-    ['Approved clips', clips.length],
+    ['Approved clips', nf(agg.approved)],
     ['Clippers working', pay.perClipper.length],
     ...(avgEngagement != null ? [['Engagement', formatEngagement(avgEngagement)]] : []),
     ...(showMoney ? [['Invested', formatCents(pay.totalPayoutCents)]] : []),

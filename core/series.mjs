@@ -20,16 +20,18 @@ function addDays(iso, n) {
  */
 export function fillDailySeries(series, { from = null, to = null } = {}) {
   if (!series || !series.length) return [];
-  let start = from || series[0].label;
+  // Explicit bounds are authoritative (e.g. the cycle window): one stray
+  // datapoint from months earlier must NOT stretch the chart's axis.
+  // Without explicit bounds, use the series' own range.
+  const start = from || series[0].label;
   let end = to || series[series.length - 1].label;
-  // Never cut off real data: widen bounds to include every datapoint.
-  if (series[0].label < start) start = series[0].label;
-  if (series[series.length - 1].label > end) end = series[series.length - 1].label;
   if (end < start) end = start;
 
   const byDay = new Map(series.map((p) => [p.label, Number(p.value)]));
   const out = [];
+  // Cumulative totals from before the window carry IN as the starting value.
   let last = 0;
+  for (const p of series) if (p.label < start) last = Number(p.value);
   let day = start;
   for (let i = 0; i < DAY_CAP; i++) {
     if (byDay.has(day)) last = byDay.get(day);
@@ -48,10 +50,10 @@ export function fillDailySeries(series, { from = null, to = null } = {}) {
 export function zeroFillDaily(series, { from = null, to = null } = {}) {
   if ((!series || !series.length) && !(from && to)) return [];
   const pts = series || [];
-  let start = from || pts[0].label;
+  // Explicit bounds clamp (counts outside the window are simply not in it);
+  // without them, the series' own range decides.
+  const start = from || pts[0].label;
   let end = to || pts[pts.length - 1].label;
-  if (pts.length && pts[0].label < start) start = pts[0].label;
-  if (pts.length && pts[pts.length - 1].label > end) end = pts[pts.length - 1].label;
   if (end < start) end = start;
 
   const byDay = new Map(pts.map((p) => [p.label, Number(p.value)]));

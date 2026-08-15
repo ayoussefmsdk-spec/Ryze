@@ -38,7 +38,7 @@ test('extends to the requested range; pre-data days are 0', () => {
   assert.equal(out[4].label, '2026-08-05');
 });
 
-test('never cuts off real datapoints even with narrower bounds', () => {
+test('explicit bounds clamp the axis — stray early points carry in, not stretch', () => {
   const out = fillDailySeries(
     [
       { label: '2026-08-01', value: 10 },
@@ -46,8 +46,26 @@ test('never cuts off real datapoints even with narrower bounds', () => {
     ],
     { from: '2026-08-03', to: '2026-08-04' },
   );
-  assert.equal(out[0].label, '2026-08-01');
-  assert.equal(out[out.length - 1].label, '2026-08-06');
+  // Window is exactly 03..04; the pre-window total (10) carries in as the base.
+  assert.deepEqual(out, [
+    { label: '2026-08-03', value: 10 },
+    { label: '2026-08-04', value: 10 },
+  ]);
+});
+
+test('zeroFillDaily clamps counts to explicit bounds', () => {
+  const out = zeroFillDaily(
+    [
+      { label: '2026-05-30', value: 2 }, // posted before the cycle — outside
+      { label: '2026-08-02', value: 3 },
+    ],
+    { from: '2026-08-01', to: '2026-08-03' },
+  );
+  assert.deepEqual(out, [
+    { label: '2026-08-01', value: 0 },
+    { label: '2026-08-02', value: 3 },
+    { label: '2026-08-03', value: 0 },
+  ]);
 });
 
 test('crosses month boundaries on real calendar dates', () => {
