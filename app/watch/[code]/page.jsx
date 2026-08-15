@@ -115,7 +115,6 @@ export default async function WatchPage({ params }) {
     ['Approved clips', nf(agg.approved)],
     ['Clippers working', pay.perClipper.length],
     ...(avgEngagement != null ? [['Engagement', formatEngagement(avgEngagement)]] : []),
-    ...(showMoney ? [['Invested', formatCents(pay.totalPayoutCents)]] : []),
   ];
 
   return (
@@ -149,7 +148,6 @@ export default async function WatchPage({ params }) {
             f.bestClip && ['Breakout clip', `${nf(f.bestClip.views)} views`, f.bestClip.handle ? `@${f.bestClip.handle}` : f.bestClip.clipper, 'var(--violet)'],
             f.deltaPct != null && ['vs last cycle', `${f.deltaPct >= 0 ? '▲' : '▼'} ${Math.abs(f.deltaPct)}%`, 'total reach', f.deltaPct >= 0 ? 'var(--good)' : 'var(--crit)'],
             showMoney && f.investedCents > 0 && ['Invested', formatCents(f.investedCents), f.costPer1kCents != null ? `${formatCents(f.costPer1kCents)} per 1k views` : null, 'var(--honey)'],
-            showMoney && intel.roi?.multiple != null && intel.roi.multiple >= 1.5 && ['Ad-spend value', formatCents(intel.roi.adEquivalentCents), `${intel.roi.multiple}× cheaper than ads`, 'var(--good)'],
           ].filter(Boolean);
           if (!cases.length) return null;
           return (
