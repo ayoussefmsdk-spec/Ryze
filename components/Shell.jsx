@@ -17,6 +17,7 @@ const NAV = [
     { href: '/analytics', label: 'Performance', icon: 'chart' },
     { href: '/fraud', label: 'Fraud radar', icon: 'shield' },
     { href: '/reports', label: 'Reports', icon: 'doc' },
+    { href: '/pitch', label: 'Pitch kit', icon: 'spark' },
     { href: '/system', label: 'System', icon: 'gear' },
   ] },
 ];
@@ -32,6 +33,7 @@ function Icon({ name }) {
     doc: <><path d="M6 2.5h8l4 4V21a.5.5 0 0 1-.5.5h-11A.5.5 0 0 1 6 21V3a.5.5 0 0 1 .5-.5Z" /><path d="M14 2.5V7h4.5M9 12h6M9 16h6" /></>,
     gear: <><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1" /></>,
     wallet: <><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h11A2.5 2.5 0 0 1 19 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 3 16.5Z" /><path d="M19 9.5h2.5v5H19a2.5 2.5 0 0 1 0-5Z" /><circle cx="19.5" cy="12" r="0.5" /></>,
+    spark: <><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8Z" /><path d="M18.5 15.5l.9 2.6 2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9Z" /></>,
   }[name];
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
