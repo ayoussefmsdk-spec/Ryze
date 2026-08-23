@@ -70,7 +70,12 @@ export default function ScanPanel({ cycleId, members, accountsByClipper = {} }) 
     rej.missing_hashtag ? `${rej.missing_hashtag} missing hashtag` : null,
     rej.outside_dates ? `${rej.outside_dates} outside dates` : null,
     rej.duplicate ? `${rej.duplicate} already in` : null,
+    rej.invalid ? `${rej.invalid} unreadable links` : null,
   ].filter(Boolean).join(' · ');
+  // Accounts that filled their whole quota — older posts exist beyond the horizon.
+  const atLimit = result?.ok && result.pulled
+    ? Object.entries(result.pulled).filter(([, count]) => count >= (result.perAccount || 0)).map(([k]) => k)
+    : [];
 
   return (
     <div className="card grid" style={{ gap: 12, maxWidth: 560 }}>
@@ -162,6 +167,26 @@ export default function ScanPanel({ cycleId, members, accountsByClipper = {} }) 
           {result.ok
             ? <>✓ Scanned {result.scanned} posts → <b style={{ color: 'var(--honey)' }}>{result.accepted} added</b>{rejParts ? ` (skipped: ${rejParts})` : ''} · scan cost ≈ ${(result.costCents / 100).toFixed(2)}</>
             : `✗ ${result.error}`}
+        </div>
+      )}
+
+      {/* Per-account problems — a missed clip should never be a mystery */}
+      {result?.ok && result.issues?.length > 0 && (
+        <div className="grid" style={{ gap: 4, border: '1px solid var(--warn, #f6a64b)', borderRadius: 10, padding: '9px 12px' }}>
+          <div style={{ fontSize: 12, fontFamily: 'var(--mono)', color: 'var(--warn, #f6a64b)', letterSpacing: '0.06em' }}>⚠ NOT FULLY SCANNED</div>
+          {result.issues.map((it, i) => (
+            <div key={i} style={{ fontSize: 12.5 }}>
+              <span style={{ fontFamily: 'var(--mono)' }}>{it.account}</span>
+              <span className="muted"> — {it.note}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {atLimit.length > 0 && (
+        <div className="muted" style={{ fontSize: 12 }}>
+          ℹ {atLimit.map((k) => k.split(':')[1] && `@${k.split(':')[1]}`).filter(Boolean).join(', ')} filled the whole
+          “last {result.perAccount}” quota — an older clip could sit beyond that. If one is missing, raise the post
+          count and rescan, or add it by link.
         </div>
       )}
 

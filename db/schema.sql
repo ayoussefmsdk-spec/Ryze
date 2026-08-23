@@ -278,3 +278,13 @@ create table if not exists deleted_clips (
   deleted_at     timestamptz not null default now(),
   unique (cycle_id, normalized_key)
 );
+-- Repair handles linked before input normalization existed: strip stray '@'
+-- and spaces so profile scans actually find these accounts. Rows whose cleaned
+-- form would collide with an existing link are left alone (manager resolves).
+update clipper_accounts a
+   set handle = lower(regexp_replace(regexp_replace(a.handle, '^@+', ''), '\s+', '', 'g'))
+ where a.handle <> lower(regexp_replace(regexp_replace(a.handle, '^@+', ''), '\s+', '', 'g'))
+   and not exists (
+     select 1 from clipper_accounts b
+      where b.platform = a.platform and b.id <> a.id
+        and b.handle = lower(regexp_replace(regexp_replace(a.handle, '^@+', ''), '\s+', '', 'g')));
