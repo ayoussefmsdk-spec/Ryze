@@ -26,7 +26,7 @@ export default function CycleActions({ cycleId, status, hasPaidPlatforms, endsOn
     setBusy(null);
     if (res.ok) {
       setResult(
-        `✓ ${d.checked} updated${d.failed ? ` · ${d.failed} flagged` : ''}${d.skipped ? ` · ${d.skipped} skipped` : ''}${d.dupesFlagged ? ` · ${d.dupesFlagged} duplicate${d.dupesFlagged > 1 ? 's' : ''} caught` : ''}${d.frozen ? ' · cycle froze (end date passed)' : ''}`,
+        `✓ ${d.checked} updated${d.failed ? ` · ${d.failed} flagged` : ''}${d.skipped ? ` · ${d.skipped} skipped${d.capInfo ? ` — daily paid-check cap hit (${d.capInfo.used}/${d.capInfo.cap} used today; stalest clips went first — raise the cap in System or wait for tomorrow)` : ''}` : ''}${d.dupesFlagged ? ` · ${d.dupesFlagged} duplicate${d.dupesFlagged > 1 ? 's' : ''} caught` : ''}${d.frozen ? ' · cycle froze (end date passed)' : ''}`,
       );
       router.refresh();
     } else {
