@@ -99,7 +99,14 @@ export function normalizeInstagram(item) {
   const play = item?.videoPlayCount;
   const view = item?.videoViewCount;
   const ig = item?.igPlayCount;
-  const views = Math.max(intOrZero(play), intOrZero(view), intOrZero(ig));
+  // Wide net: the actor renames/moves the plays field across versions
+  // (ig_play_count, playCount, …). Take the largest of ANY numeric top-level
+  // field whose name says play/view — whatever it's called this month.
+  let widest = 0;
+  for (const [k, v] of Object.entries(item || {})) {
+    if (/play|view/i.test(k) && typeof v === 'number' && Number.isFinite(v) && v > widest) widest = Math.trunc(v);
+  }
+  const views = Math.max(intOrZero(play), intOrZero(view), intOrZero(ig), widest);
 
   const tags = Array.isArray(item?.hashtags)
     ? item.hashtags.map((h) => String(h).toLowerCase()).filter(Boolean)

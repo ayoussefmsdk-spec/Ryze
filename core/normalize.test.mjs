@@ -196,3 +196,13 @@ test('IG under-reported views (likes > views) raise ig_suspect', () => {
   const z = normalizeInstagram({ type: 'Video', likesCount: 10 });
   assert.deepEqual(z.addedFlags, ['ig_suspect']);
 });
+
+test('IG wide-net metric reader catches renamed plays fields', () => {
+  const s = normalizeInstagram({ type: 'Video', videoViewCount: 637, likesCount: 5, ig_play_count: 300000 });
+  assert.equal(s.views, 300000);
+  const s2 = normalizeInstagram({ type: 'Video', videoViewCount: 637, playCount: 287000 });
+  assert.equal(s2.views, 287000);
+  // duration-like or string fields never leak into views
+  const s3 = normalizeInstagram({ type: 'Video', videoViewCount: 637, videoUrl: 'https://x/999999.mp4', viewerNote: 'abc' });
+  assert.equal(s3.views, 637);
+});
