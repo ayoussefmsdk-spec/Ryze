@@ -11,17 +11,28 @@ export default function ClipActions({ clip, compact = false }) {
   const [likes, setLikes] = useState(clip.likes == null ? '' : String(clip.likes));
   const [comments, setComments] = useState(clip.comments == null ? '' : String(clip.comments));
   const [err, setErr] = useState('');
+  const [note, setNote] = useState('');
 
   async function act(body) {
     setBusy(true);
     setErr('');
+    setNote('');
     const res = await fetch(`/api/clips/${clip.id}`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     });
+    const d = await res.json().catch(() => ({}));
     setBusy(false);
-    if (!res.ok) setErr((await res.json().catch(() => ({}))).error || 'Failed');
+    if (!res.ok) setErr(d.error || 'Failed');
+    else if (body.action === 'recheck' && d.clip) {
+      // A recheck must never be silent: say exactly what the platform answered.
+      const nv = Number(d.clip.views);
+      const ov = Number(clip.views);
+      setNote(nv === ov
+        ? `✓ checked — the source reported ${nv.toLocaleString('en-US')} views again (no change). If the real number is higher, the fetch source is under-reporting this post.`
+        : `✓ updated: ${ov.toLocaleString('en-US')} → ${nv.toLocaleString('en-US')} views`);
+    }
     router.refresh();
   }
 
@@ -76,6 +87,7 @@ export default function ClipActions({ clip, compact = false }) {
         <button className="btn secondary" style={{ ...btn, color: 'var(--crit)' }} disabled={busy} onClick={del}>Delete</button>
       </div>
       {err && <div style={{ color: 'var(--crit)', fontSize: 12.5 }}>{err}</div>}
+      {note && <div style={{ color: 'var(--good)', fontSize: 12.5 }}>{note}</div>}
     </div>
   );
 }
