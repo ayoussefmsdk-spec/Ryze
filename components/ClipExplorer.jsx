@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import ClipActions from './ClipActions.jsx';
 import FlagBadges from './FlagBadges.jsx';
+import { parseClip } from '../core/platform.mjs';
 
 const PLATFORM_ICON = { youtube: '▶', tiktok: '♪', instagram: '◎', twitter: '𝕏', other: '∙' };
 const nf = (n) => Number(n || 0).toLocaleString('en-US');
@@ -21,9 +22,15 @@ export default function ClipExplorer({ clips, clipPayouts = {}, isPot = false })
     if (status !== 'all' && c.status !== status) return false;
     if (flaggedOnly && !(c.flags?.length > 0)) return false;
     if (q.trim()) {
-      const needle = q.trim().toLowerCase();
-      const hay = `${c.clipper_name} ${c.account_handle || ''} ${c.url} ${c.caption || ''}`.toLowerCase();
-      if (!hay.includes(needle)) return false;
+      // A pasted clip link matches its exact copy (same video id, any URL form).
+      const qKey = q.includes('/') ? parseClip(q.trim()).key : null;
+      if (qKey) {
+        if (parseClip(c.url).key !== qKey) return false;
+      } else {
+        const needle = q.trim().toLowerCase();
+        const hay = `${c.clipper_name} ${c.account_handle || ''} ${c.url} ${c.caption || ''}`.toLowerCase();
+        if (!hay.includes(needle)) return false;
+      }
     }
     return true;
   }), [clips, platform, status, flaggedOnly, q]);

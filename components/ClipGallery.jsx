@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import ClipActions from './ClipActions.jsx';
 import FlagControls from './FlagControls.jsx';
+import { parseClip } from '../core/platform.mjs';
 
 const PLAT = {
   youtube: { label: 'YouTube', glyph: '▶', color: '#f6524f' },
@@ -232,9 +233,16 @@ export default function ClipGallery({ clips, clipPayouts = {}, isPot = false, ca
       if (from && day < from) return false;
       if (to && day > to) return false;
       if (q.trim()) {
-        const needle = q.trim().toLowerCase();
-        const hay = `${c.clipper_name} ${c.account_handle || ''} ${c.url} ${c.caption || ''}`.toLowerCase();
-        if (!hay.includes(needle)) return false;
+        // Pasting a clip LINK finds its exact copy — same video, any URL form,
+        // whoever it belongs to. Anything else stays a plain text search.
+        const qKey = q.includes('/') ? parseClip(q.trim()).key : null;
+        if (qKey) {
+          if (parseClip(c.url).key !== qKey) return false;
+        } else {
+          const needle = q.trim().toLowerCase();
+          const hay = `${c.clipper_name} ${c.account_handle || ''} ${c.url} ${c.caption || ''}`.toLowerCase();
+          if (!hay.includes(needle)) return false;
+        }
       }
       return true;
     });
@@ -253,7 +261,7 @@ export default function ClipGallery({ clips, clipPayouts = {}, isPot = false, ca
     <div className="grid" style={{ gap: 12 }}>
       {/* Filter bar */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <input className="field" style={{ flex: 1, minWidth: 160, maxWidth: 260 }} placeholder="Search @handle, clipper, link…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input className="field" style={{ flex: 1, minWidth: 160, maxWidth: 260 }} placeholder="Search — or paste a clip link to find its exact copy" value={q} onChange={(e) => setQ(e.target.value)} />
         <select className="field" style={{ width: 128 }} value={platform} onChange={(e) => setPlatform(e.target.value)}>
           <option value="all">All platforms</option>
           {platforms.map((p) => <option key={p} value={p}>{PLAT[p]?.label || p}</option>)}
