@@ -92,10 +92,14 @@ export function normalizeTikTok(item) {
 // best available value and RAISE ig_suspect whenever it looks untrustworthy, so
 // the clip is flagged for manual verification instead of paid on a bad number.
 export function normalizeInstagram(item) {
+  // IG reports several view-ish numbers (plays vs the older "views" metric,
+  // and igPlayCount on some actor versions) and any of them can be missing or
+  // absurdly low on a given fetch. Take the LARGEST — paying a 300k reel as
+  // "600 views" because the plays field was absent is the real failure mode.
   const play = item?.videoPlayCount;
   const view = item?.videoViewCount;
-  const rawViews = play != null ? play : view;
-  const views = intOrZero(rawViews);
+  const ig = item?.igPlayCount;
+  const views = Math.max(intOrZero(play), intOrZero(view), intOrZero(ig));
 
   const tags = Array.isArray(item?.hashtags)
     ? item.hashtags.map((h) => String(h).toLowerCase()).filter(Boolean)
@@ -104,7 +108,13 @@ export function normalizeInstagram(item) {
   const flags = [];
   const isVideo = item?.type === 'Video' || item?.productType === 'clips';
   // Suspect when: it's a video/reel but views are missing or zero.
-  if (isVideo && (rawViews == null || views === 0)) flags.push('ig_suspect');
+  if (isVideo && (play == null && view == null && ig == null || views === 0)) flags.push('ig_suspect');
+  // Suspect when: more likes than views — physically impossible, so the view
+  // count is under-reported and needs manual verification.
+  const likesNum = countOrNull(item?.likesCount);
+  if (isVideo && views > 0 && likesNum != null && likesNum > views && !flags.includes('ig_suspect')) {
+    flags.push('ig_suspect');
+  }
 
   return {
     views,

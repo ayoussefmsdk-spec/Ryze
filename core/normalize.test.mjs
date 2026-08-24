@@ -179,3 +179,20 @@ test('anomaly: bad inputs are never flagged', () => {
   assert.equal(classifyStatsAnomaly({ prevViews: null, newViews: 0 }), null);
   assert.equal(classifyStatsAnomaly({ prevViews: 1000, newViews: undefined }), null);
 });
+
+test('IG views take the LARGEST metric — plays absent must not collapse to tiny views', () => {
+  const s = normalizeInstagram({ type: 'Video', videoPlayCount: null, videoViewCount: 600, igPlayCount: 300000, likesCount: 9000 });
+  assert.equal(s.views, 300000);
+  assert.deepEqual(s.addedFlags, []);
+  const s2 = normalizeInstagram({ type: 'Video', videoPlayCount: 287000, videoViewCount: 600 });
+  assert.equal(s2.views, 287000);
+});
+
+test('IG under-reported views (likes > views) raise ig_suspect', () => {
+  const s = normalizeInstagram({ type: 'Video', videoViewCount: 600, likesCount: 9000 });
+  assert.equal(s.views, 600);
+  assert.ok(s.addedFlags.includes('ig_suspect'));
+  // and the flag is not duplicated when zero-views already flagged
+  const z = normalizeInstagram({ type: 'Video', likesCount: 10 });
+  assert.deepEqual(z.addedFlags, ['ig_suspect']);
+});

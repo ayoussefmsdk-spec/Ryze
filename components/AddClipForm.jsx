@@ -27,11 +27,13 @@ export default function AddClipForm({ cycleId, members }) {
       setMsg({ kind: 'ok', text: '✓ Clip added to Pending.' });
       router.refresh();
     } else if (d.code === 'duplicate') {
+      const st = d.existing?.status ? ` — status: ${d.existing.status}` : '';
       setMsg({
         kind: 'dup',
+        link: d.existing?.url || null,
         text: d.existing?.sameClipper
-          ? 'This clipper already submitted this clip. Add anyway?'
-          : `⚠️ Already submitted by ${d.existing?.clipperName || 'another clipper'}. Add anyway (it will be flagged)?`,
+          ? `This clipper already submitted this clip${st}. Add anyway?`
+          : `⚠️ Already submitted by ${d.existing?.clipperName || 'another clipper'}${st}. Add anyway (it will be flagged)?`,
       });
     } else if (d.code === 'deleted_before') {
       setMsg({
@@ -58,6 +60,9 @@ export default function AddClipForm({ cycleId, members }) {
       {msg && (
         <div style={{ fontSize: 13.5, color: msg.kind === 'ok' ? 'var(--good)' : msg.kind === 'err' ? 'var(--crit)' : 'var(--text)' }}>
           {msg.text}
+          {msg.kind === 'dup' && msg.link && (
+            <a href={msg.link} target="_blank" rel="noreferrer" style={{ marginLeft: 8, fontSize: 12.5 }}>see the existing one ↗</a>
+          )}
           {msg.kind === 'dup' && (
             <span style={{ marginLeft: 10, display: 'inline-flex', gap: 8 }}>
               <button className="btn secondary" style={{ padding: '4px 10px' }} type="button" onClick={(e) => submit(e, true)}>Yes, add flagged</button>
