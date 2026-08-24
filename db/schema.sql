@@ -288,3 +288,12 @@ update clipper_accounts a
      select 1 from clipper_accounts b
       where b.platform = a.platform and b.id <> a.id
         and b.handle = lower(regexp_replace(regexp_replace(a.handle, '^@+', ''), '\s+', '', 'g')));
+-- Backfill: clips stored with no account handle (manual adds whose stat fetch
+-- failed) hide from @handle searches. Where the clipper has exactly ONE linked
+-- account on that platform, adopt it; real fetches overwrite later anyway.
+update clips c
+   set account_handle = (select min(a.handle) from clipper_accounts a
+                          where a.clipper_id = c.clipper_id and a.platform = c.platform)
+ where c.account_handle is null
+   and (select count(*) from clipper_accounts a
+         where a.clipper_id = c.clipper_id and a.platform = c.platform) = 1;
