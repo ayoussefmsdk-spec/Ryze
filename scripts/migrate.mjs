@@ -40,18 +40,29 @@ const pool = getPool();
 let created = 0;
 let skipped = 0;
 
+let warned = 0;
 for (const stmt of statements) {
   try {
     await pool.query(stmt);
     created++;
   } catch (err) {
-    if (/already exists|duplicate/i.test(err.message)) {
+    if (/already exists|duplicate object|duplicate key/i.test(err.message)) {
       skipped++;
-    } else {
-      console.error('migration statement failed:\n', stmt.slice(0, 120), '\n', err.message);
-      await pool.end();
-      process.exit(1);
+      continue;
     }
+    // Data repairs and index rebuilds are best-effort: production data can
+    // differ from what a fix expects, and a failed repair must NEVER
+    // crash-loop the whole app. Only true SCHEMA statements stay fatal.
+    const head = stmt.trim().slice(0, 40).toLowerCase();
+    const optional = /^(update|delete|insert|drop index|create index|create unique index)/.test(head);
+    if (optional) {
+      warned++;
+      console.error('⚠ optional migration statement failed (app continues):\n', stmt.slice(0, 160), '\n', err.message);
+      continue;
+    }
+    console.error('migration statement failed:\n', stmt.slice(0, 160), '\n', err.message);
+    await pool.end();
+    process.exit(1);
   }
 }
 
