@@ -5,6 +5,47 @@ import ClipActions from './ClipActions.jsx';
 import FlagControls from './FlagControls.jsx';
 import { parseClip } from '../core/platform.mjs';
 
+/** When a pasted link matches nothing in THIS list, ask the server where that
+ *  video actually lives — any cycle, any clipper, or its deletion record. */
+function LocateAnswer({ q }) {
+  const [data, setData] = useState(null);
+  const key = q.includes('/') ? parseClip(q.trim()).key : null;
+
+  useEffect(() => {
+    setData(null);
+    if (!key) return undefined;
+    let dead = false;
+    fetch(`/api/clips/locate?url=${encodeURIComponent(q.trim())}`)
+      .then((r) => r.json())
+      .then((d) => { if (!dead) setData(d); })
+      .catch(() => {});
+    return () => { dead = true; };
+  }, [key, q]);
+
+  if (!key || !data?.ok) return null;
+  if (!data.copies.length && !data.tombstones.length) {
+    return <div className="muted" style={{ fontSize: 13 }}>🔍 This video isn&apos;t anywhere in the app — no copy in any cycle, never deleted. It can be added.</div>;
+  }
+  return (
+    <div className="grid" style={{ gap: 5, border: '1px solid var(--honey)', borderRadius: 10, padding: '10px 13px', fontSize: 13 }}>
+      <div style={{ fontFamily: 'var(--mono)', fontSize: 11.5, color: 'var(--honey)', letterSpacing: '0.06em' }}>🔍 FOUND — here&apos;s where this exact video lives</div>
+      {data.copies.map((c) => (
+        <div key={c.clipId}>
+          In <b>{c.campaign} · <a href={`/cycle/${c.cycleId}`}>{c.cycle}</a></b> under <b>{c.clipper}</b>
+          <span className="muted"> — {c.status} · {Number(c.views).toLocaleString('en-US')} views</span>
+          {' '}<a href={c.url} target="_blank" rel="noreferrer">open ↗</a>
+        </div>
+      ))}
+      {data.tombstones.map((t, i) => (
+        <div key={i}>
+          Was <b style={{ color: 'var(--crit)' }}>deleted</b> from <b>{t.campaign} · <a href={`/cycle/${t.cycleId}`}>{t.cycle}</a></b>
+          <span className="muted"> on {new Date(t.deletedAt).toLocaleDateString()} — re-adding it needs the explicit confirm.</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const PLAT = {
   youtube: { label: 'YouTube', glyph: '▶', color: '#f6524f' },
   tiktok: { label: 'TikTok', glyph: '♪', color: '#2ad4c8' },
@@ -289,6 +330,7 @@ export default function ClipGallery({ clips, clipPayouts = {}, isPot = false, ca
       </div>
 
       {filtered.length === 0 && <div className="muted" style={{ fontSize: 14, padding: '10px 0' }}>No clips match these filters.</div>}
+      {filtered.length === 0 && <LocateAnswer q={q} />}
 
       {/* Card grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(168px, 1fr))', gap: 12 }}>
