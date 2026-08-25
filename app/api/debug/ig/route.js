@@ -24,14 +24,14 @@ export async function GET(req) {
     if (Array.isArray(v)) return `[array of ${v.length}]`;
     return `{object: ${Object.keys(v).slice(0, 12).join(',')}}`;
   };
-  const run = async (resultsType) => {
+  const runActor = async (actorId, input) => {
     try {
       const res = await fetch(
-        `https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${token}&timeout=120`,
+        `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${token}&timeout=120`,
         {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ directUrls: [url], resultsType, resultsLimit: 1, addParentData: false }),
+          body: JSON.stringify(input),
           signal: AbortSignal.timeout(150000),
         },
       );
@@ -45,7 +45,41 @@ export async function GET(req) {
       return { error: String(err.message || err).slice(0, 300) };
     }
   };
+  const run = (resultsType) =>
+    runActor(actor, { directUrls: [url], resultsType, resultsLimit: 1, addParentData: false });
 
   const [details, posts] = await Promise.all([run('details'), run('posts')]);
-  return NextResponse.json({ ok: true, url, actor, details, posts });
+
+  // Fresh-data hunt: direct-post scrapes can get a STALE cached snapshot of a
+  // post (day-zero views/likes). Test every other route that might see the
+  // CURRENT numbers, so the fix targets whichever source is actually fresh.
+  const short = (url.match(/\/(?:reel|reels|p|tv)\/([A-Za-z0-9_-]+)/) || [])[1] || '';
+  const owner = details?.items?.[0]?.ownerUsername || posts?.items?.[0]?.ownerUsername || null;
+  const pickMatch = (r) => {
+    if (!r?.items) return r;
+    const match = r.items.find((it) => String(it.url || it.inputUrl || '').includes(short))
+      || (r.items.find((it) => it.shortCode === short));
+    return {
+      matchingPost: match || `not in the first ${r.items.length} items`,
+      sample: r.items.slice(0, 2).map((it) => ({
+        url: it.url || it.inputUrl, views: it.videoPlayCount ?? it.videoViewCount, likes: it.likesCount,
+      })),
+    };
+  };
+  const [profileGrid, reelsActor, apiScraper] = owner
+    ? await Promise.all([
+      runActor(actor, {
+        directUrls: [`https://www.instagram.com/${owner}/`],
+        resultsType: 'posts', resultsLimit: 12, addParentData: false,
+      }).then(pickMatch),
+      runActor(process.env.APIFY_INSTAGRAM_REELS_ACTOR || 'apify~instagram-reel-scraper', {
+        username: [owner], resultsLimit: 12,
+      }).then(pickMatch),
+      runActor('apify~instagram-api-scraper', {
+        directUrls: [url], resultsType: 'posts', resultsLimit: 1,
+      }).then(pickMatch),
+    ])
+    : [null, null, null];
+
+  return NextResponse.json({ ok: true, url, actor, details, posts, profileGrid, reelsActor, apiScraper });
 }
