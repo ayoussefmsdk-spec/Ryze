@@ -24,15 +24,15 @@ export async function GET(req) {
     if (Array.isArray(v)) return `[array of ${v.length}]`;
     return `{object: ${Object.keys(v).slice(0, 12).join(',')}}`;
   };
-  const runActor = async (actorId, input) => {
+  const runActor = async (actorId, input, timeoutSec = 120) => {
     try {
       const res = await fetch(
-        `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${token}&timeout=120`,
+        `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${token}&timeout=${timeoutSec}`,
         {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify(input),
-          signal: AbortSignal.timeout(150000),
+          signal: AbortSignal.timeout((timeoutSec + 40) * 1000),
         },
       );
       if (!res.ok) return { error: `${res.status}: ${(await res.text().catch(() => '')).slice(0, 300)}` };
@@ -74,12 +74,35 @@ export async function GET(req) {
       }).then(pickMatch),
       runActor(process.env.APIFY_INSTAGRAM_REELS_ACTOR || 'apify~instagram-reel-scraper', {
         username: [owner], resultsLimit: 12,
-      }).then(pickMatch),
+      }, 280).then(pickMatch),
       runActor('apify~instagram-api-scraper', {
         directUrls: [url], resultsType: 'posts', resultsLimit: 1,
       }).then(pickMatch),
     ])
     : [null, null, null];
 
-  return NextResponse.json({ ok: true, url, actor, details, posts, profileGrid, reelsActor, apiScraper });
+  // Trial ANY store actor: append &actor=someuser~actor-name to the debug URL.
+  // Input schemas differ per actor, so several common shapes are tried until
+  // one returns items — the result names the shape that worked.
+  const customActor = new URL(req.url).searchParams.get('actor');
+  let custom = null;
+  if (customActor && /^[\w.-]+~[\w-]+$/.test(customActor)) {
+    const shapes = [
+      { directUrls: [url], resultsType: 'posts', resultsLimit: 1 },
+      { directUrls: [url], resultsLimit: 1 },
+      { postUrls: [url] },
+      { urls: [url] },
+      { reelUrls: [url] },
+      { startUrls: [{ url }] },
+    ];
+    const attempts = [];
+    for (const input of shapes) {
+      const r = await runActor(customActor, input, 180);
+      if (r.items?.length) { custom = { actor: customActor, workingInput: Object.keys(input)[0], ...pickMatch(r) }; break; }
+      attempts.push({ input: Object.keys(input)[0], error: String(r.error || 'no items').slice(0, 140) });
+    }
+    if (!custom) custom = { actor: customActor, note: 'no input shape returned items', attempts };
+  }
+
+  return NextResponse.json({ ok: true, url, actor, details, posts, profileGrid, reelsActor, apiScraper, custom });
 }
