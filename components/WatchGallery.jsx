@@ -21,7 +21,13 @@ const engOf = (c) => {
   return null;
 };
 const engFmt = (c) => { const e = engOf(c); return e == null ? '—' : `${(e * 100).toFixed(1)}%`; };
-const postDay = (c) => String(c.posted_at || c.created_at || '').slice(0, 10);
+// Robust ISO day (posted_at may be a Date object or any date string).
+const postDay = (c) => {
+  const raw = c.posted_at || c.created_at;
+  if (!raw) return '';
+  const d = raw instanceof Date ? raw : new Date(raw);
+  return Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
+};
 
 /* ---- analytics chart (same look as the manager's) ---- */
 const SERIES = [

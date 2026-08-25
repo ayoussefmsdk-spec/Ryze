@@ -211,7 +211,7 @@ export default async function WatchPage({ params }) {
             id: c.id, platform: c.platform, url: c.url, account_handle: c.account_handle,
             views: Number(c.views), likes: c.likes, comments: c.comments,
             engagement: c.engagement, thumbnail_url: c.thumbnail_url,
-            caption: c.caption, posted_at: c.posted_at ? String(c.posted_at) : null,
+            caption: c.caption, posted_at: c.posted_at ? new Date(c.posted_at).toISOString() : null,
             created_at: String(c.created_at), clipper_name: c.clipper_name,
           }))} />
         )}

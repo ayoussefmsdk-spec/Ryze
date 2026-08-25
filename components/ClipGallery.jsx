@@ -62,7 +62,15 @@ const nf = (n) => Number(n || 0).toLocaleString('en-US');
 const nfc = (n) => new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(n || 0));
 const money = (c) => `$${(Math.round(c) / 100).toFixed(2)}`;
 const eng = (f) => (f == null ? '—' : `${(Number(f) * 100).toFixed(1)}%`);
-const postDay = (c) => String(c.posted_at || c.created_at).slice(0, 10);
+// Robust ISO day: posted_at can arrive as a Date OBJECT (pg → RSC props), and
+// String(Date) is "Mon Aug 25 2026…" — slicing that gave weekday garbage that
+// silently broke the "Newest post" sort and the date filters.
+const postDay = (c) => {
+  const raw = c.posted_at || c.created_at;
+  if (!raw) return '';
+  const d = raw instanceof Date ? raw : new Date(raw);
+  return Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
+};
 /** Per-post engagement, computed live from likes+comments when the stored value is missing. */
 const engOf = (c) => {
   if (c.engagement != null) return Number(c.engagement);
@@ -371,6 +379,7 @@ export default function ClipGallery({ clips, clipPayouts = {}, isPot = false, ca
                     {c.comments != null && <span>💬 {nfc(c.comments)}</span>}
                     <span style={{ color: engOf(c) != null ? 'var(--honey)' : 'var(--text-3)' }}>{eng(engOf(c))}</span>
                   </div>
+                  <div className="muted" style={{ fontSize: 11, fontFamily: 'var(--mono)' }}>{postDay(c)}</div>
                   {!isPot && clipPayouts[c.id] != null && c.status === 'approved' && (
                     <div style={{ fontSize: 12.5, color: 'var(--honey)', fontWeight: 650 }}>{money(clipPayouts[c.id])}</div>
                   )}
