@@ -21,9 +21,14 @@ export default async function ReportPage({ params }) {
   if (!cycle) notFound();
 
   const p = await computeCyclePayouts(params.id);
+  // Partial payouts are normal: sum ALL installments per clipper so the report
+  // says exactly how much was paid, not just that "a" payment exists.
   const paid = new Map(
-    (await query(`select clipper_id, amount_cents, paid_at from payouts where cycle_id = $1`, [params.id]))
-      .rows.map((r) => [r.clipper_id, r]),
+    (await query(
+      `select clipper_id, coalesce(sum(amount_cents),0)::bigint as paid_cents, max(paid_at) as last_paid_at
+         from payouts where cycle_id = $1 group by clipper_id`,
+      [params.id],
+    )).rows.map((r) => [r.clipper_id, { paidCents: Number(r.paid_cents), lastAt: r.last_paid_at }]),
   );
 
   return (
@@ -84,7 +89,13 @@ export default async function ReportPage({ params }) {
                 <td className="rpt-num">{c.clipCount}</td>
                 <td className="rpt-num">{nfmt(c.views)}</td>
                 <td className="rpt-num">{formatCents(c.payoutCents)}</td>
-                <td>{pd ? `paid ${new Date(pd.paid_at).toLocaleDateString()}` : 'unpaid'}</td>
+                <td>
+                  {!pd || pd.paidCents <= 0
+                    ? 'unpaid'
+                    : pd.paidCents >= c.payoutCents
+                      ? `paid ${formatCents(pd.paidCents)} · ${new Date(pd.lastAt).toLocaleDateString()}`
+                      : `paid ${formatCents(pd.paidCents)} of ${formatCents(c.payoutCents)} · ${new Date(pd.lastAt).toLocaleDateString()}`}
+                </td>
               </tr>
             );
           })}
