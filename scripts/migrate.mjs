@@ -37,6 +37,24 @@ function splitStatements(text) {
 
 const statements = splitStatements(sql);
 const pool = getPool();
+
+// The database may still be booting (or recovering) when the app starts —
+// wait for it instead of crash-looping. Up to ~2 minutes, then give up loudly.
+for (let attempt = 1; ; attempt++) {
+  try {
+    await pool.query('select 1');
+    break;
+  } catch (err) {
+    if (attempt >= 20) {
+      console.error('database unreachable after ~2 minutes:', err.message);
+      await pool.end();
+      process.exit(1);
+    }
+    console.log(`[migrate] database not ready (attempt ${attempt}/20) — retrying in 6s: ${err.message}`);
+    await new Promise((r) => setTimeout(r, 6000));
+  }
+}
+
 let created = 0;
 let skipped = 0;
 
