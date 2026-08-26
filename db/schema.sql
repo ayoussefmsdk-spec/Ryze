@@ -297,3 +297,4 @@ update clips c
  where c.account_handle is null
    and (select count(*) from clipper_accounts a
          where a.clipper_id = c.clipper_id and a.platform = c.platform) = 1;
+alter table app_settings add column if not exists last_prune_on date;
