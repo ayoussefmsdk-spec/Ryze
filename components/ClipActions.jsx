@@ -26,12 +26,20 @@ export default function ClipActions({ clip, compact = false }) {
     setBusy(false);
     if (!res.ok) setErr(d.error || 'Failed');
     else if (body.action === 'recheck' && d.clip) {
-      // A recheck must never be silent: say exactly what the platform answered.
+      // A recheck must never be silent — and never claim the source "answered"
+      // when the fetch actually FAILED (fetch_failed / removed flag came back).
       const nv = Number(d.clip.views);
       const ov = Number(clip.views);
-      setNote(nv === ov
-        ? `✓ checked — the source reported ${nv.toLocaleString('en-US')} views again (no change). If the real number is higher, the fetch source is under-reporting this post.`
-        : `✓ updated: ${ov.toLocaleString('en-US')} → ${nv.toLocaleString('en-US')} views`);
+      const failedFlag = (d.clip.flags || []).find((f) => f === 'fetch_failed' || f === 'removed');
+      if (failedFlag && nv === ov) {
+        setErr(failedFlag === 'removed'
+          ? '✗ the source says this post doesn’t exist (anymore) — check the link.'
+          : '✗ check FAILED — the source didn’t return this post. Numbers are unchanged, not confirmed.');
+      } else {
+        setNote(nv === ov
+          ? `✓ checked — the source reported ${nv.toLocaleString('en-US')} views again (no change). If the real number is higher, the fetch source is under-reporting this post.`
+          : `✓ updated: ${ov.toLocaleString('en-US')} → ${nv.toLocaleString('en-US')} views`);
+      }
     }
     router.refresh();
   }
