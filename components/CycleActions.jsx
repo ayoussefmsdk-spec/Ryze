@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-export default function CycleActions({ cycleId, status, hasPaidPlatforms, endsOn }) {
+export default function CycleActions({ cycleId, status, hasPaidPlatforms, hasFacebook, endsOn }) {
   const router = useRouter();
   const [busy, setBusy] = useState(null); // 'free' | 'all' | 'toggle' | 'revive'
   const [result, setResult] = useState('');
@@ -66,12 +66,19 @@ export default function CycleActions({ cycleId, status, hasPaidPlatforms, endsOn
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {!frozen && (
           <>
-            <button className="btn" disabled={busy !== null} onClick={() => check('all')}>
+            <button className="btn" disabled={busy !== null} onClick={() => check('all')}
+              title="YouTube + TikTok + Instagram. Facebook is never included — it has its own button.">
               {busy === 'all' ? 'Checking… (TikTok/IG can take a minute)' : 'Check now — all platforms'}
             </button>
             {hasPaidPlatforms && (
               <button className="btn secondary" disabled={busy !== null} onClick={() => check('free')}>
                 {busy === 'free' ? 'Checking…' : 'YouTube only (free)'}
+              </button>
+            )}
+            {hasFacebook && (
+              <button className="btn secondary" disabled={busy !== null} onClick={() => check('facebook')}
+                title="Checks ONLY the Facebook clips in this cycle — nothing else runs, nothing else spends.">
+                {busy === 'facebook' ? 'Checking Facebook…' : 'Facebook only'}
               </button>
             )}
           </>
