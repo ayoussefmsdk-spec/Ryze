@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import ClipActions from './ClipActions.jsx';
 import FlagControls from './FlagControls.jsx';
 
-const PLATFORM_ICON = { youtube: '▶', tiktok: '♪', instagram: '◎', twitter: '𝕏', other: '∙' };
+const PLATFORM_ICON = { youtube: '▶', tiktok: '♪', instagram: '◎', facebook: 'ⓕ', twitter: '𝕏', other: '∙' };
 const nf = (n) => Number(n || 0).toLocaleString('en-US');
 const eng = (f) => (f == null ? '—' : `${(Number(f) * 100).toFixed(1)}%`);
 

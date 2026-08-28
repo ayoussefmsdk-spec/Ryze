@@ -4,7 +4,7 @@ import { query } from '../../../../lib/db.mjs';
 import { verifyAccountExists } from '../../../../lib/verifyAccount.mjs';
 import { normalizeHandleInput } from '../../../../core/platform.mjs';
 
-const PLATFORMS = ['youtube', 'tiktok', 'instagram', 'twitter', 'other'];
+const PLATFORMS = ['youtube', 'tiktok', 'instagram', 'facebook', 'twitter', 'other'];
 
 /** PATCH — update clipper details, or add/remove a linked account. */
 export async function PATCH(req, { params }) {

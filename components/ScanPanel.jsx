@@ -3,8 +3,8 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-const PLAT_GLYPH = { youtube: '▶', tiktok: '♪', instagram: '◎', twitter: '𝕏', other: '∙' };
-const SCANNABLE = new Set(['youtube', 'tiktok', 'instagram']);
+const PLAT_GLYPH = { youtube: '▶', tiktok: '♪', instagram: '◎', facebook: 'ⓕ', twitter: '𝕏', other: '∙' };
+const SCANNABLE = new Set(['youtube', 'tiktok', 'instagram', 'facebook']);
 
 export default function ScanPanel({ cycleId, members, accountsByClipper = {} }) {
   const router = useRouter();
@@ -85,7 +85,9 @@ export default function ScanPanel({ cycleId, members, accountsByClipper = {} }) 
       </div>
       <p className="muted" style={{ fontSize: 13, margin: 0 }}>
         Pulls recent posts from the accounts you pick, keeps only the ones matching this cycle's
-        hashtag &amp; dates, skips anything already added. YouTube is free; TikTok/IG cost fractions of a cent per post.
+        hashtag &amp; dates, and refreshes the stats of clips already in — so a re-scan is also a free stats
+        update. YouTube is free; TikTok/IG/Facebook cost fractions of a cent per post. Facebook is scan-only:
+        its numbers update ONLY when you scan (e.g. once at month-end).
       </p>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -165,7 +167,7 @@ export default function ScanPanel({ cycleId, members, accountsByClipper = {} }) 
       {result && (
         <div style={{ fontSize: 13.5, color: result.ok ? 'var(--text)' : 'var(--crit)' }}>
           {result.ok
-            ? <>✓ Scanned {result.scanned} posts → <b style={{ color: 'var(--honey)' }}>{result.accepted} added</b>{rejParts ? ` (skipped: ${rejParts})` : ''} · scan cost ≈ ${(result.costCents / 100).toFixed(2)}</>
+            ? <>✓ Scanned {result.scanned} posts → <b style={{ color: 'var(--honey)' }}>{result.accepted} added</b>{result.refreshed ? <> · <b style={{ color: 'var(--good)' }}>{result.refreshed} stats refreshed</b></> : ''}{rejParts ? ` (skipped: ${rejParts})` : ''} · scan cost ≈ ${(result.costCents / 100).toFixed(2)}</>
             : `✗ ${result.error}`}
         </div>
       )}

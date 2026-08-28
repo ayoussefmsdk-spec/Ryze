@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-const PLATFORMS = ['youtube', 'tiktok', 'instagram', 'twitter', 'other'];
+const PLATFORMS = ['youtube', 'tiktok', 'instagram', 'facebook', 'twitter', 'other'];
 
 export function AddClipperForm() {
   const router = useRouter();

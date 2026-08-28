@@ -206,3 +206,22 @@ test('IG wide-net metric reader catches renamed plays fields', () => {
   const s3 = normalizeInstagram({ type: 'Video', videoViewCount: 637, videoUrl: 'https://x/999999.mp4', viewerNote: 'abc' });
   assert.equal(s3.views, 637);
 });
+
+// ---- normalizeFacebook ------------------------------------------------------
+import { normalizeFacebook } from './normalize.mjs';
+
+test('facebook normalizer maps defensively across actor shapes', () => {
+  const s = normalizeFacebook({
+    playCount: 5000, viewsCount: 120000, likesCount: 900, commentsCount: 40,
+    text: 'Camy nuked them #camy #cod', pageUsername: 'Az Clips', timestamp: '2026-08-20T10:00:00Z',
+  });
+  assert.equal(s.views, 120000); // largest view-ish field wins
+  assert.equal(s.likes, 900);
+  assert.equal(s.comments, 40);
+  assert.deepEqual(s.hashtags, ['camy', 'cod']);
+  assert.equal(s.accountHandle, 'azclips');
+  const alt = normalizeFacebook({ viewCount: 777, reactions: 12, comments: 3, title: 'clip' });
+  assert.equal(alt.views, 777);
+  assert.equal(alt.likes, 12);
+  assert.equal(alt.comments, 3);
+});

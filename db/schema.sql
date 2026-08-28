@@ -298,3 +298,10 @@ update clips c
    and (select count(*) from clipper_accounts a
          where a.clipper_id = c.clipper_id and a.platform = c.platform) = 1;
 alter table app_settings add column if not exists last_prune_on date;
+-- Facebook as a first-class platform: ingested via account-scan (typically one
+-- manual scan at month-end), CPM left unset/0 = views count everywhere but pay
+-- nothing. No automatic checks — cost happens only when a scan is run.
+alter type platform_t add value if not exists 'facebook';
+alter table cycles alter column allowed_platforms set default '{youtube,tiktok,instagram,twitter,facebook,other}';
+update cycles set allowed_platforms = allowed_platforms || '{facebook}'::platform_t[]
+ where not ('facebook' = any(allowed_platforms));

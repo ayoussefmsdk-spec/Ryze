@@ -138,6 +138,35 @@ export function normalizeInstagram(item) {
   };
 }
 
+// ---- Facebook (Apify facebook scrapers; shapes vary per actor) --------------
+// Field names differ across FB actors, so this maps defensively: the LARGEST
+// numeric play/view-ish field wins (the same lesson IG taught us), and likes/
+// comments try every common spelling.
+export function normalizeFacebook(item) {
+  let views = 0;
+  for (const [k, v] of Object.entries(item || {})) {
+    if (/play|view/i.test(k) && typeof v === 'number' && Number.isFinite(v) && v > views) views = Math.trunc(v);
+  }
+  const likes = countOrNull(item?.likesCount ?? item?.likes ?? item?.reactionsCount ?? item?.reactions);
+  const comments = countOrNull(item?.commentsCount ?? item?.comments);
+  const caption = item?.text ?? item?.caption ?? item?.title ?? null;
+  const handle = (item?.pageUsername ?? item?.username ?? item?.pageName ?? item?.user?.name ?? '')
+    .toLowerCase().replace(/\s+/g, '') || null;
+  return {
+    views,
+    likes,
+    comments,
+    shares: countOrNull(item?.sharesCount ?? item?.shares),
+    postedAt: item?.time ?? item?.timestamp ?? item?.publishedTime ?? item?.date ?? null,
+    accountHandle: handle,
+    accountId: item?.pageId ?? item?.userId ?? null,
+    caption,
+    hashtags: parseHashtags(caption),
+    thumbnailUrl: item?.thumbnailUrl ?? item?.thumbnail ?? item?.previewImage ?? null,
+    addedFlags: [],
+  };
+}
+
 // ---- Guard checks over a normalized stat + clip context ---------------------
 // Returns the list of flag codes to attach. Pure: caller passes in what it knows.
 export function evaluateFlags({ stats, cycle, clipperAccounts, previousViews }) {

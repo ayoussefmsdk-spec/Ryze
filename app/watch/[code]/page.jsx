@@ -15,7 +15,7 @@ import { cycleIntel } from '../../../lib/intel.mjs';
 
 export const dynamic = 'force-dynamic';
 const nf = (n) => Number(n || 0).toLocaleString('en-US');
-const PLAT = { youtube: '▶ YouTube', tiktok: '♪ TikTok', instagram: '◎ Instagram', twitter: '𝕏 Twitter', other: '∙ Other' };
+const PLAT = { youtube: '▶ YouTube', tiktok: '♪ TikTok', instagram: '◎ Instagram', facebook: 'ⓕ Facebook', twitter: '𝕏 Twitter', other: '∙ Other' };
 
 function Gate({ title, msg }) {
   return (

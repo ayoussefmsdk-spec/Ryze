@@ -8,6 +8,7 @@ const PLAT = {
   youtube: { label: 'YouTube', glyph: '▶', color: '#f6524f' },
   tiktok: { label: 'TikTok', glyph: '♪', color: '#2ad4c8' },
   instagram: { label: 'Instagram', glyph: '◎', color: '#e1568f' },
+  facebook: { label: 'Facebook', glyph: 'ⓕ', color: '#4c8bf5' },
   twitter: { label: 'X', glyph: '𝕏', color: '#9aa0aa' },
   other: { label: 'Other', glyph: '∙', color: '#9aa0aa' },
 };

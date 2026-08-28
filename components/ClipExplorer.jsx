@@ -5,7 +5,7 @@ import ClipActions from './ClipActions.jsx';
 import FlagBadges from './FlagBadges.jsx';
 import { parseClip } from '../core/platform.mjs';
 
-const PLATFORM_ICON = { youtube: '▶', tiktok: '♪', instagram: '◎', twitter: '𝕏', other: '∙' };
+const PLATFORM_ICON = { youtube: '▶', tiktok: '♪', instagram: '◎', facebook: 'ⓕ', twitter: '𝕏', other: '∙' };
 const nf = (n) => Number(n || 0).toLocaleString('en-US');
 const eng = (f) => (f == null ? '—' : `${(Number(f) * 100).toFixed(1)}%`);
 const money = (c) => `$${(Math.round(c) / 100).toFixed(2)}`;

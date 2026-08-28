@@ -32,7 +32,7 @@ const MODEL_LABEL = {
   flat_per_clip: 'Flat per clip',
 };
 
-const PLATFORM_ICON = { youtube: '▶', tiktok: '♪', instagram: '◎', twitter: '𝕏', other: '∙' };
+const PLATFORM_ICON = { youtube: '▶', tiktok: '♪', instagram: '◎', facebook: 'ⓕ', twitter: '𝕏', other: '∙' };
 
 function nfmt(n) {
   return Number(n || 0).toLocaleString('en-US');

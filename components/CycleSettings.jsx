@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ScheduleEditor from './ScheduleEditor.jsx';
 
-const PLATFORMS = ['youtube', 'tiktok', 'instagram', 'twitter', 'other'];
+const PLATFORMS = ['youtube', 'tiktok', 'instagram', 'facebook', 'twitter', 'other'];
 
 /** Mid-cycle settings editor — every change recalculates live + is change-logged. */
 export default function CycleSettings({ cycle, cpm }) {

@@ -96,3 +96,15 @@ test('normalizeHandleInput extracts handles from pasted profile URLs', () => {
   assert.equal(normalizeHandleInput('instagram', 'https://www.instagram.com/cool.clips/'), 'cool.clips');
   assert.equal(normalizeHandleInput('twitter', 'https://x.com/clipper_one'), 'clipper_one');
 });
+
+test('facebook URLs: detection, ids, and same-video matching', () => {
+  assert.equal(detectPlatform('https://www.facebook.com/reel/1234567890'), 'facebook');
+  assert.equal(detectPlatform('https://fb.watch/aBcD123/'), 'facebook');
+  // same video id across URL forms -> same key
+  assert.equal(normalizedKey('https://www.facebook.com/reel/1234567890'), 'facebook:1234567890');
+  assert.equal(normalizedKey('https://www.facebook.com/watch?v=1234567890'), 'facebook:1234567890');
+  assert.equal(normalizedKey('https://www.facebook.com/somepage/videos/1234567890/'), 'facebook:1234567890');
+  // share links keep a stable slug key
+  assert.equal(normalizedKey('https://www.facebook.com/share/r/AbC12xyz/'), 'facebook:share:abc12xyz');
+  assert.equal(normalizedKey('https://fb.watch/AbC12xyz'), 'facebook:share:abc12xyz');
+});

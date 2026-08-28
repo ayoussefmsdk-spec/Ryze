@@ -46,6 +46,7 @@ export function detectPlatform(raw) {
   if (host === 'tiktok.com' || host.endsWith('.tiktok.com')) return 'tiktok';
   if (host === 'instagram.com' || host.endsWith('.instagram.com')) return 'instagram';
   if (host === 'x.com' || host === 'twitter.com' || host.endsWith('.x.com') || host.endsWith('.twitter.com')) return 'twitter';
+  if (host === 'facebook.com' || host.endsWith('.facebook.com') || host === 'fb.watch') return 'facebook';
   return 'other';
 }
 
@@ -140,6 +141,23 @@ export function parseClip(raw) {
       return { valid: true, platform, id: code, handle: null, key: `instagram:${code}`, canonicalUrl: `https://www.instagram.com/reel/${code}/` };
     }
     return { ...base, canonicalUrl: canonical(u) };
+  }
+
+  if (platform === 'facebook') {
+    // /reel/123456, /watch?v=123456, /<page>/videos/123456 — numeric video id.
+    const idm = path.match(/^\/reel\/(\d+)/i) || path.match(/\/videos\/(\d+)/i)
+      || (u.searchParams.get('v') && /^\d+$/.test(u.searchParams.get('v')) ? [null, u.searchParams.get('v')] : null);
+    if (idm) {
+      const id = idm[1];
+      return { valid: true, platform, id, handle: null, key: `facebook:${id}`, canonicalUrl: `https://www.facebook.com/reel/${id}` };
+    }
+    // Share links (facebook.com/share/r/SLUG, fb.watch/SLUG) — opaque slug key.
+    const s = path.match(/^\/share\/[rvp]\/([A-Za-z0-9_-]+)/i)
+      || (host === 'fb.watch' ? path.match(/^\/([A-Za-z0-9_-]+)/) : null);
+    if (s) {
+      return { valid: true, platform, id: null, handle: null, key: `facebook:share:${s[1].toLowerCase()}`, canonicalUrl: canonical(u) };
+    }
+    return { valid: true, platform, id: null, handle: null, key: `facebook:${host}${path}`.toLowerCase(), canonicalUrl: canonical(u) };
   }
 
   if (platform === 'twitter') {

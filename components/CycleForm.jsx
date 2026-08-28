@@ -11,7 +11,7 @@ const MODEL_LABELS = {
   flat_per_clip: 'Flat — fixed $ per clip',
 };
 
-const PLATFORMS = ['youtube', 'tiktok', 'instagram', 'twitter', 'other'];
+const PLATFORMS = ['youtube', 'tiktok', 'instagram', 'facebook', 'twitter', 'other'];
 
 import { zoneChoices, gmtLabel } from '../lib/tz.mjs';
 import ScheduleEditor from './ScheduleEditor.jsx';
