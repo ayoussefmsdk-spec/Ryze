@@ -229,8 +229,10 @@ export function classifyStatsAnomaly({ prevViews, newViews }) {
  * 'interval' (legacy). Unknown input falls back to sane defaults.
  */
 export function sanitizeCheckSchedule(v) {
-  const group = (g, defTimes) => {
-    if (!g || typeof g !== 'object') return { mode: 'daily', atLocal: defTimes };
+  const group = (g, defTimes, defMode = 'daily') => {
+    if (!g || typeof g !== 'object') {
+      return defMode === 'manual' ? { mode: 'manual' } : { mode: 'daily', atLocal: defTimes };
+    }
     if (g.mode === 'manual') return { mode: 'manual' };
     if (g.mode === 'interval') {
       const m = Math.min(1440, Math.max(15, Math.trunc(Number(g.everyMinutes)) || 360));
@@ -244,5 +246,8 @@ export function sanitizeCheckSchedule(v) {
   return {
     free: group(v?.free, ['06:00', '12:00', '18:00', '23:00']),
     paid: group(v?.paid, ['06:00']),
+    // Facebook: same machinery as TikTok/IG, its own schedule. Defaults to
+    // manual-only so existing cycles never start spending without a choice.
+    fb: group(v?.fb, ['06:00'], 'manual'),
   };
 }

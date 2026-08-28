@@ -225,3 +225,12 @@ test('facebook normalizer maps defensively across actor shapes', () => {
   assert.equal(alt.likes, 12);
   assert.equal(alt.comments, 3);
 });
+
+import { sanitizeCheckSchedule } from './normalize.mjs';
+
+test('check schedule: facebook group defaults to manual, keeps chosen times', () => {
+  const def = sanitizeCheckSchedule({});
+  assert.deepEqual(def.fb, { mode: 'manual' });
+  const set = sanitizeCheckSchedule({ fb: { mode: 'daily', atLocal: ['09:00', '21:00'] } });
+  assert.deepEqual(set.fb, { mode: 'daily', atLocal: ['09:00', '21:00'] });
+});

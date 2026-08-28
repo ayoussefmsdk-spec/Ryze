@@ -61,7 +61,7 @@ export default function ClipActions({ clip, compact = false }) {
         {clip.status === 'rejected' && (
           <button className="btn secondary" style={btn} disabled={busy} onClick={() => act({ action: 'approve' })}>Approve after all</button>
         )}
-        {['tiktok', 'instagram', 'youtube'].includes(clip.platform) && (
+        {['tiktok', 'instagram', 'facebook', 'youtube'].includes(clip.platform) && (
           <button className="btn secondary" style={btn} disabled={busy} onClick={() => act({ action: 'recheck' })}>
             {busy ? '…' : 'Recheck'}
           </button>

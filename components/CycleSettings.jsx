@@ -32,6 +32,7 @@ export default function CycleSettings({ cycle, cpm }) {
   const [checkSchedule, setCheckSchedule] = useState(cycle.check_schedule || {
     free: { mode: 'daily', atLocal: ['06:00', '12:00', '18:00', '23:00'] },
     paid: { mode: 'daily', atLocal: ['06:00'] },
+    fb: { mode: 'manual' },
   });
 
   async function save() {

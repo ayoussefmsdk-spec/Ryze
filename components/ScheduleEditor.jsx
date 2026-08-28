@@ -79,21 +79,8 @@ export default function ScheduleEditor({ value, onChange }) {
         g={v.free} onChange={(g) => onChange({ ...v, free: g })} />
       <Group label="♪ TikTok + ◎ Instagram" hint="paid — fractions of a cent per clip per check (rate in System)"
         g={v.paid} onChange={(g) => onChange({ ...v, paid: g })} />
-      {/* Facebook is a full platform but deliberately SCAN-ONLY: its numbers
-          move only when the manager presses Scan — never on a schedule. */}
-      <div className="grid" style={{ gap: 4, padding: '10px 12px', borderRadius: 10, background: 'var(--surface-2)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <strong style={{ fontSize: 13.5 }}><span style={{ color: '#4c8bf5' }}>ⓕ</span> Facebook</strong>
-          <span className="muted" style={{ fontSize: 11.5 }}>paid — same per-post rate as TikTok/IG</span>
-          <span style={{ marginLeft: 'auto', fontSize: 11.5, fontFamily: 'var(--mono)', color: '#4c8bf5', border: '1px solid rgba(76,139,245,.45)', borderRadius: 999, padding: '2px 10px' }}>
-            scan-only
-          </span>
-        </div>
-        <span className="muted" style={{ fontSize: 11.5 }}>
-          Never checked automatically. Numbers update only when you run “Scan accounts” (e.g. once at
-          month-end) — one scan ingests new posts and refreshes the stats of clips already in.
-        </span>
-      </div>
+      <Group label="ⓕ Facebook" hint="paid — same rate; its own schedule, or manual only"
+        g={v.fb || { mode: 'manual' }} onChange={(g) => onChange({ ...v, fb: g })} />
     </div>
   );
 }

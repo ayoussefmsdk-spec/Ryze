@@ -43,6 +43,7 @@ export default function CycleForm({ campaignId, campaignTimezone }) {
   const [checkSchedule, setCheckSchedule] = useState({
     free: { mode: 'daily', atLocal: ['06:00', '12:00', '18:00', '23:00'] },
     paid: { mode: 'daily', atLocal: ['06:00'] },
+    fb: { mode: 'manual' },
   });
 
   function togglePlatform(p) {
