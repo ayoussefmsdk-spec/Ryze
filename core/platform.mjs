@@ -85,10 +85,18 @@ export function normalizeHandleInput(platform, raw) {
     const u = safeUrl(s);
     if (u) {
       const parts = u.pathname.split('/').filter(Boolean);
-      // Skip non-profile path segments (e.g. instagram.com/reel/..., youtube.com/channel/...)
-      const NOT_PROFILE = new Set(['reel', 'reels', 'p', 'watch', 'shorts', 'video', 'channel', 'c', 'user', 'embed', 'status']);
-      const seg = parts.find((p) => !NOT_PROFILE.has(p.toLowerCase())) || parts[parts.length - 1] || '';
-      s = seg;
+      // Facebook pages WITHOUT a username: facebook.com/people/Name/61590…/ or
+      // profile.php?id=61590… — the page's real identifier is the numeric ID.
+      const qid = u.searchParams.get('id');
+      if (qid && /^\d{5,}$/.test(qid)) {
+        s = qid;
+      } else if (parts[0]?.toLowerCase() === 'people') {
+        s = parts.find((p) => /^\d{5,}$/.test(p)) || parts[parts.length - 1] || '';
+      } else {
+        // Skip non-profile path segments (e.g. instagram.com/reel/..., youtube.com/channel/...)
+        const NOT_PROFILE = new Set(['reel', 'reels', 'p', 'watch', 'shorts', 'video', 'channel', 'c', 'user', 'embed', 'status']);
+        s = parts.find((p) => !NOT_PROFILE.has(p.toLowerCase())) || parts[parts.length - 1] || '';
+      }
     }
   }
   return s.replace(/^@+/, '').replace(/\/+$/, '').replace(/[?#].*$/, '').replace(/\s+/g, '').toLowerCase();

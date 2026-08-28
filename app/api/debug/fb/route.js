@@ -49,9 +49,13 @@ export async function GET(req) {
   const postsActor = process.env.APIFY_FACEBOOK_POSTS_ACTOR || 'apify~facebook-posts-scraper';
   const reelsActor = process.env.APIFY_FACEBOOK_ACTOR || 'apify~facebook-reels-scraper';
 
+  const numeric = /^\d{5,}$/.test(handle);
+  const reelsUrl = numeric
+    ? `https://www.facebook.com/profile.php?id=${handle}&sk=reels_tab`
+    : `https://www.facebook.com/${handle}/reels/`;
   const [directPost, pageReels, custom] = await Promise.all([
     url ? run(postsActor, { startUrls: [{ url }], resultsLimit: 1 }) : null,
-    handle ? run(reelsActor, { startUrls: [{ url: `https://www.facebook.com/${handle}/reels/` }], resultsLimit: 5 }) : null,
+    handle ? run(reelsActor, { startUrls: [{ url: reelsUrl }], resultsLimit: 5 }) : null,
     customActor && /^[\w.-]+~[\w-]+$/.test(customActor) && url
       ? run(customActor, { startUrls: [{ url }], resultsLimit: 3 })
       : null,

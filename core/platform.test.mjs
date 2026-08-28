@@ -117,3 +117,9 @@ test('facebook /page/videos/ URLs reveal the posting page for account checks', (
   // /reel/ form has no page in the URL — handle stays null (resolved by fetch)
   assert.equal(parseClip('https://www.facebook.com/reel/1234567890').handle, null);
 });
+
+test('facebook people/profile.php URLs resolve to the numeric page id', () => {
+  assert.equal(normalizeHandleInput('facebook', 'https://www.facebook.com/people/Az-Clipz/61590459089254/?sk=reels_tab'), '61590459089254');
+  assert.equal(normalizeHandleInput('facebook', 'https://www.facebook.com/profile.php?id=61590459089254'), '61590459089254');
+  assert.equal(normalizeHandleInput('facebook', 'https://www.facebook.com/SomePageName/'), 'somepagename');
+});
