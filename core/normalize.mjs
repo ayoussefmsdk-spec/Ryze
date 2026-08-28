@@ -148,8 +148,11 @@ export function normalizeFacebook(item) {
     if (/play|view/i.test(k) && typeof v === 'number' && Number.isFinite(v) && v > views) views = Math.trunc(v);
   }
   const likes = countOrNull(item?.likesCount ?? item?.likes ?? item?.reactionsCount ?? item?.reactions);
-  const comments = countOrNull(item?.commentsCount ?? item?.comments);
+  const comments = countOrNull(item?.commentsCount ?? item?.comments ?? item?.total_comment_count);
   const caption = item?.text ?? item?.caption ?? item?.title ?? null;
+  // creation_time arrives as unix SECONDS on direct-post items.
+  const created = typeof item?.creation_time === 'number' && item.creation_time > 1e9
+    ? new Date(item.creation_time * 1000).toISOString() : null;
   const handle = (item?.pageUsername ?? item?.username ?? item?.pageName ?? item?.user?.name ?? '')
     .toLowerCase().replace(/\s+/g, '') || null;
   return {
@@ -157,7 +160,7 @@ export function normalizeFacebook(item) {
     likes,
     comments,
     shares: countOrNull(item?.sharesCount ?? item?.shares),
-    postedAt: item?.time ?? item?.timestamp ?? item?.publishedTime ?? item?.date ?? null,
+    postedAt: item?.time ?? item?.timestamp ?? item?.publishedTime ?? item?.date ?? created,
     accountHandle: handle,
     accountId: item?.pageId ?? item?.userId ?? null,
     caption,

@@ -234,3 +234,27 @@ test('check schedule: facebook group defaults to manual, keeps chosen times', ()
   const set = sanitizeCheckSchedule({ fb: { mode: 'daily', atLocal: ['09:00', '21:00'] } });
   assert.deepEqual(set.fb, { mode: 'daily', atLocal: ['09:00', '21:00'] });
 });
+
+test('facebook normalizer handles REAL actor payloads (verified fields)', () => {
+  // reels-feed item shape (page route) — plays in playCountRounded
+  const reel = normalizeFacebook({
+    topLevelReelUrl: 'https://facebook.com/reel/2347015899384936/',
+    shareable_url: 'https://www.facebook.com/reel/2347015899384936',
+    time: '2026-08-26T22:50:40.000Z',
+    playCountRounded: 63000,
+    play_count_reduced: '63K',
+  });
+  assert.equal(reel.views, 63000);
+  assert.equal(reel.postedAt, '2026-08-26T22:50:40.000Z');
+  // direct-post item shape — likes/comments but NO plays
+  const direct = normalizeFacebook({
+    facebookUrl: 'https://www.facebook.com/reel/3170672053141859',
+    likes: 6203, comments: 37, total_comment_count: 37,
+    creation_time: 1787368846, facebookId: '3170672053141859', pageName: '61590459089254',
+  });
+  assert.equal(direct.views, 0);
+  assert.equal(direct.likes, 6203);
+  assert.equal(direct.comments, 37);
+  assert.ok(direct.postedAt?.startsWith('2026-'));
+  assert.equal(direct.accountHandle, '61590459089254');
+});
