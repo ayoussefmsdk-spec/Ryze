@@ -53,6 +53,8 @@ export default async function ClipperStatsPage({ params }) {
 
   const { clipper, showMoney } = res;
 
+  // Facebook is tracked for the manager's own bookkeeping only — clipper-facing
+  // stats never show or count it, so every query below excludes the platform.
   const [cyclesRes, paidRow, platRes, sparse, postedSparse] = await Promise.all([
     query(
       `select cy.id as cycle_id, cy.name as cycle_name, cy.status, cy.starts_on, cy.ends_on,
@@ -64,7 +66,7 @@ export default async function ClipperStatsPage({ params }) {
          from clips c
          join cycles cy on cy.id = c.cycle_id
          join campaigns ca on ca.id = cy.campaign_id
-        where c.clipper_id = $1
+        where c.clipper_id = $1 and c.platform <> 'facebook'
         group by cy.id, ca.name
         order by cy.starts_on desc`,
       [clipper.id],
@@ -72,11 +74,11 @@ export default async function ClipperStatsPage({ params }) {
     query(`select coalesce(sum(amount_cents),0)::bigint as paid from payouts where clipper_id = $1`, [clipper.id]),
     query(
       `select platform, account_handle, views, status
-         from clips where clipper_id = $1`,
+         from clips where clipper_id = $1 and platform <> 'facebook'`,
       [clipper.id],
     ),
-    clipperDailySeries(clipper.id),
-    clipsPostedPerDay({ clipperId: clipper.id }),
+    clipperDailySeries(clipper.id, { excludeFacebook: true }),
+    clipsPostedPerDay({ clipperId: clipper.id, excludeFacebook: true }),
   ]);
 
   const cycles = cyclesRes.rows;
@@ -87,7 +89,7 @@ export default async function ClipperStatsPage({ params }) {
   const { rows: engRows } = await query(
     `select coalesce(sum(likes),0)::bigint as l, coalesce(sum(comments),0)::bigint as c,
             coalesce(sum(views) filter (where likes is not null or comments is not null),0)::bigint as v
-       from clips where clipper_id = $1 and status = 'approved'`,
+       from clips where clipper_id = $1 and status = 'approved' and platform <> 'facebook'`,
     [clipper.id],
   );
   const engagement = Number(engRows[0].v) > 0 ? (Number(engRows[0].l) + Number(engRows[0].c)) / Number(engRows[0].v) : null;

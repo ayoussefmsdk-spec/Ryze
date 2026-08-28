@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { addClip, resolveToken, rateLimited } from '../../../../lib/clips.mjs';
 import { fetchSingleClip } from '../../../../lib/check.mjs';
+import { parseClip } from '../../../../core/platform.mjs';
 
 /**
  * PUBLIC endpoint — no session. Auth is the unguessable per-clipper token.
@@ -21,6 +22,14 @@ export async function POST(req, { params }) {
   }
 
   const b = await req.json().catch(() => ({}));
+  // Facebook is manager-tracked only: it never appears on clipper links, so a
+  // clip they could never see must not be accepted through their portal.
+  if (parseClip(b.url || '').platform === 'facebook') {
+    return NextResponse.json(
+      { ok: false, code: 'platform_not_allowed', error: 'Facebook clips are handled by the manager directly — send them the link instead.' },
+      { status: 400 },
+    );
+  }
   // Clippers can NEVER force a duplicate through — only the manager's manual
   // add has that override. confirmDuplicate from this endpoint is ignored.
   const result = await addClip({
