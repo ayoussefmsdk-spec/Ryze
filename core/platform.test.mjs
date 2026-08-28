@@ -108,3 +108,12 @@ test('facebook URLs: detection, ids, and same-video matching', () => {
   assert.equal(normalizedKey('https://www.facebook.com/share/r/AbC12xyz/'), 'facebook:share:abc12xyz');
   assert.equal(normalizedKey('https://fb.watch/AbC12xyz'), 'facebook:share:abc12xyz');
 });
+
+test('facebook /page/videos/ URLs reveal the posting page for account checks', () => {
+  const p = parseClip('https://www.facebook.com/CamyClipsFB/videos/1234567890/');
+  assert.equal(p.platform, 'facebook');
+  assert.equal(p.handle, 'camyclipsfb');
+  assert.equal(p.key, 'facebook:1234567890');
+  // /reel/ form has no page in the URL — handle stays null (resolved by fetch)
+  assert.equal(parseClip('https://www.facebook.com/reel/1234567890').handle, null);
+});

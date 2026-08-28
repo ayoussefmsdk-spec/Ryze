@@ -145,11 +145,17 @@ export function parseClip(raw) {
 
   if (platform === 'facebook') {
     // /reel/123456, /watch?v=123456, /<page>/videos/123456 — numeric video id.
-    const idm = path.match(/^\/reel\/(\d+)/i) || path.match(/\/videos\/(\d+)/i)
+    // The /<page>/videos/ form also reveals the POSTING PAGE, so those clips
+    // get the unknown-account check (and the "link it" button) at paste time.
+    const withPage = path.match(/^\/([\w.-]+)\/videos\/(\d+)/i);
+    const idm = withPage ? [null, withPage[2]]
+      : path.match(/^\/reel\/(\d+)/i)
       || (u.searchParams.get('v') && /^\d+$/.test(u.searchParams.get('v')) ? [null, u.searchParams.get('v')] : null);
     if (idm) {
       const id = idm[1];
-      return { valid: true, platform, id, handle: null, key: `facebook:${id}`, canonicalUrl: `https://www.facebook.com/reel/${id}` };
+      const handle = withPage && !['watch', 'reel', 'share'].includes(withPage[1].toLowerCase())
+        ? withPage[1].toLowerCase() : null;
+      return { valid: true, platform, id, handle, key: `facebook:${id}`, canonicalUrl: `https://www.facebook.com/reel/${id}` };
     }
     // Share links (facebook.com/share/r/SLUG, fb.watch/SLUG) — opaque slug key.
     const s = path.match(/^\/share\/[rvp]\/([A-Za-z0-9_-]+)/i)
