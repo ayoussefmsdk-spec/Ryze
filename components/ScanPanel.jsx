@@ -53,14 +53,28 @@ export default function ScanPanel({ cycleId, members, accountsByClipper = {} }) 
       // Only send the filter when it's an actual subset — "all" stays default.
       ...(selectedKeys.size < allScannable.length ? { onlyAccounts: [...selectedKeys] } : {}),
     };
-    const r = await fetch(`/api/cycles/${cycleId}/scan`, {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    const d = await r.json().catch(() => ({}));
-    setBusy(false);
-    setResult(d);
-    if (r.ok) router.refresh();
+    try {
+      const r = await fetch(`/api/cycles/${cycleId}/scan`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const d = await r.json().catch(() => ({}));
+      setResult(d);
+      if (r.ok) router.refresh();
+    } catch {
+      // The request died in the browser (timeout / lost connection) but the
+      // scan usually FINISHES on the server anyway — clips land in Pending.
+      // Without this message the user re-scans and meets confusing
+      // "already in" skips for posts "they never scanned".
+      setResult({
+        error: 'Lost the connection while scanning — but the scan most likely FINISHED on the server. '
+          + 'Wait a minute, refresh the page and check Pending review before scanning again. '
+          + '(Re-scanning is always safe: nothing is ever added twice — already-known posts just get a free stats refresh.)',
+      });
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (!open) return <button className="btn secondary" onClick={() => setOpen(true)}>📡 Scan accounts</button>;
