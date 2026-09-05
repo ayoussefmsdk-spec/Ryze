@@ -25,6 +25,10 @@ export default function CycleSettings({ cycle, cpm }) {
   const [rates, setRates] = useState(Object.fromEntries(
     PLATFORMS.map((p) => [p, cpm[p] != null ? String(cpm[p] / 100) : '']),
   ));
+  const [allowed, setAllowedP] = useState(
+    Array.isArray(cycle.allowed_platforms) && cycle.allowed_platforms.length ? cycle.allowed_platforms : [...PLATFORMS],
+  );
+  const togglePlatform = (p) => setAllowedP((a) => (a.includes(p) ? a.filter((x) => x !== p) : [...a, p]));
   const cfg = cycle.payout_config || {};
   const [maxClip, setMaxClip] = useState(cfg.maxPerClipCents ? String(cfg.maxPerClipCents / 100) : '');
   const [maxClipper, setMaxClipper] = useState(cfg.maxPerClipperCents ? String(cfg.maxPerClipperCents / 100) : '');
@@ -55,6 +59,7 @@ export default function CycleSettings({ cycle, cpm }) {
         name, startsOn, endsOn, budgetDollars: budget,
         minViewEnabled: minOn, minViewFloor: minFloor,
         hashtagMode, requiredHashtags: tags, enforcePostWindow: window_,
+        allowedPlatforms: allowed,
         payoutConfig: newCfg,
         checkSchedule,
       }),
@@ -96,6 +101,22 @@ export default function CycleSettings({ cycle, cpm }) {
           <input className="field" type="date" value={endsOn} onChange={(e) => setEnds(e.target.value)} /></label>
         <label className="grid" style={{ gap: 5 }}><span className="muted" style={{ fontSize: 13 }}>{['pot_proportional', 'pot_equal'].includes(cycle.payout_model) ? 'Pot ($)' : 'Budget ($)'}</span>
           <input className="field" inputMode="decimal" value={budget} onChange={(e) => setBudget(e.target.value)} /></label>
+      </div>
+
+      <div className="grid" style={{ gap: 6 }}>
+        <span className="muted" style={{ fontSize: 13 }}>Platforms this cycle accepts — unchecked ones can't be added or submitted</span>
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+          {PLATFORMS.map((p) => (
+            <label key={p} style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13.5, textTransform: 'capitalize' }}>
+              <input
+                type="checkbox"
+                checked={allowed.includes(p)}
+                disabled={allowed.length === 1 && allowed.includes(p)}
+                onChange={() => togglePlatform(p)}
+              /> {p}
+            </label>
+          ))}
+        </div>
       </div>
 
       {cycle.payout_model === 'cpm' && (

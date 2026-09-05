@@ -18,6 +18,17 @@ const EDITABLE = {
     col: 'required_hashtags',
     map: (v) => String(v || '').split(/[,\s]+/).map((t) => t.replace(/^#/, '').toLowerCase()).filter(Boolean),
   },
+  allowedPlatforms: {
+    col: 'allowed_platforms',
+    cast: '::platform_t[]',
+    // Unknown names are dropped; an empty selection falls back to ALL platforms
+    // (matching addClip, where an empty list means "no restriction").
+    map: (v) => {
+      const VALID = ['youtube', 'tiktok', 'instagram', 'facebook', 'twitter', 'other'];
+      const arr = (Array.isArray(v) ? v : []).map(String).filter((p) => VALID.includes(p));
+      return arr.length ? arr : VALID;
+    },
+  },
   payoutConfig: { col: 'payout_config', map: (v) => JSON.stringify(v && typeof v === 'object' ? v : {}) },
   autoCheckEnabled: { col: 'auto_check_enabled', map: Boolean },
   checkSchedule: { col: 'check_schedule', map: (v) => JSON.stringify(sanitizeCheckSchedule(v)) },
@@ -97,7 +108,7 @@ export async function PATCH(req, { params }) {
     if (!(field in b)) continue;
     const value = def.map(b[field]);
     vals.push(value);
-    sets.push(`${def.col} = $${vals.length}`);
+    sets.push(`${def.col} = $${vals.length}${def.cast || ''}`);
     await query(
       `insert into cycle_changes (cycle_id, field, old_value, new_value)
          values ($1, $2, $3, $4)`,
