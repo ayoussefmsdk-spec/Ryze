@@ -93,6 +93,10 @@ export default function TriageQueue({ clips }) {
             <div className="muted" style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
               {nf(c.views)} views · {c.likes == null ? '—' : nf(c.likes)} likes · {c.comments == null ? '—' : nf(c.comments)} comments · {eng(c.engagement)}
             </div>
+            <div className="muted" style={{ fontSize: 12 }}>
+              {({ scan: '🔎 added by YOUR scan', submission: '📥 submitted by the clipper', manual: '✍️ added by you (by link)' })[c.added_via] || c.added_via}
+              {' · '}{new Date(c.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </div>
           </div>
           <ClipActions clip={c} compact />
         </div>
