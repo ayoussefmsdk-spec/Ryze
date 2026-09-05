@@ -142,6 +142,33 @@ export function normalizeInstagram(item) {
 // Field names differ across FB actors, so this maps defensively: the LARGEST
 // numeric play/view-ish field wins (the same lesson IG taught us), and likes/
 // comments try every common spelling.
+
+/** Dig an image URL out of FB's nested shapes (attachments[0].media.image.uri
+ *  and friends) — verified payloads carry NO flat thumbnail field. Image-named
+ *  keys are tried before generic ones so a video file URL never wins. */
+function findFbImageUrl(v, depth = 0) {
+  if (!v || depth > 5) return null;
+  if (typeof v === 'string') {
+    const isUrl = /^https?:\/\//i.test(v) && !/\.mp4(\?|$)/i.test(v);
+    return isUrl && (/\.(jpe?g|png|webp)(\?|$)/i.test(v) || /scontent|fbcdn/i.test(v)) ? v : null;
+  }
+  if (Array.isArray(v)) {
+    for (const x of v) { const r = findFbImageUrl(x, depth + 1); if (r) return r; }
+    return null;
+  }
+  if (typeof v === 'object') {
+    for (const [k, val] of Object.entries(v)) {
+      if (/thumb|image|picture|preview|photo|poster/i.test(k)) {
+        const r = findFbImageUrl(val, depth + 1);
+        if (r) return r;
+      }
+    }
+    for (const val of Object.values(v)) { const r = findFbImageUrl(val, depth + 1); if (r) return r; }
+    return null;
+  }
+  return null;
+}
+
 export function normalizeFacebook(item) {
   let views = 0;
   for (const [k, v] of Object.entries(item || {})) {
@@ -165,7 +192,9 @@ export function normalizeFacebook(item) {
     accountId: item?.pageId ?? item?.userId ?? null,
     caption,
     hashtags: parseHashtags(caption),
-    thumbnailUrl: item?.thumbnailUrl ?? item?.thumbnail ?? item?.previewImage ?? null,
+    thumbnailUrl: item?.thumbnailUrl ?? item?.thumbnail ?? item?.previewImage
+      ?? item?.full_picture ?? findFbImageUrl(item?.attachments) ?? findFbImageUrl(item?.media)
+      ?? findFbImageUrl(item?.photo_image) ?? findFbImageUrl(item?.video_thumbnail) ?? null,
     addedFlags: [],
   };
 }

@@ -6,6 +6,25 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mergeStats, fbItemUrl } from '../lib/fetchers/facebook.mjs';
+import { normalizeFacebook } from './normalize.mjs';
+
+test('facebook normalizer digs the thumbnail out of nested attachments', () => {
+  // Real reels-feed items have NO flat thumbnail field — the image lives in
+  // attachments[0] (media/image/uri style nesting varies per actor version).
+  const img = 'https://scontent.xx.fbcdn.net/v/t15.5256-10/abc_123.jpg?stp=dst-jpg&_nc_cat=1';
+  const nested = normalizeFacebook({
+    shareable_url: 'https://www.facebook.com/reel/2347015899384936',
+    playCountRounded: 63000,
+    attachments: [{ media: { image: { uri: img }, video_url: 'https://video.fbcdn.net/v/x.mp4' } }],
+  });
+  assert.equal(nested.thumbnailUrl, img);
+  assert.equal(nested.views, 63000);
+  // A video file URL must never be picked as the "image".
+  const videoOnly = normalizeFacebook({ attachments: [{ media: { video_url: 'https://video.fbcdn.net/v/x.mp4' } }] });
+  assert.equal(videoOnly.thumbnailUrl, null);
+  // full_picture (classic posts shape) works as a flat fallback.
+  assert.equal(normalizeFacebook({ full_picture: img }).thumbnailUrl, img);
+});
 
 test('mergeStats combines a likes-only direct read with a plays-only feed read', (t) => {
   const direct = { views: 0, likes: 6203, comments: 37, postedAt: '2026-08-22T10:00:00.000Z', accountHandle: null };
