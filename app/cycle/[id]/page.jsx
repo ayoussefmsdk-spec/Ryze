@@ -405,7 +405,7 @@ export default async function CyclePage({ params }) {
         )}
 
         {/* Pending queue — keyboard triage (j/k/a/r/o) */}
-        {pending.length > 0 && <TriageQueue clips={pending} />}
+        {pending.length > 0 && <TriageQueue clips={pending} cycleId={cycleRow.id} />}
 
         {/* All clips — filterable explorer */}
         <div className="card grid" style={{ gap: 6 }}>

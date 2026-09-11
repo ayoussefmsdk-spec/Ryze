@@ -13,11 +13,30 @@ const eng = (f) => (f == null ? '—' : `${(Number(f) * 100).toFixed(1)}%`);
  * Pending-review queue with keyboard triage:
  * j/k move · a approve · r reject · o open the clip in a new tab.
  */
-export default function TriageQueue({ clips }) {
+export default function TriageQueue({ clips, cycleId }) {
   const router = useRouter();
   const [cursor, setCursor] = useState(0);
   const [busy, setBusy] = useState(false);
   const rowRefs = useRef([]);
+
+  const scanCount = clips.filter((c) => c.added_via === 'scan').length;
+
+  async function deleteAll(scope) {
+    if (busy) return;
+    const n = scope === 'scan' ? scanCount : clips.length;
+    const what = scope === 'scan' ? `all ${n} scan-found pending clips` : `ALL ${n} pending clips`;
+    if (!window.confirm(
+      `Delete ${what}?\n\nAlready-approved clips are untouched. Deleted ones are remembered — a re-scan won't bring them back (you can still re-add any by link).`,
+    )) return;
+    setBusy(true);
+    await fetch(`/api/cycles/${cycleId}/pending`, {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ scope }),
+    }).catch(() => {});
+    setBusy(false);
+    router.refresh();
+  }
 
   const idx = Math.min(cursor, clips.length - 1);
 
@@ -62,6 +81,22 @@ export default function TriageQueue({ clips }) {
           <kbd>j</kbd>/<kbd>k</kbd> move · <kbd>a</kbd> approve · <kbd>r</kbd> reject · <kbd>o</kbd> open
         </span>
       </div>
+      {cycleId && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {scanCount > 0 && scanCount < clips.length && (
+            <button className="btn secondary" disabled={busy} onClick={() => deleteAll('scan')}
+              style={{ color: 'var(--crit)', fontSize: 12.5, padding: '4px 11px' }}
+              title="Removes only the pending clips a scan brought in — hand-added and clipper-submitted ones stay.">
+              🗑 Delete scan finds ({scanCount})
+            </button>
+          )}
+          <button className="btn secondary" disabled={busy} onClick={() => deleteAll('all')}
+            style={{ color: 'var(--crit)', fontSize: 12.5, padding: '4px 11px' }}
+            title="Empties the whole pending queue. Approved clips are untouched; deleted ones are remembered so a re-scan won't re-add them.">
+            🗑 Delete all pending ({clips.length})
+          </button>
+        </div>
+      )}
       {clips.map((c, i) => (
         <div
           key={c.id}
