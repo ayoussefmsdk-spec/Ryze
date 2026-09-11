@@ -6,8 +6,10 @@
  *                        enforceWindow, existingKeys })
  * candidate: { key, platform, url, postedAt (ISO|null), hashtags: string[] }
  * Returns { accept: [candidate], reject: [{ ...candidate, reason }] }
- * Rules (in order): skip if already ingested; drop if missing a required
- * hashtag; drop if posted outside the cycle window (when enforced).
+ * Rules (in order): skip if already ingested; skip if the same post is already
+ * tracked in ANOTHER campaign's cycle (reason 'in_other_campaign', with the
+ * campaign name attached as `elsewhere`); drop if missing a required hashtag;
+ * drop if posted outside the cycle window (when enforced).
  */
 export function selectScanCandidates({
   candidates = [],
@@ -16,6 +18,7 @@ export function selectScanCandidates({
   endsOn = null,
   enforceWindow = false,
   existingKeys = new Set(),
+  otherCycleKeys = new Map(), // key -> 'Campaign · Cycle' label
 }) {
   const accept = [];
   const reject = [];
@@ -28,6 +31,10 @@ export function selectScanCandidates({
     if (!c || !c.key) { reject.push({ key: c?.key ?? null, reason: 'invalid' }); continue; }
     if (existingKeys.has(c.key) || seen.has(c.key)) { reject.push({ ...c, reason: 'duplicate' }); continue; }
     seen.add(c.key);
+    if (otherCycleKeys.has(c.key)) {
+      reject.push({ ...c, reason: 'in_other_campaign', elsewhere: otherCycleKeys.get(c.key) });
+      continue;
+    }
 
     if (need.length) {
       const have = new Set((c.hashtags || []).map((h) => String(h).toLowerCase()));

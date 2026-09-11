@@ -68,3 +68,21 @@ test('no hashtag requirement accepts untagged posts', () => {
 test('cost estimate: 30 paid posts ≈ 5 cents', () => {
   assert.equal(estimateScanCostCents({ paidPosts: 30 }), 5); // 30*160/1000 = 4.8 -> 5
 });
+
+test('posts tracked in another campaign are separated with their location', () => {
+  const { accept, reject } = selectScanCandidates({
+    candidates: [
+      { key: 'tiktok:reused', url: 'u1', hashtags: [], postedAt: '2026-09-05T00:00:00Z' },
+      { key: 'tiktok:fresh', url: 'u2', hashtags: [], postedAt: '2026-09-05T00:00:00Z' },
+      { key: 'tiktok:mine', url: 'u3', hashtags: [], postedAt: '2026-09-05T00:00:00Z' },
+    ],
+    requiredHashtags: [], enforceWindow: false,
+    existingKeys: new Set(['tiktok:mine']), // this cycle wins over "elsewhere"
+    otherCycleKeys: new Map([['tiktok:reused', 'ClientB · September'], ['tiktok:mine', 'ClientB · September']]),
+  });
+  assert.deepEqual(accept.map((c) => c.key), ['tiktok:fresh']);
+  const reused = reject.find((r) => r.key === 'tiktok:reused');
+  assert.equal(reused.reason, 'in_other_campaign');
+  assert.equal(reused.elsewhere, 'ClientB · September');
+  assert.equal(reject.find((r) => r.key === 'tiktok:mine').reason, 'duplicate');
+});
