@@ -432,6 +432,15 @@ window.RYZE = window.RYZE || {};
     };
   };
 
+  /* Base vide : référentiels, comptes et articles conservés ; aucun patient, aucun lot */
+  R.seedVide = function () {
+    const s = R.seed();
+    s.patients = []; s.rdv = []; s.mouvements = []; s.journal = [];
+    s.stock.forEach(it => { it.lots = []; it.cmm = 0; });
+    s.dirty = true; s.vide = true;
+    return s;
+  };
+
   function resultatDemo(id, rand) {
     switch (id) {
       case 'calpro': return `${60 + Math.floor(rand() * 120)} µg/g`;

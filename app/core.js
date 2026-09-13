@@ -15,6 +15,7 @@
   remplacer(charger() || Object.assign(R.seed(), { semaineSeed: R.semaineRef() }));
   R.save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* stockage indisponible : la session reste en mémoire */ } };
   R.touch = () => { S.dirty = true; R.save(); };
+  R.vider = () => { try { localStorage.removeItem(KEY); } catch (e) {} const u = S.user; remplacer(Object.assign(R.seedVide(), { semaineSeed: R.semaineRef(), user: u })); R.save(); R.go(u ? 'dashboard' : 'dashboard'); R.toast('Base vide : ajoutez vos patients, lots et rendez-vous', 'good'); };
   R.reset = () => { try { localStorage.removeItem(KEY); } catch (e) {} const u = S.user; remplacer(Object.assign(R.seed(), { semaineSeed: R.semaineRef(), user: u })); R.save(); R.go('dashboard'); R.toast('Données de démonstration réinitialisées', 'good'); };
   R.journal = (txt) => { S.journal.unshift({ date: R.today(), heure: new Date().toTimeString().slice(0, 5), par: S.user, txt }); S.journal = S.journal.slice(0, 200); };
 
@@ -215,7 +216,7 @@
           <li>${R.icon('check')}<span>Stock par lot et péremption, besoins prévisionnels calculés depuis le planning.</span></li>
           <li>${R.icon('check')}<span>Carnet de suivi biothérapique généré et imprimable pour chaque patient.</span></li>
         </ul>
-        <div class="demo-note">Prototype de démonstration — patients, lots et effectifs fictifs. Aucune donnée réelle.</div>
+        <div class="demo-note">${S.vide ? 'Base vide : aucun patient ni lot. ' : 'Prototype de démonstration — patients, lots et effectifs fictifs. Aucune donnée réelle. '}<button type="button" class="btn sm ghost" data-action="${S.vide ? 'resetDemo' : 'viderDemoConfirm'}">${S.vide ? 'Recharger la démonstration' : 'Démarrer avec une base vide'}</button></div>
       </div>
       <div class="login-right">
         <div class="caps">Se connecter en tant que</div>
@@ -252,7 +253,7 @@
       <div class="grid c21">
         <section class="card"><div class="card-head"><div><h2>Cures IV réalisées par mois</h2><div class="sub">12 derniers mois · toutes molécules</div></div></div><div class="card-body">${R.columnChart(chart)}</div></section>
         <section class="card"><div class="card-head"><h2>À traiter</h2><span class="badge ${alertes.some(a => a.sev === 'crit') ? 'crit' : 'warn'}">${alertes.length}</span></div>
-          <div class="card-body" style="padding-top:4px;padding-bottom:4px">${alertes.length ? alertes.slice(0, 8).map(a => `<button class="alert-row" data-go="${a.go[0]}" data-params='${R.params(a.go[1])}'><i class="sev ${a.sev}"></i><div><div class="t">${R.esc(a.t)}</div><div class="d">${R.esc(a.d)}</div></div></button>`).join('') : '<div class="empty">Rien à signaler</div>'}</div>
+          <div class="card-body" style="padding-top:4px;padding-bottom:4px">${!S.patients.length ? `<div class="empty">Aucun patient. ${R.can('dossier', 'w') ? '<br><button class="btn sm primary mt8" data-go="nouveau">Créer le premier dossier</button>' : ''}</div>` : alertes.length ? alertes.slice(0, 8).map(a => `<button class="alert-row" data-go="${a.go[0]}" data-params='${R.params(a.go[1])}'><i class="sev ${a.sev}"></i><div><div class="t">${R.esc(a.t)}</div><div class="d">${R.esc(a.d)}</div></div></button>`).join('') : '<div class="empty">Rien à signaler</div>'}</div>
           ${alertes.length > 8 ? `<div class="card-foot">${alertes.length - 8} autre(s) alerte(s) — voir Patients et Stock</div>` : ''}</section>
       </div>
       <div class="grid c21">
@@ -284,7 +285,9 @@
       const res = S.patients.filter(p => (p.nom + ' ' + p.prenom + ' ' + p.ipp).toLowerCase().includes(q)).slice(0, 6);
       box.innerHTML = res.length ? `<div class="search-results">${res.map(p => `<button type="button" data-go="patient" data-params='${R.params({ id: p.id })}'><div class="avatar" style="width:26px;height:26px;font-size:10px">${R.initials(p.prenom, p.nom)}</div><div><b>${R.esc(R.nomComplet(p))}</b> <span class="mono muted">${R.esc(p.ipp)}</span></div><span class="muted small" style="margin-left:auto">${R.esc(R.proto(p.protocoleId)?.dci || '')}</span></button>`).join('')}</div>` : `<div class="search-results"><div class="empty" style="padding:14px">Aucun patient</div></div>`;
     },
-    resetDemo() { R.reset(); }
+    resetDemo() { R.reset(); },
+    viderDemo() { R.vider(); },
+    viderDemoConfirm() { R.confirmer('Démarrer avec une base vide ?', 'Les patients, lots, mouvements et rendez-vous de démonstration seront supprimés. Les protocoles, les articles de stock et les comptes sont conservés.', 'viderDemo'); }
   });
 
   /* ---------- Délégation d'événements ---------- */
