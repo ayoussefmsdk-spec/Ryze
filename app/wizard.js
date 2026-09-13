@@ -66,29 +66,39 @@
       <div class="callout info">Objectifs STRIDE-II : réponse clinique à court terme, rémission clinique + CRP normale, calprotectine 100–250 µg/g à moyen terme, cicatrisation endoscopique à 6–12 mois. Réévaluer tous les 3 mois si maladie active.</div></div></section></div>`;
   }
   function step5(w) {
-    const pr = R.proto(w.protocoleId), cures = calcCures(), d = w.d; const app = w.bilan.filter(b => b.statut !== 'na'), fait = app.filter(b => b.statut.startsWith('fait')).length, attente = app.filter(b => b.statut === 'attente');
-    const survOn = R.SURVEILLANCE.filter(s => w.surv[s.id]?.on);
-    return `<div class="grid c11"><section class="card"><div class="card-head"><h2>Patient</h2></div><div class="card-body"><dl class="dl"><div><dt>Identité</dt><dd><b>${esc(d.nom.toUpperCase())} ${esc(d.prenom)}</b> · ${d.ddn ? R.age(d.ddn) + ' ans' : ''} · ${d.sexe === 'F' ? 'Femme' : 'Homme'} · <span class="mono">${esc(d.ipp)}</span></dd></div><div><dt>Morphologie</dt><dd>${d.poids} kg · ${d.taille || '—'} cm</dd></div><div><dt>Maladie</dt><dd>${esc(R.PATHOS[d.pathologie]?.label)} — ${esc(d.montreal || '—')}</dd></div><div><dt>Médecin référent</dt><dd>${esc(R.userName(d.medecinId))}</dd></div><div><dt>Bilan pré-thérapeutique</dt><dd>${fait}/${app.length} faits ${attente.length ? `— <span style="color:var(--warn-ink)">${attente.length} en attente : ${attente.map(b => R.BILAN_PRE.find(x => x.id === b.id).label.split(' (')[0]).join(', ')}</span>` : R.badge('good', 'complet')}</dd></div></dl></div></section>
-    <section class="card"><div class="card-head"><h2>Traitement</h2></div><div class="card-body"><dl class="dl"><div><dt>Protocole</dt><dd><b>${esc(pr.dci)}</b> — ${esc(pr.classe)} · ${esc(pr.voie)}</dd></div><div><dt>Induction</dt><dd>${w.induction.map(e => `${e.label} (${R.doseEtape(protoTemp(), e, +d.poids, 'induction').texte})`).join(' → ')}</dd></div><div><dt>Entretien</dt><dd>${w.entretien.dose ?? ''} ${(w.entretien.doseType || pr.doseType) === 'mgkg' ? 'mg/kg' : (pr.doseType === 'po' ? '' : 'mg')} ${w.entretien.voie} tous les ${w.entretien.intervalleJours} j dès J${w.entretien.debutJour}</dd></div><div><dt>Calendrier</dt><dd>${cures.length} cures du ${R.fmtDate(cures[0]?.datePrevue)} au ${R.fmtDate(cures[cures.length - 1]?.datePrevue)} · ${cures.reduce((a, c) => a + (c.flacons || 0), 0)} unités de stock engagées</dd></div><div><dt>Prémédication</dt><dd>${esc(w.premed || 'Aucune')}</dd></div><div><dt>Surveillance</dt><dd>${survOn.length} éléments du catalogue${w.survCustom.length ? ` + ${w.survCustom.length} personnalisé(s)` : ''}</dd></div></dl></div></section></div>
-    <div class="callout mt16"><b>À la création :</b> le dossier est ouvert au statut « induction », les cures IV sont placées dans le planning HDJ (fauteuil ${w.fauteuil}, ${w.heure}), les besoins en flacons sont intégrés à la prévision de stock et le carnet de suivi est généré.</div>`;
+    const pr = R.proto(w.protocoleId), cures = calcCures(), d = w.d; const app = w.bilan.filter(b => b.statut !== 'na'), attente = app.filter(b => b.statut === 'attente');
+    const apercu = construirePatient();
+    return `<div class="callout mb16"><b>${esc(d.nom.toUpperCase())} ${esc(d.prenom)}</b> · ${esc(pr.dci)} · ${cures.length} cures planifiées du ${R.fmtDate(cures[0]?.datePrevue)} au ${R.fmtDate(cures[cures.length - 1]?.datePrevue)} · ${R.SURVEILLANCE.filter(s => w.surv[s.id]?.on).length + w.survCustom.length} éléments de surveillance${attente.length ? ` · <span style="color:var(--warn-ink)">${attente.length} examen(s) du bilan en attente</span>` : ''}. Vérifiez le carnet ci-dessous puis enregistrez.</div>
+    ${R.carnetHTML(apercu)}`;
   }
 
   R.pages.nouveau = {
     render() {
-      const w = W(); const steps = ['Identité & clinique', 'Bilan pré-thérapeutique', 'Protocole & cycles', 'Plan de surveillance', 'Récapitulatif'];
-      return `<div class="page-head"><div><h1>Nouveau dossier de biothérapie</h1><p>Prescription structurée : identité, bilan, protocole par cycles, surveillance datée, carnet</p></div><div class="page-actions"><button class="btn ghost" data-action="wAbandon">Abandonner</button></div></div>
-      <div class="stepper">${steps.map((s, i) => `<div class="step${w.step === i + 1 ? ' active' : w.step > i + 1 ? ' done' : ''}"><span class="step-n">${w.step > i + 1 ? '✓' : i + 1}</span><span class="lbl">${s}</span></div>`).join('')}</div>
-      ${[step1, step2, step3, step4, step5][w.step - 1](w)}
-      <div class="row between mt24"><div>${w.step > 1 ? `<button class="btn" data-action="wPrev">${R.icon('chevL')}Précédent</button>` : ''}</div><div>${w.step < 5 ? `<button class="btn primary" data-action="wNext">Suivant ${R.icon('chevR')}</button>` : `<button class="btn primary" data-action="wCreate">${R.icon('book')}Créer le dossier et générer le carnet</button>`}</div></div>`;
+      const w = W(); const steps = ['Patient', 'Traitement et cycles', 'Carnet'];
+      return `<div class="page-head"><div><h1>Nouveau dossier de biothérapie</h1><p>Trois étapes : le patient, le protocole avec ses cycles, puis le carnet à imprimer</p></div><div class="page-actions"><button class="btn ghost" data-action="wAbandon">Abandonner</button></div></div>
+      <div class="stepper" style="grid-template-columns:repeat(3,1fr)">${steps.map((s, i) => `<div class="step${w.step === i + 1 ? ' active' : w.step > i + 1 ? ' done' : ''}"><span class="step-n">${w.step > i + 1 ? '✓' : i + 1}</span><span class="lbl">${s}</span></div>`).join('')}</div>
+      ${w.step === 1 ? step1(w) + `<details class="card mt16"><summary class="card-head" style="cursor:pointer"><span><h2 style="display:inline">Bilan pré-thérapeutique</h2> <span class="muted small">optionnel ici, modifiable ensuite dans le dossier · ${w.bilan.filter(b => b.statut.startsWith('fait')).length}/${w.bilan.filter(b => b.statut !== 'na').length} faits</span></span></summary><div class="card-body flush">${step2(w)}</div></details>` : ''}
+      ${w.step === 2 ? step3(w) + (w.protocoleId ? '<div class="mt16">' + step4(w) + '</div>' : '') : ''}
+      ${w.step === 3 ? step5(w) : ''}
+      <div class="row between mt24"><div>${w.step > 1 ? `<button class="btn" data-action="wPrev">${R.icon('chevL')}Précédent</button>` : ''}</div><div class="row">${w.step < 3 ? `<button class="btn primary" data-action="wNext">Suivant ${R.icon('chevR')}</button>` : `<button class="btn" data-action="wCreate">Enregistrer le dossier</button><button class="btn primary" data-action="wCreatePrint">${R.icon('print')}Enregistrer et imprimer le carnet</button>`}</div></div>`;
     }
   };
 
   function valider(step) {
     const w = W();
     if (step === 1) { const m = ['nom', 'prenom', 'ipp', 'ddn', 'poids'].filter(k => !String(w.d[k] || '').trim()); if (m.length) { R.toast('Champs obligatoires : ' + m.join(', '), 'crit'); return false; } }
-    if (step === 3 && !w.protocoleId) { R.toast('Choisissez un protocole', 'crit'); return false; }
+    if (step === 2 && !w.protocoleId) { R.toast('Choisissez un protocole', 'crit'); return false; }
     return true;
   }
+  function construirePatient() {
+    const w = W(); const pr = R.proto(w.protocoleId), cures = calcCures(), surveillance = [];
+    Object.keys(w.surv).filter(id => w.surv[id].on).forEach(id => { const it = R.surv(id), cfg = w.surv[id]; if (it.mode === 'cure') surveillance.push({ id, label: it.label, cat: it.cat, mode: 'cure', echeance: null, statut: 'cure' }); else if (it.mode === 'periodique') { for (let j = cfg.tousLes; j <= w.horizon; j += cfg.tousLes) surveillance.push({ id, label: it.label, cat: it.cat, mode: 'echeance', jour: j, echeance: R.addDays(w.dateDebut, j), statut: 'prevue' }); } else cfg.jours.forEach(j => surveillance.push({ id, label: it.label, cat: it.cat, mode: 'echeance', jour: j, echeance: R.addDays(w.dateDebut, j), statut: 'prevue', cible: it.cible })); });
+    w.survCustom.forEach(c => surveillance.push({ id: R.uid('sv'), label: c.label, cat: 'Personnalisé', mode: 'echeance', jour: R.diffDays(w.dateDebut, c.date), echeance: c.date, statut: 'prevue' }));
+    surveillance.sort((a, b) => (a.jour || 0) - (b.jour || 0));
+    const d = w.d;
+    return { id: R.uid('p'), ipp: d.ipp.trim(), nom: d.nom.trim().toUpperCase(), prenom: d.prenom.trim(), ddn: d.ddn, sexe: d.sexe, poids: +d.poids, taille: +d.taille || null, tel: d.tel, pathologie: d.pathologie, montreal: d.montreal, dateDiag: d.dateDiag, medecinId: d.medecinId, protocoleId: pr.id, dateDebut: w.dateDebut, traitementsAssocies: d.traitementsAssocies || '—', allergies: d.allergies || '—', antecedentsBio: d.antecedentsBio || 'Aucune biothérapie antérieure', comorbidites: d.comorbidites, premedication: w.premed, statut: 'induction', motifSuspension: '', cures, surveillance, bilan: JSON.parse(JSON.stringify(w.bilan)), notes: [{ date: R.today(), par: S.user, txt: `Dossier créé — ${pr.dci}, ${w.induction.length} étape(s) d’induction puis entretien tous les ${w.entretien.intervalleJours} j.` }], creeLe: R.today(), creePar: S.user, derniereCure: null, protocoleSnapshot: { induction: w.induction, entretien: w.entretien } };
+  }
+  function creer() { if (!valider(1) || !valider(2)) return null; const p = construirePatient(); S.patients.push(p); R.journal(`Dossier créé — ${R.nomComplet(p)} (${R.proto(p.protocoleId).dci})`); R.ui.w = null; R.touch(); return p; }
   Object.assign(R.actions, {
     wBind(el) { const w = W(); if (el.dataset.root) w[el.dataset.k] = el.value; else w.d[el.dataset.k] = el.value; },
     wBindR(el) { R.actions.wBind(el); const w = W(); if (el.dataset.k === 'sexe' && w.protocoleId) w.surv = Object.assign(survDefaults(R.proto(w.protocoleId)), Object.fromEntries(Object.entries(w.surv).filter(([k]) => k !== 'fcu'))); R.render(); },
@@ -109,15 +119,8 @@
     wSurvPeriod(el) { W().surv[el.dataset.id].tousLes = Math.max(7, +el.value || 91); R.render(); },
     wSurvCustomAdd() { const l = document.getElementById('w-custom-label').value.trim(), d = document.getElementById('w-custom-date').value; if (!l || !d) { R.toast('Libellé et date requis', 'crit'); return; } W().survCustom.push({ label: l, date: d }); R.render(); },
     wSurvCustomDel(el) { W().survCustom.splice(+el.dataset.i, 1); R.render(); },
-    wCreate() {
-      const w = W(); if (!valider(1) || !valider(3)) return;
-      const pr = R.proto(w.protocoleId), cures = calcCures(), surveillance = [];
-      Object.keys(w.surv).filter(id => w.surv[id].on).forEach(id => { const it = R.surv(id), cfg = w.surv[id]; if (it.mode === 'cure') surveillance.push({ id, label: it.label, cat: it.cat, mode: 'cure', echeance: null, statut: 'cure' }); else if (it.mode === 'periodique') { for (let j = cfg.tousLes; j <= w.horizon; j += cfg.tousLes) surveillance.push({ id, label: it.label, cat: it.cat, mode: 'echeance', jour: j, echeance: R.addDays(w.dateDebut, j), statut: 'prevue' }); } else cfg.jours.forEach(j => surveillance.push({ id, label: it.label, cat: it.cat, mode: 'echeance', jour: j, echeance: R.addDays(w.dateDebut, j), statut: 'prevue', cible: it.cible })); });
-      w.survCustom.forEach(c => surveillance.push({ id: R.uid('sv'), label: c.label, cat: 'Personnalisé', mode: 'echeance', jour: R.diffDays(w.dateDebut, c.date), echeance: c.date, statut: 'prevue' }));
-      surveillance.sort((a, b) => (a.jour || 0) - (b.jour || 0));
-      const d = w.d; const p = { id: R.uid('p'), ipp: d.ipp.trim(), nom: d.nom.trim().toUpperCase(), prenom: d.prenom.trim(), ddn: d.ddn, sexe: d.sexe, poids: +d.poids, taille: +d.taille || null, tel: d.tel, pathologie: d.pathologie, montreal: d.montreal, dateDiag: d.dateDiag, medecinId: d.medecinId, protocoleId: pr.id, dateDebut: w.dateDebut, traitementsAssocies: d.traitementsAssocies || '—', allergies: d.allergies || '—', antecedentsBio: d.antecedentsBio || 'Aucune biothérapie antérieure', comorbidites: d.comorbidites, premedication: w.premed, statut: 'induction', motifSuspension: '', cures, surveillance, bilan: JSON.parse(JSON.stringify(w.bilan)), notes: [{ date: R.today(), par: S.user, txt: `Dossier créé — ${pr.dci}, ${w.induction.length} étape(s) d’induction puis entretien tous les ${w.entretien.intervalleJours} j.` }], creeLe: R.today(), creePar: S.user, derniereCure: null, protocoleSnapshot: { induction: w.induction, entretien: w.entretien } };
-      S.patients.push(p); R.journal(`Dossier créé — ${R.nomComplet(p)} (${pr.dci})`); R.ui.w = null; R.touch(); R.toast('Dossier créé, carnet généré', 'good'); R.go('patient', { id: p.id });
-    },
+    wCreate() { const p = creer(); if (!p) return; R.toast('Dossier créé, carnet généré', 'good'); R.go('patient', { id: p.id }); },
+    wCreatePrint() { const p = creer(); if (!p) return; R.go('carnet', { id: p.id }); setTimeout(() => window.print(), 400); },
     imprimer() { window.print(); }
   });
 
@@ -125,6 +128,10 @@
   R.pages.carnet = {
     render(params) {
       const p = R.patient(params.id); if (!p) return '<div class="empty">Dossier introuvable.</div>';
+      return `<div class="row between no-print mb16"><button class="btn" data-go="patient" data-params='${R.params({ id: p.id })}'>${R.icon('back')}Retour au dossier</button><div class="row"><span class="small muted">Format A4 · 4 pages</span><button class="btn primary" data-action="imprimer">${R.icon('print')}Imprimer / PDF</button></div></div>${R.carnetHTML(p)}`;
+    }
+  };
+  R.carnetHTML = function (p) {
       const pr = R.proto(p.protocoleId), s = S.settings, art = R.article(pr.articleId), t = R.today();
       const band = `<div class="doc-band"><div><b>${esc(s.etablissement)}</b>${esc(s.service)}<br>${esc(s.unite)}</div><div class="r"><b>Carnet de suivi biothérapique</b>${esc(R.nomComplet(p))} · IPP ${esc(p.ipp)}<br>Édité le ${R.fmtDate(t)}</div></div>`;
       const foot = n => `<div class="doc-foot"><span>Document remis au patient — à présenter à chaque venue et à tout professionnel de santé consulté</span><span>Page ${n} / 4</span></div>`;
@@ -132,8 +139,7 @@
       const vacc = p.bilan.find(b => b.id === 'vacc'); const bilanApp = p.bilan.filter(b => b.statut !== 'na');
       const ech = p.surveillance.filter(x => x.mode === 'echeance').sort((a, b) => a.echeance.localeCompare(b.echeance));
       const vides = n => Array.from({ length: n }, () => `<tr><td class="m">&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`).join('');
-      return `<div class="row between no-print mb16"><button class="btn" data-go="patient" data-params='${R.params({ id: p.id })}'>${R.icon('back')}Retour au dossier</button><div class="row"><span class="small muted">Format A4 · 4 pages · police lisible pour le patient</span><button class="btn primary" data-action="imprimer">${R.icon('print')}Imprimer / PDF</button></div></div>
-      <div class="carnet-wrap">
+      return `<div class="carnet-wrap">
       <div class="carnet-page">${band}
         <div class="doc-title">Carnet de suivi biothérapique</div><div class="doc-sub">${esc(R.PATHOS[p.pathologie]?.label)} — traitement par ${esc(pr.dci)}</div>
         <div class="doc-h2">Identité du patient</div>
@@ -183,6 +189,5 @@
         <div class="doc-sign"><div>Médecin référent<br><span style="color:#7E8C88">${esc(R.userName(p.medecinId))}</span></div><div>Pharmacien — analyse et éducation</div><div>Infirmier(ère) — hôpital de jour</div></div>
         ${foot(4)}</div>
       </div>`;
-    }
   };
 })(window.RYZE);
