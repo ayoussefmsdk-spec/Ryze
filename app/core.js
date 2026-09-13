@@ -8,11 +8,24 @@
   R.S = S; R.ui = { filtres: {}, semaineOffset: 0 };
   R.pages = {}; R.actions = {};
 
+  const VERSION = 2;
+  /* Migration d'un état enregistré par une version antérieure (anciens rôles → deux niveaux d'accès) */
+  function migrer(s) {
+    if (s.version === 1) {
+      const map = { medecin: 'complet', pharmacien: 'complet', admin: 'complet', ide: 'hdj', secretaire: 'hdj' };
+      (s.users || []).forEach((u, i) => { if (!R.ROLES[u.role]) { u.medecin = u.role === 'medecin'; u.role = map[u.role] || 'hdj'; } if (!u.code) u.code = (u.role === 'complet' ? 'ACC' : 'HDJ') + String(100 + i).slice(-3); });
+      s.version = 2;
+    }
+    (s.users || []).forEach(u => { if (!R.ROLES[u.role]) u.role = 'hdj'; if (!u.code) u.code = 'HDJ' + Math.floor(100 + Math.random() * 900); });
+    if (s.user && !(s.users || []).some(u => u.id === s.user)) s.user = null;
+    return s;
+  }
   function charger() {
-    try { const raw = localStorage.getItem(KEY); if (!raw) return null; const s = JSON.parse(raw); if (s.version !== 1) return null; if (!s.dirty && s.semaineSeed !== R.semaineRef()) return null; return s; } catch (e) { return null; }
+    try { const raw = localStorage.getItem(KEY); if (!raw) return null; const s = JSON.parse(raw); if (!s || !s.users || !s.patients) return null; if (s.version > VERSION) return null; if (!s.dirty && s.semaineSeed !== R.semaineRef()) return null; return migrer(s); } catch (e) { return null; }
   }
   function remplacer(obj) { Object.keys(S).forEach(k => delete S[k]); Object.assign(S, obj); }
-  remplacer(charger() || Object.assign(R.seed(), { semaineSeed: R.semaineRef() }));
+  remplacer(charger() || Object.assign(R.seed(), { semaineSeed: R.semaineRef(), version: VERSION }));
+  S.version = VERSION;
   R.save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* stockage indisponible : la session reste en mémoire */ } };
   R.touch = () => { S.dirty = true; R.save(); };
   R.vider = () => { try { localStorage.removeItem(KEY); } catch (e) {} const u = S.user; remplacer(Object.assign(R.seedVide(), { semaineSeed: R.semaineRef(), user: u })); R.save(); R.go(u ? 'dashboard' : 'dashboard'); R.toast('Base vide : ajoutez vos patients, lots et rendez-vous', 'good'); };
@@ -178,6 +191,14 @@
   ] }];
   R.go = (page, params) => { R.closeModal(); S.route = { page, params: params || {} }; R.save(); R.render(); window.scrollTo(0, 0); };
   R.render = () => {
+    try { rendre(); } catch (e) {
+      console.error('Rendu impossible, réinitialisation des données locales', e);
+      try { localStorage.removeItem(KEY); } catch (x) {}
+      remplacer(Object.assign(R.seed(), { semaineSeed: R.semaineRef(), version: VERSION }));
+      try { rendre(); R.toast('Données locales incompatibles : démonstration rechargée', 'warn'); } catch (e2) { document.getElementById('app').innerHTML = '<div class="empty">Erreur d’affichage : ' + R.esc(e2.message) + '</div>'; }
+    }
+  };
+  function rendre() {
     const app = document.getElementById('app');
     if (!S.user) { app.innerHTML = loginView(); return; }
     const page = R.pages[S.route.page] ? S.route.page : 'dashboard';
@@ -197,11 +218,11 @@
           <button class="menu-btn" data-action="toggleRail" aria-label="Menu">${R.icon('menu')}</button>
           <div class="search">${R.icon('search')}<input type="search" id="global-search" placeholder="Rechercher un patient (nom, IPP)…" data-input="globalSearch" autocomplete="off"><div id="search-results"></div></div>
           <span class="week-chip">Semaine du ${R.fmtDate(sem.lundi, { day: 'numeric', month: 'short' })} au ${R.fmtDate(sem.jours[4], { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-          <div class="user-chip"><div class="who"><b>${R.esc(R.userName(u.id))}</b><span>${R.esc(R.ROLES[u.role].label)} · ${R.esc(u.fonction)}</span></div><div class="avatar">${R.initials(u.prenom, u.nom)}</div><button class="btn sm ghost" data-action="logout" title="Changer d’utilisateur">${R.icon('logout')}</button></div>
+          <div class="user-chip"><div class="who"><b>${R.esc(R.userName(u.id))}</b><span>${R.esc((R.ROLES[u.role] || R.ROLES.hdj).label)} · ${R.esc(u.fonction)}</span></div><div class="avatar">${R.initials(u.prenom, u.nom)}</div><button class="btn sm ghost" data-action="logout" title="Changer d’utilisateur">${R.icon('logout')}</button></div>
         </header>
         <main class="content">${pg.render(S.route.params)}</main>
       </div></div>`;
-  };
+  }
 
   function loginView() {
     const actifs = S.users.filter(u => u.actif);
@@ -225,7 +246,7 @@
           <button type="submit" class="btn primary" style="justify-content:center">Entrer</button>
         </form>
         <div class="subtle mt24"><div class="caps mb8">Codes de démonstration</div>
-          <div class="stack" style="gap:6px">${actifs.map(u => `<div class="row between small"><span>${R.esc(R.userName(u.id))} <span class="muted">· ${R.esc(u.fonction)}</span></span><span class="row" style="gap:6px"><span class="badge ${u.role === 'complet' ? 'accent' : ''}">${R.ROLES[u.role].court}</span><button type="button" class="tag" data-action="loginFill" data-code="${R.esc(u.code)}" style="cursor:pointer">${R.esc(u.code)}</button></span></div>`).join('')}</div>
+          <div class="stack" style="gap:6px">${actifs.map(u => `<div class="row between small"><span>${R.esc(R.userName(u.id))} <span class="muted">· ${R.esc(u.fonction)}</span></span><span class="row" style="gap:6px"><span class="badge ${u.role === 'complet' ? 'accent' : ''}">${(R.ROLES[u.role] || R.ROLES.hdj).court}</span><button type="button" class="tag" data-action="loginFill" data-code="${R.esc(u.code)}" style="cursor:pointer">${R.esc(u.code)}</button></span></div>`).join('')}</div>
           <p class="xs muted" style="margin:10px 0 0">Les codes sont créés dans Équipe & codes par un accès complet. En production, cette liste n’est évidemment pas affichée.</p></div>
       </div></div></div>`;
   }
