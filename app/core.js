@@ -81,7 +81,6 @@
       const a = R.analyseStock(it), u = a.art.uniteLib === 'u' ? 'unité(s)' : (a.art.voie === 'IV' ? 'flacon(s)' : 'unité(s)');
       if (a.etat === 'rupture') out.push({ sev: 'crit', cat: 'stock', t: `Rupture — ${a.art.libelle}`, d: a.besoin ? `${a.besoin} ${u} nécessaires dans les ${h} prochains jours (${a.cures.map(x => x.patient.nom).join(', ')})` : 'Aucune cure planifiée sur l’horizon de prévision', go: ['stock', {}] });
       else if (a.etat === 'faible') out.push({ sev: 'warn', cat: 'stock', t: `Stock faible — ${a.art.dci} ${a.art.voie !== '—' ? a.art.voie : ''} : ${a.qte} ${u}`, d: `Seuil ${it.seuil} · besoin ${a.besoin} sur ${h} j · quantité à commander ${a.aCommander}`, go: ['stock', {}] });
-      else if (a.etat === 'commander') out.push({ sev: 'info', cat: 'stock', t: `Point de commande atteint — ${a.art.dci} ${a.art.voie !== '—' ? a.art.voie : ''}`, d: `${a.qte} ${u} en stock · point de commande ${a.pointCommande} · délai ${it.delaiLivraison} j`, go: ['stock', {}] });
       a.perimes.forEach(l => out.push({ sev: 'crit', cat: 'stock', t: `Lot périmé — ${a.art.dci} lot ${l.lot}`, d: `${l.qte} ${u} · péremption ${R.fmtDate(l.peremption)} — à retirer du stock`, go: ['stock', {}] }));
       a.lotsProches.forEach(l => out.push({ sev: 'warn', cat: 'stock', t: `Péremption proche — ${a.art.dci} lot ${l.lot}`, d: `${l.qte} ${u} · péremption ${R.fmtDate(l.peremption)} (${R.diffDays(t, l.peremption)} j) — à utiliser en priorité`, go: ['stock', {}] }));
     });
@@ -91,8 +90,6 @@
       if (p.statut === 'induction') { const manq = p.bilan.filter(b => b.statut === 'attente'); if (manq.length) out.push({ sev: 'warn', cat: 'patient', t: `Bilan pré-thérapeutique incomplet — ${R.nomComplet(p)}`, d: manq.map(b => R.BILAN_PRE.find(x => x.id === b.id)?.label).join(' · '), go: ['patient', { id: p.id, tab: 'bilan' }] }); }
       if (p.statut === 'suspendu') out.push({ sev: 'info', cat: 'patient', t: `Traitement suspendu — ${R.nomComplet(p)}`, d: p.motifSuspension, go: ['patient', { id: p.id }] });
     });
-    const sem = R.semaine();
-    R.curesEntre(sem.lundi, sem.dimanche).filter(x => x.cure.statut === 'prevue' && x.cure.voie === 'IV' && !x.cure.validationPharma).forEach(x => out.push({ sev: 'info', cat: 'pui', t: `Analyse pharmaceutique en attente — ${R.nomComplet(x.patient)}`, d: `Cure n°${x.cure.n} du ${R.fmtDate(x.cure.datePrevue)} · ${x.cure.doseTexte} · ${x.cure.flacons} flacon(s)`, go: ['patient', { id: x.patient.id, tab: 'cures' }] }));
     const rank = { crit: 0, warn: 1, info: 2 };
     return out.sort((a, b) => rank[a.sev] - rank[b.sev]);
   };
@@ -170,12 +167,15 @@
   };
 
   /* ---------- Navigation et rendu ---------- */
-  const NAV = [
-    { label: 'Activité', items: [{ id: 'dashboard', label: 'Tableau de bord', icon: 'dash', mod: 'dashboard' }, { id: 'planning', label: 'Planning HDJ', icon: 'cal', mod: 'planning' }] },
-    { label: 'Patients', items: [{ id: 'patients', label: 'Patients', icon: 'users', mod: 'patients' }, { id: 'nouveau', label: 'Nouveau dossier', icon: 'plus', mod: 'dossier', w: true }] },
-    { label: 'Pharmacie', items: [{ id: 'protocoles', label: 'Protocoles', icon: 'proto', mod: 'protocoles' }, { id: 'stock', label: 'Stock & pharmacie', icon: 'box', mod: 'stock' }] },
-    { label: 'Administration', items: [{ id: 'equipe', label: 'Équipe & accès', icon: 'team', mod: 'equipe' }, { id: 'parametres', label: 'Paramètres', icon: 'cog', mod: 'dashboard' }] }
-  ];
+  const NAV = [{ label: '', items: [
+    { id: 'dashboard', label: 'Tableau de bord', icon: 'dash', mod: 'dashboard' },
+    { id: 'planning', label: 'Planning HDJ', icon: 'cal', mod: 'planning' },
+    { id: 'patients', label: 'Patients', icon: 'users', mod: 'patients' },
+    { id: 'nouveau', label: 'Nouveau dossier', icon: 'plus', mod: 'dossier', w: true },
+    { id: 'protocoles', label: 'Protocoles', icon: 'proto', mod: 'protocoles' },
+    { id: 'stock', label: 'Stock', icon: 'box', mod: 'stock' },
+    { id: 'equipe', label: 'Équipe & codes', icon: 'team', mod: 'equipe' }
+  ] }];
   R.go = (page, params) => { R.closeModal(); S.route = { page, params: params || {} }; R.save(); R.render(); window.scrollTo(0, 0); };
   R.render = () => {
     const app = document.getElementById('app');
@@ -189,7 +189,7 @@
     app.innerHTML = `<div class="shell">
       <aside class="rail" id="rail">
         <div class="brand"><div class="brand-mark">Rz</div><div><b>Ryze</b><span>Biothérapies · Hôpital de jour</span></div></div>
-        <nav class="nav">${NAV.map(g => { const items = g.items.filter(i => R.can(i.mod, i.w ? 'w' : 'r')); return items.length ? `<div class="nav-label">${g.label}</div>${items.map(i => `<button class="nav-item${(page === i.id || (i.id === 'patients' && (page === 'patient' || page === 'carnet'))) ? ' active' : ''}" data-go="${i.id}">${R.icon(i.icon)}<span>${i.label}</span>${i.id === 'dashboard' && nCrit ? `<span class="count">${nCrit}</span>` : ''}</button>`).join('')}` : ''; }).join('')}</nav>
+        <nav class="nav">${NAV.map(g => { const items = g.items.filter(i => R.can(i.mod, i.w ? 'w' : 'r')); return items.length ? `${g.label ? `<div class="nav-label">${g.label}</div>` : '<div style="height:8px"></div>'}${items.map(i => `<button class="nav-item${(page === i.id || (i.id === 'patients' && (page === 'patient' || page === 'carnet'))) ? ' active' : ''}" data-go="${i.id}">${R.icon(i.icon)}<span>${i.label}</span>${i.id === 'dashboard' && nCrit ? `<span class="count">${nCrit}</span>` : ''}</button>`).join('')}` : ''; }).join('')}</nav>
         <div class="rail-foot">${R.esc(S.settings.service)}<br>${R.esc(S.settings.unite)}</div>
       </aside>
       <div class="main">
@@ -209,19 +209,24 @@
       <div class="login-left">
         <div class="brand" style="padding:0"><div class="brand-mark">Rz</div><div><b>Ryze</b><span>Suivi biothérapique</span></div></div>
         <h1>Gestion des biothérapies en hôpital de jour</h1>
-        <p>${R.esc(S.settings.service)} — ${R.esc(S.settings.unite)}. Dossier patient, protocoles par cycles, planning des fauteuils, stock PUI et carnet de suivi imprimable, dans un seul outil.</p>
+        <p>${R.esc(S.settings.service)} — ${R.esc(S.settings.unite)}.</p>
         <ul class="feature-list">
-          <li>${R.icon('check')}<span>Prescription par protocole : induction puis entretien, doses calculées au poids, arrondi au flacon.</span></li>
-          <li>${R.icon('check')}<span>Plan de surveillance daté (calprotectine, dosages pharmacologiques, endoscopie…) et alertes de retard.</span></li>
-          <li>${R.icon('check')}<span>Stock par lot et péremption, besoins prévisionnels calculés depuis le planning.</span></li>
-          <li>${R.icon('check')}<span>Carnet de suivi biothérapique généré et imprimable pour chaque patient.</span></li>
+          <li>${R.icon('check')}<span>Dossier patient et protocole par cycles, doses calculées au poids.</span></li>
+          <li>${R.icon('check')}<span>Planning des fauteuils, cures marquées réalisées en un clic.</span></li>
+          <li>${R.icon('check')}<span>Stock par lot et péremption, besoins calculés depuis le planning.</span></li>
+          <li>${R.icon('check')}<span>Carnet de suivi imprimable pour chaque patient.</span></li>
         </ul>
-        <div class="demo-note">${S.vide ? 'Base vide : aucun patient ni lot. ' : 'Prototype de démonstration — patients, lots et effectifs fictifs. Aucune donnée réelle. '}<button type="button" class="btn sm ghost" data-action="${S.vide ? 'resetDemo' : 'viderDemoConfirm'}">${S.vide ? 'Recharger la démonstration' : 'Démarrer avec une base vide'}</button></div>
+        <div class="demo-note">${S.vide ? 'Base vide : aucun patient ni lot. ' : 'Prototype de démonstration — patients, lots et effectifs fictifs. '}<button type="button" class="btn sm ghost" data-action="${S.vide ? 'resetDemo' : 'viderDemoConfirm'}">${S.vide ? 'Recharger la démonstration' : 'Démarrer avec une base vide'}</button></div>
       </div>
       <div class="login-right">
-        <div class="caps">Se connecter en tant que</div>
-        <div class="role-list">${actifs.map(u => `<button class="role-card" data-action="login" data-id="${u.id}"><div class="avatar">${R.initials(u.prenom, u.nom)}</div><div><b>${R.esc(R.userName(u.id))}</b><span>${R.esc(u.fonction)}</span></div><span class="role-tag">${R.ROLES[u.role].court}</span></button>`).join('')}</div>
-        <p class="small muted mt16" style="margin-bottom:0">Chaque profil ouvre l’application avec ses droits (médecin, pharmacien, IDE, secrétaire, administrateur). En production : authentification par l’annuaire de l’établissement.</p>
+        <form data-form="loginCode" class="stack">
+          <div class="caps">Connexion</div>
+          <div class="field"><label for="login-code">Code d’accès personnel</label><input type="text" id="login-code" name="code" class="mono" style="font-size:18px;letter-spacing:.12em;text-transform:uppercase" placeholder="ex. MED001" autocomplete="off" autofocus required></div>
+          <button type="submit" class="btn primary" style="justify-content:center">Entrer</button>
+        </form>
+        <div class="subtle mt24"><div class="caps mb8">Codes de démonstration</div>
+          <div class="stack" style="gap:6px">${actifs.map(u => `<div class="row between small"><span>${R.esc(R.userName(u.id))} <span class="muted">· ${R.esc(u.fonction)}</span></span><span class="row" style="gap:6px"><span class="badge ${u.role === 'complet' ? 'accent' : ''}">${R.ROLES[u.role].court}</span><button type="button" class="tag" data-action="loginFill" data-code="${R.esc(u.code)}" style="cursor:pointer">${R.esc(u.code)}</button></span></div>`).join('')}</div>
+          <p class="xs muted" style="margin:10px 0 0">Les codes sont créés dans Équipe & codes par un accès complet. En production, cette liste n’est évidemment pas affichée.</p></div>
       </div></div></div>`;
   }
 
@@ -245,8 +250,7 @@
         <div class="page-actions">${R.can('dossier', 'w') ? `<button class="btn primary" data-go="nouveau">${R.icon('plus')}Nouveau dossier</button>` : ''}<button class="btn" data-go="planning">${R.icon('cal')}Planning</button></div></div>
       <div class="kpis">
         <button class="kpi" data-go="patients"><div class="label">Patients suivis</div><div class="value">${actifs.length}<small>${induction} en induction</small></div><div class="sub">${S.patients.filter(p => p.statut === 'suspendu').length} traitement(s) suspendu(s)</div></button>
-        <button class="kpi" data-go="planning"><div class="label">Cures IV cette semaine</div><div class="value">${iv.length}<small>${faites} réalisée${faites > 1 ? 's' : ''}</small></div><div class="sub">${iv.reduce((a, x) => a + (x.cure.flacons || 0), 0)} flacons à préparer</div></button>
-        <button class="kpi" data-go="planning"><div class="label">Rendez-vous à 7 jours</div><div class="value">${rdv7 + curesSem.filter(x => x.cure.statut === 'prevue' && x.cure.datePrevue >= t).length}</div><div class="sub">${rdv7} consultation(s) / examen(s)</div></button>
+        <button class="kpi" data-go="planning"><div class="label">Cures IV cette semaine</div><div class="value">${iv.length}<small>${faites} réalisée${faites > 1 ? 's' : ''}</small></div><div class="sub">${iv.reduce((a, x) => a + (x.cure.flacons || 0), 0)} flacons à préparer · ${rdv7} rendez-vous à 7 j</div></button>
         <button class="kpi${stockAl ? ' attention' : ''}" data-go="stock"><div class="label">Alertes stock</div><div class="value">${stockAl}</div><div class="sub">${S.stock.filter(it => R.analyseStock(it).etat === 'rupture').length} rupture(s) · ${S.stock.filter(it => R.analyseStock(it).lotsProches.length).length} lot(s) proche(s) de péremption</div></button>
         <button class="kpi${retards ? ' attention' : ''}" data-go="patients"><div class="label">Surveillances en retard</div><div class="value">${retards}</div><div class="sub">examens non réalisés à l’échéance</div></button>
       </div>
@@ -258,14 +262,13 @@
       </div>
       <div class="grid c21">
         <section class="card"><div class="card-head"><div><h2>Programme de la semaine</h2><div class="sub">cures IV et dispensations SC · ${S.settings.fauteuils} fauteuils</div></div><button class="btn sm" data-go="planning">Ouvrir le planning</button></div>
-          <div class="card-body flush tbl-wrap"><table class="tbl"><thead><tr><th>Jour</th><th>Heure</th><th>Patient</th><th>Biothérapie</th><th>Dose</th><th class="right">Flacons</th><th>PUI</th><th>Statut</th></tr></thead><tbody>
+          <div class="card-body flush tbl-wrap"><table class="tbl"><thead><tr><th>Jour</th><th>Heure</th><th>Patient</th><th>Biothérapie</th><th>Dose</th><th class="right">Flacons</th><th>Statut</th>${R.can('cures', 'w') ? '<th></th>' : ''}</tr></thead><tbody>
           ${curesSem.filter(x => x.cure.statut !== 'annulee').map(x => { const c = x.cure, p = x.patient, pr = R.proto(p.protocoleId); return `<tr class="row-link${c.datePrevue === t ? ' today' : ''}${c.statut === 'realisee' ? ' done' : ''}" data-go="patient" data-params='${R.params({ id: p.id, tab: 'cures' })}'>
             <td class="nowrap">${R.fmtDate(c.datePrevue, { weekday: 'short', day: 'numeric' })}</td><td class="mono">${c.heure || (c.voie === 'SC' ? 'SC' : '—')}</td>
             <td class="name">${R.esc(R.nomComplet(p))}<small>${R.esc(p.ipp)}</small></td>
             <td>${R.esc(pr?.dci || '')} <span class="tag">${c.label}</span> ${R.voieBadge(c.voie)}</td>
             <td class="small dose">${R.esc(c.doseTexte)}</td><td class="right num">${c.flacons || '—'}</td>
-            <td>${c.voie !== 'IV' ? '<span class="muted">—</span>' : c.validationPharma ? R.badge('good', 'Validée') : R.badge('warn', 'En attente')}</td>
-            <td>${R.statutCureBadge(c)}</td></tr>`; }).join('') || '<tr><td colspan="8" class="empty">Aucune cure cette semaine</td></tr>'}
+            <td>${R.statutCureBadge(c)}</td>${R.can('cures', 'w') ? `<td class="actions">${c.statut === 'prevue' || c.statut === 'reportee' ? `<button class="btn sm primary" data-action="cureEnregistrer" data-pid="${p.id}" data-n="${c.n}">Marquer réalisée</button>` : ''}</td>` : ''}</tr>`; }).join('') || '<tr><td colspan="8" class="empty">Aucune cure cette semaine</td></tr>'}
           </tbody></table></div></section>
         <section class="card"><div class="card-head"><div><h2>Stock des biothérapies IV</h2><div class="sub">flacons disponibles · couverture en jours</div></div><button class="btn sm" data-go="stock">Gérer</button></div>
           <div class="card-body" style="padding-top:4px;padding-bottom:4px">${stockIV.map(it => { const a = R.analyseStock(it); const ratio = Math.min(1, a.qte / Math.max(1, it.seuil * 2.5)); const cls = a.etat === 'rupture' ? 'crit' : a.etat === 'faible' ? 'warn' : 'good'; return `<div class="stock-row"><div class="nm">${R.esc(a.art.dci)} <span class="tag">${a.art.unite} ${a.art.uniteLib}</span><small>seuil ${it.seuil} · besoin ${a.besoin} sur ${S.settings.horizonPrevisionJours} j</small></div><div class="meter"><i class="${cls}" style="width:${(ratio * 100).toFixed(0)}%"></i></div><div class="num right"><b>${a.qte}</b> <span class="muted small">/ ${a.couverture === null ? '—' : a.couverture + ' j'}</span></div></div>`; }).join('')}</div></section>
@@ -275,7 +278,8 @@
 
   /* ---------- Actions globales ---------- */
   Object.assign(R.actions, {
-    login(el) { S.user = el.dataset.id; S.route = { page: 'dashboard', params: {} }; R.save(); R.render(); },
+    loginCode(f, fd) { const code = String(fd.get('code') || '').trim().toUpperCase(); const u = S.users.find(x => x.actif && x.code === code); if (!u) { R.toast('Code inconnu ou désactivé', 'crit'); return; } u.derniere = R.today(); S.user = u.id; S.route = { page: 'dashboard', params: {} }; R.save(); R.render(); },
+    loginFill(el) { const i = document.getElementById('login-code'); i.value = el.dataset.code; i.form.requestSubmit(); },
     logout() { S.user = null; R.save(); R.render(); },
     closeModal() { R.closeModal(); },
     toggleRail() { const r = document.getElementById('rail'); r.classList.toggle('open'); let b = document.getElementById('rail-backdrop'); if (r.classList.contains('open')) { if (!b) { b = document.createElement('div'); b.id = 'rail-backdrop'; b.className = 'rail-backdrop'; b.setAttribute('data-action', 'toggleRail'); document.body.appendChild(b); } } else if (b) b.remove(); },

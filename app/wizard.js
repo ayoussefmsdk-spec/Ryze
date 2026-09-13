@@ -6,11 +6,11 @@
 (function (R) {
   const S = R.S, esc = R.esc;
   const opt = (arr, val, lab, sel) => arr.map(x => `<option value="${esc(val(x))}"${val(x) === sel ? ' selected' : ''}>${esc(lab(x))}</option>`).join('');
-  const medecins = () => S.users.filter(u => u.role === 'medecin' && u.actif);
+  const medecins = () => S.users.filter(u => u.medecin && u.actif);
 
   function nouveauW() {
     const u = R.user();
-    return { step: 1, d: { nom: '', prenom: '', ddn: '', sexe: 'F', ipp: '', tel: '', poids: '', taille: '', pathologie: 'MC', montreal: '', dateDiag: '', medecinId: u && u.role === 'medecin' ? u.id : (medecins()[0] || {}).id, traitementsAssocies: '', allergies: '', antecedentsBio: '', comorbidites: '' },
+    return { step: 1, d: { nom: '', prenom: '', ddn: '', sexe: 'F', ipp: '', tel: '', poids: '', taille: '', pathologie: 'MC', montreal: '', dateDiag: '', medecinId: u && u.medecin ? u.id : (medecins()[0] || {}).id, traitementsAssocies: '', allergies: '', antecedentsBio: '', comorbidites: '' },
       bilan: R.BILAN_PRE.map(b => ({ id: b.id, statut: 'attente', date: '', commentaire: '' })), protocoleId: null, dateDebut: R.addDays(R.today(), 7), heure: '09:00', fauteuil: 1, horizon: 365, induction: [], entretien: null, premed: '', surv: {}, survCustom: [] };
   }
   const W = () => R.ui.w || (R.ui.w = nouveauW());

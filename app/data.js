@@ -25,32 +25,26 @@ window.RYZE = window.RYZE || {};
   /* Décale une date tombant un week-end au lundi suivant (l'HDJ fonctionne du lundi au vendredi) */
   R.jourOuvre = d => { const wd = R.parse(d).getDay(); return wd === 6 ? R.addDays(d, 2) : wd === 0 ? R.addDays(d, 1) : d; };
 
-  /* ---------- Rôles et droits ---------- */
+  /* ---------- Accès : deux niveaux ---------- */
   R.ROLES = {
-    medecin:    { label: 'Médecin',            court: 'MED', desc: 'Prescription, protocoles, dossiers, plan de surveillance.' },
-    pharmacien: { label: 'Pharmacien',         court: 'PUI', desc: 'Analyse pharmaceutique, validation des cures, gestion du stock.' },
-    ide:        { label: 'Infirmier·ère HDJ',  court: 'IDE', desc: 'Administration des cures, planning des fauteuils, carnet.' },
-    secretaire: { label: 'Secrétaire médicale',court: 'SEC', desc: 'Identités, rendez-vous, convocations.' },
-    admin:      { label: 'Administrateur',     court: 'ADM', desc: 'Comptes, droits, paramètres de l’établissement.' }
+    complet: { label: 'Accès complet', court: 'COMPLET', desc: 'Dossiers et prescriptions, protocoles, stock, planning, équipe et codes d’accès.' },
+    hdj:     { label: 'Accès hôpital de jour', court: 'HDJ', desc: 'Marquer les cures réalisées, gérer le planning et les rendez-vous, ajouter du stock, imprimer le carnet. Pas de modification des protocoles, des dossiers ni de l’équipe.' }
   };
   R.MODULES = [
     { id: 'dashboard',  label: 'Tableau de bord' },
     { id: 'patients',   label: 'Patients (consultation)' },
     { id: 'dossier',    label: 'Dossier & prescription' },
-    { id: 'cures',      label: 'Administration des cures' },
+    { id: 'cures',      label: 'Cures (marquer réalisée, reporter)' },
     { id: 'planning',   label: 'Planning HDJ' },
     { id: 'protocoles', label: 'Protocoles' },
     { id: 'stock',      label: 'Stock & pharmacie' },
-    { id: 'equipe',     label: 'Équipe & accès' },
+    { id: 'equipe',     label: 'Équipe & codes d’accès' },
     { id: 'carnet',     label: 'Carnet de suivi' }
   ];
-  /* rw = lecture/écriture, r = lecture, v = validation, - = aucun accès */
+  /* rw = lecture/écriture, r = lecture, - = aucun accès */
   R.PERMS = {
-    medecin:    { dashboard: 'rw', patients: 'rw', dossier: 'rw', cures: 'r',  planning: 'rw', protocoles: 'rw', stock: 'r',  equipe: 'r',  carnet: 'rw' },
-    pharmacien: { dashboard: 'rw', patients: 'r',  dossier: 'r',  cures: 'v',  planning: 'r',  protocoles: 'r',  stock: 'rw', equipe: '-',  carnet: 'r'  },
-    ide:        { dashboard: 'r',  patients: 'r',  dossier: 'r',  cures: 'rw', planning: 'rw', protocoles: 'r',  stock: 'r',  equipe: '-',  carnet: 'rw' },
-    secretaire: { dashboard: 'r',  patients: 'r',  dossier: '-',  cures: '-',  planning: 'rw', protocoles: '-',  stock: '-',  equipe: '-',  carnet: 'r'  },
-    admin:      { dashboard: 'rw', patients: 'rw', dossier: 'rw', cures: 'rw', planning: 'rw', protocoles: 'rw', stock: 'rw', equipe: 'rw', carnet: 'rw' }
+    complet: { dashboard: 'rw', patients: 'rw', dossier: 'rw', cures: 'rw', planning: 'rw', protocoles: 'rw', stock: 'rw', equipe: 'rw', carnet: 'rw' },
+    hdj:     { dashboard: 'r',  patients: 'r',  dossier: 'r',  cures: 'rw', planning: 'rw', protocoles: 'r',  stock: 'rw', equipe: '-',  carnet: 'r'  }
   };
 
   /* ---------- Pathologies ---------- */
@@ -308,18 +302,16 @@ window.RYZE = window.RYZE || {};
     const pick = arr => arr[Math.floor(rand() * arr.length)];
 
     const users = [
-      { id: 'u-chef', nom: 'BENJELLOUN', prenom: 'Nawal', titre: 'Pr', fonction: 'Chef de service — Gastro-entérologie', role: 'medecin', actif: true, derniere: R.addDays(today, -1) },
-      { id: 'u-med1', nom: 'ALAMI', prenom: 'Youssef', titre: 'Dr', fonction: 'Gastro-entérologue', role: 'medecin', actif: true, derniere: today },
-      { id: 'u-med2', nom: 'ECH-CHERKI', prenom: 'Salma', titre: 'Dr', fonction: 'Gastro-entérologue (assistante)', role: 'medecin', actif: true, derniere: R.addDays(today, -2) },
-      { id: 'u-pha1', nom: 'BENNANI', prenom: 'Hind', titre: 'Dr', fonction: 'Pharmacien hospitalier — PUI', role: 'pharmacien', actif: true, derniere: today },
-      { id: 'u-int',  nom: 'INTERNE', prenom: 'Pharmacie', titre: '', fonction: 'Interne en pharmacie (5e année)', role: 'pharmacien', actif: true, derniere: today },
-      { id: 'u-ide1', nom: 'OUAZZANI', prenom: 'Fatima-Zahra', titre: '', fonction: 'IDE — Hôpital de jour', role: 'ide', actif: true, derniere: today },
-      { id: 'u-ide2', nom: 'EL FASSI', prenom: 'Rachid', titre: '', fonction: 'IDE — Hôpital de jour', role: 'ide', actif: true, derniere: R.addDays(today, -1) },
-      { id: 'u-sec',  nom: 'MRABET', prenom: 'Khadija', titre: '', fonction: 'Secrétaire médicale', role: 'secretaire', actif: true, derniere: today },
-      { id: 'u-adm',  nom: 'DSI', prenom: 'Support', titre: '', fonction: 'Administrateur applicatif', role: 'admin', actif: true, derniere: R.addDays(today, -7) },
-      { id: 'u-old',  nom: 'KABBAJ', prenom: 'Amine', titre: 'Dr', fonction: 'Ancien interne (accès clos)', role: 'medecin', actif: false, derniere: R.addDays(today, -120) }
+      { id: 'u-chef', nom: 'BENJELLOUN', prenom: 'Nawal', titre: 'Pr', fonction: 'Chef de service — Gastro-entérologie', role: 'complet', medecin: true, code: 'CHEF01', actif: true, derniere: R.addDays(today, -1) },
+      { id: 'u-med1', nom: 'ALAMI', prenom: 'Youssef', titre: 'Dr', fonction: 'Gastro-entérologue', role: 'complet', medecin: true, code: 'MED001', actif: true, derniere: today },
+      { id: 'u-med2', nom: 'ECH-CHERKI', prenom: 'Salma', titre: 'Dr', fonction: 'Gastro-entérologue', role: 'complet', medecin: true, code: 'MED002', actif: true, derniere: R.addDays(today, -2) },
+      { id: 'u-pha1', nom: 'BENNANI', prenom: 'Hind', titre: 'Dr', fonction: 'Pharmacien hospitalier — PUI', role: 'complet', medecin: false, code: 'PUI001', actif: true, derniere: today },
+      { id: 'u-int',  nom: 'INTERNE', prenom: 'Pharmacie', titre: '', fonction: 'Interne en pharmacie', role: 'complet', medecin: false, code: 'PUI002', actif: true, derniere: today },
+      { id: 'u-ide1', nom: 'OUAZZANI', prenom: 'Fatima-Zahra', titre: '', fonction: 'IDE — Hôpital de jour', role: 'hdj', medecin: false, code: 'HDJ001', actif: true, derniere: today },
+      { id: 'u-ide2', nom: 'EL FASSI', prenom: 'Rachid', titre: '', fonction: 'IDE — Hôpital de jour', role: 'hdj', medecin: false, code: 'HDJ002', actif: true, derniere: R.addDays(today, -1) },
+      { id: 'u-sec',  nom: 'MRABET', prenom: 'Khadija', titre: '', fonction: 'Réception — Hôpital de jour', role: 'hdj', medecin: false, code: 'HDJ003', actif: true, derniere: today }
     ];
-    const ides = users.filter(u => u.role === 'ide');
+    const ides = users.filter(u => /IDE/.test(u.fonction));
 
     const stock = [
       { articleId: 'IFX100', seuil: 20, cmm: 46, delaiLivraison: 10, lots: [{ lot: 'RMS25K031', peremption: '2027-03-31', qte: 22 }, { lot: 'RMS25F118', peremption: R.addDays(today, 64), qte: 12 }] },
