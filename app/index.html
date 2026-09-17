@@ -297,6 +297,34 @@ input[readonly]{background:var(--surface-2);color:var(--ink-2)}
 .occ i{width:12px;height:6px;border-radius:2px;background:var(--meter-track)}
 .occ i.on{background:var(--accent)}
 
+/* ---------- Calendrier mensuel ---------- */
+.cal{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.cal-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal-dow{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:center;padding:4px 0;font-weight:600}
+.cal-cell{border:1px solid var(--line-soft);border-radius:7px;background:var(--surface);min-height:52px;padding:4px 5px;display:flex;flex-direction:column;align-items:flex-start;gap:3px;cursor:pointer;font:inherit;color:inherit;text-align:left}
+.cal-cell:hover{background:var(--hover)}
+.cal-cell.vide{border-color:transparent;background:transparent;cursor:default}
+.cal-cell.ferme{background:var(--surface-2);color:var(--muted)}
+.cal-cell.today .n{background:var(--accent);color:var(--on-accent);border-radius:50%}
+.cal-cell.sel{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--accent-tint)}
+.cal-cell .n{font-size:12px;font-weight:600;width:20px;height:20px;display:grid;place-items:center;font-variant-numeric:tabular-nums}
+.cal-cell .dots{display:flex;align-items:center;gap:3px;flex-wrap:wrap;font-size:10.5px}
+.cal-cell .dots i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.cal-cell .dots b{font-weight:600;color:var(--ink-2)}
+.d-seance{background:var(--accent)} .d-ctrl{background:var(--info)} .d-rdv{background:var(--warn)}
+.cal-cell .plein{font-size:9.5px;color:var(--crit-ink);font-weight:600;text-transform:uppercase}
+.day-panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;min-height:200px}
+.agenda-row{display:grid;grid-template-columns:56px 1fr auto;gap:10px;padding:9px 0;border-bottom:1px solid var(--line-soft);align-items:center}
+.agenda-row:last-child{border-bottom:0}
+.agenda-row .h{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted)}
+.agenda-row .t{font-weight:600} .agenda-row .d{font-size:12px;color:var(--ink-2)}
+.type-seance{background:var(--accent-tint);color:var(--accent-ink)} .type-ctrl{background:var(--info-tint);color:var(--info-ink)} .type-rdv{background:var(--warn-tint);color:var(--warn-ink)}
+.cycle-card{border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:var(--surface)}
+.cycle-card.cur{border-color:var(--accent);background:var(--accent-tint)}
+@media (max-width:1080px){.grid.c13{grid-template-columns:1fr}}
+.grid.c13{grid-template-columns:minmax(0,1.1fr) minmax(0,2fr)}
+
 /* ---------- Protocoles ---------- */
 .proto-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
 .proto{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:10px}

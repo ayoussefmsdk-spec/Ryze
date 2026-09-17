@@ -21,14 +21,13 @@ Ouvrir `app/index.html` dans un navigateur suffit : aucune dépendance, aucun se
 
 | Module | Rôle |
 |---|---|
-| Tableau de bord | patients suivis, cures de la semaine, rendez-vous, alertes stock, surveillances en retard, cures/mois |
-| Patients | recherche, filtres, fiche complète : cures (enregistrement, report, validation pharmaceutique, optimisation), surveillance datée, bilan pré-thérapeutique, notes |
+| Tableau de bord | patients suivis, séances de la semaine, contrôles et rendez-vous, retards, séances/mois |
+| Patients | recherche, filtres, dossier : planification unifiée (séances et contrôles marqués réalisés avec notes), changement de protocole avec historique par cycle, modification de posologie tracée, bilan pré-thérapeutique, notes |
 | Nouveau dossier | identité → bilan → protocole par cycles (induction / entretien, doses au poids, arrondi au flacon) → plan de surveillance → récapitulatif |
-| Planning HDJ | semaine par fauteuil : cures IV, dispensations SC, rendez-vous |
+| Planning HDJ | calendrier mensuel navigable, journée détaillée, semaine ; capacité paramétrable (fauteuils, séances max/jour, horaires, jours) ; refus des surréservations et proposition du prochain créneau |
 | Protocoles | 13 protocoles MICI (infliximab IV/SC, adalimumab, vedolizumab IV/SC, ustekinumab, golimumab, risankizumab MC/RCH, mirikizumab, guselkumab, upadacitinib, tofacitinib), éditables |
-| Stock & pharmacie | lots et péremptions (FEFO), CMM, couverture, besoin prévisionnel calculé depuis le planning, proposition de commande, mouvements |
-| Équipe & accès | comptes, rôles (médecin, pharmacien, IDE, secrétaire, administrateur), matrice des droits, journal |
-| Carnet | document A4 en 4 pages : identité et traitement, tableau des cures, calendrier de surveillance, conduite à tenir |
+| Équipe & codes | codes d'accès personnels, deux niveaux (accès complet, accès hôpital de jour) |
+| Carnet | document A4 : identité et traitement, historique des cycles, planification unifiée (séances + contrôles) ou tableaux séparés selon l'option du dossier, conduite à tenir |
 
 ## Sources cliniques
 

@@ -133,7 +133,7 @@ window.RYZE = window.RYZE || {};
   ---------------------------------------------------- */
   R.PROTOCOLES_DEFAUT = [
     {
-      id: 'ifx-iv', dci: 'Infliximab', specialites: 'Remicade®, Remsima®, Inflectra®, Flixabi®, Zessly®', classe: 'Anti-TNFα',
+      id: 'ifx-iv', dureeSeanceMin: 180, dci: 'Infliximab', specialites: 'Remicade®, Remsima®, Inflectra®, Flixabi®, Zessly®', classe: 'Anti-TNFα',
       voie: 'IV', indications: ['MC', 'RCH'], articleId: 'IFX100', doseType: 'mgkg', doseRef: 5,
       induction: [{ label: 'S0', jour: 0, dose: 5, voie: 'IV' }, { label: 'S2', jour: 14, dose: 5, voie: 'IV' }, { label: 'S6', jour: 42, dose: 5, voie: 'IV' }],
       entretien: { debutJour: 98, intervalleJours: 56, dose: 5, voie: 'IV', label: 'toutes les 8 semaines' },
@@ -146,7 +146,7 @@ window.RYZE = window.RYZE || {};
       remarque: 'Immunosuppresseur associé (thiopurine) discuté pour limiter l’immunisation (SONIC / UC-SUCCESS).'
     },
     {
-      id: 'ifx-sc', dci: 'Infliximab SC (CT-P13 SC)', specialites: 'Remsima® SC 120 mg', classe: 'Anti-TNFα',
+      id: 'ifx-sc', dureeSeanceMin: 180, dci: 'Infliximab SC (CT-P13 SC)', specialites: 'Remsima® SC 120 mg', classe: 'Anti-TNFα',
       voie: 'IV puis SC', indications: ['MC', 'RCH'], articleId: 'IFX100', articleEntretienId: 'IFX120', doseType: 'mgkg', doseRef: 5,
       induction: [{ label: 'S0', jour: 0, dose: 5, voie: 'IV' }, { label: 'S2', jour: 14, dose: 5, voie: 'IV' }],
       entretien: { debutJour: 42, intervalleJours: 14, dose: 120, doseType: 'mg', voie: 'SC', label: '120 mg SC toutes les 2 semaines dès S6' },
@@ -156,7 +156,7 @@ window.RYZE = window.RYZE || {};
       surveillanceDefaut: ['nfs', 'crp', 'bh', 'clin', 'calpro', 'tdm', 'endo', 'derm', 'vacc'], remarque: ''
     },
     {
-      id: 'vdz-iv', dci: 'Vedolizumab', specialites: 'Entyvio®', classe: 'Anti-intégrine α4β7',
+      id: 'vdz-iv', dureeSeanceMin: 150, dci: 'Vedolizumab', specialites: 'Entyvio®', classe: 'Anti-intégrine α4β7',
       voie: 'IV', indications: ['MC', 'RCH'], articleId: 'VDZ300', doseType: 'mg', doseRef: 300,
       induction: [{ label: 'S0', jour: 0, dose: 300, voie: 'IV' }, { label: 'S2', jour: 14, dose: 300, voie: 'IV' }, { label: 'S6', jour: 42, dose: 300, voie: 'IV' }],
       entretien: { debutJour: 98, intervalleJours: 56, dose: 300, voie: 'IV', label: 'toutes les 8 semaines' },
@@ -167,7 +167,7 @@ window.RYZE = window.RYZE || {};
       surveillanceDefaut: ['nfs', 'crp', 'bh', 'clin', 'calpro', 'endo', 'vacc'], remarque: 'Action sélective intestinale : profil infectieux favorable.'
     },
     {
-      id: 'vdz-sc', dci: 'Vedolizumab SC', specialites: 'Entyvio® 108 mg SC', classe: 'Anti-intégrine α4β7',
+      id: 'vdz-sc', dureeSeanceMin: 150, dci: 'Vedolizumab SC', specialites: 'Entyvio® 108 mg SC', classe: 'Anti-intégrine α4β7',
       voie: 'IV puis SC', indications: ['MC', 'RCH'], articleId: 'VDZ300', doseType: 'mg', doseRef: 300,
       induction: [{ label: 'S0', jour: 0, dose: 300, voie: 'IV' }, { label: 'S2', jour: 14, dose: 300, voie: 'IV' }],
       entretien: { debutJour: 42, intervalleJours: 14, dose: 108, doseType: 'mg', voie: 'SC', label: '108 mg SC toutes les 2 semaines dès S6' },
@@ -175,7 +175,7 @@ window.RYZE = window.RYZE || {};
       optimisation: '—', surveillanceDefaut: ['nfs', 'crp', 'bh', 'clin', 'calpro', 'endo', 'vacc'], remarque: ''
     },
     {
-      id: 'ust', dci: 'Ustekinumab', specialites: 'Stelara®, Wezlana®, Uzpruvo®, Pyzchiva®', classe: 'Anti-IL-12/23 (p40)',
+      id: 'ust', dureeSeanceMin: 120, dci: 'Ustekinumab', specialites: 'Stelara®, Wezlana®, Uzpruvo®, Pyzchiva®', classe: 'Anti-IL-12/23 (p40)',
       voie: 'IV puis SC', indications: ['MC', 'RCH'], articleId: 'UST130', articleEntretienId: 'UST90', doseType: 'palier',
       paliers: [{ max: 55, dose: 260, flacons: 2 }, { max: 85, dose: 390, flacons: 3 }, { max: Infinity, dose: 520, flacons: 4 }],
       induction: [{ label: 'S0', jour: 0, dose: null, voie: 'IV' }],
@@ -186,7 +186,7 @@ window.RYZE = window.RYZE || {};
       surveillanceDefaut: ['nfs', 'crp', 'bh', 'clin', 'calpro', 'endo', 'derm', 'vacc'], remarque: ''
     },
     {
-      id: 'rzb-mc', dci: 'Risankizumab — Crohn', specialites: 'Skyrizi®', classe: 'Anti-IL-23 (p19)',
+      id: 'rzb-mc', dureeSeanceMin: 120, dci: 'Risankizumab — Crohn', specialites: 'Skyrizi®', classe: 'Anti-IL-23 (p19)',
       voie: 'IV puis SC', indications: ['MC'], articleId: 'RZB600', articleEntretienId: 'RZB360', doseType: 'mg', doseRef: 600,
       induction: [{ label: 'S0', jour: 0, dose: 600, voie: 'IV' }, { label: 'S4', jour: 28, dose: 600, voie: 'IV' }, { label: 'S8', jour: 56, dose: 600, voie: 'IV' }],
       entretien: { debutJour: 84, intervalleJours: 56, dose: 360, doseType: 'mg', voie: 'SC', label: '360 mg SC à S12 puis toutes les 8 semaines' },
@@ -194,7 +194,7 @@ window.RYZE = window.RYZE || {};
       optimisation: '—', surveillanceDefaut: ['nfs', 'crp', 'bh', 'clin', 'calpro', 'endo', 'vacc'], remarque: 'Bilan hépatique recommandé pendant l’induction.'
     },
     {
-      id: 'rzb-rch', dci: 'Risankizumab — RCH', specialites: 'Skyrizi®', classe: 'Anti-IL-23 (p19)',
+      id: 'rzb-rch', dureeSeanceMin: 180, dci: 'Risankizumab — RCH', specialites: 'Skyrizi®', classe: 'Anti-IL-23 (p19)',
       voie: 'IV puis SC', indications: ['RCH'], articleId: 'RZB600', articleEntretienId: 'RZB360', doseType: 'mg', doseRef: 1200,
       induction: [{ label: 'S0', jour: 0, dose: 1200, voie: 'IV' }, { label: 'S4', jour: 28, dose: 1200, voie: 'IV' }, { label: 'S8', jour: 56, dose: 1200, voie: 'IV' }],
       entretien: { debutJour: 84, intervalleJours: 56, dose: 360, doseType: 'mg', voie: 'SC', label: '180 ou 360 mg SC à S12 puis toutes les 8 semaines' },
@@ -202,7 +202,7 @@ window.RYZE = window.RYZE || {};
       optimisation: '—', surveillanceDefaut: ['nfs', 'crp', 'bh', 'clin', 'calpro', 'endo', 'vacc'], remarque: ''
     },
     {
-      id: 'mir-rch', dci: 'Mirikizumab — RCH', specialites: 'Omvoh®', classe: 'Anti-IL-23 (p19)',
+      id: 'mir-rch', dureeSeanceMin: 90, dci: 'Mirikizumab — RCH', specialites: 'Omvoh®', classe: 'Anti-IL-23 (p19)',
       voie: 'IV puis SC', indications: ['RCH'], articleId: 'MIR300', articleEntretienId: 'MIR100', doseType: 'mg', doseRef: 300,
       induction: [{ label: 'S0', jour: 0, dose: 300, voie: 'IV' }, { label: 'S4', jour: 28, dose: 300, voie: 'IV' }, { label: 'S8', jour: 56, dose: 300, voie: 'IV' }],
       entretien: { debutJour: 84, intervalleJours: 28, dose: 200, doseType: 'mg', voie: 'SC', label: '200 mg SC (2 × 100 mg) toutes les 4 semaines dès S12' },
@@ -210,7 +210,7 @@ window.RYZE = window.RYZE || {};
       optimisation: 'Perte de réponse : 300 mg IV à S12, S16, S20 puis reprise SC.', surveillanceDefaut: ['nfs', 'crp', 'bh', 'clin', 'calpro', 'endo', 'vacc'], remarque: 'Maladie de Crohn : 900 mg IV (3 flacons) S0/S4/S8 (≥ 90 min) puis 300 mg SC (100 + 200 mg) toutes les 4 semaines.'
     },
     {
-      id: 'gus-rch', dci: 'Guselkumab — RCH', specialites: 'Tremfya®', classe: 'Anti-IL-23 (p19)',
+      id: 'gus-rch', dureeSeanceMin: 120, dci: 'Guselkumab — RCH', specialites: 'Tremfya®', classe: 'Anti-IL-23 (p19)',
       voie: 'IV puis SC', indications: ['RCH', 'MC'], articleId: 'GUS200', articleEntretienId: 'GUS100', doseType: 'mg', doseRef: 200,
       induction: [{ label: 'S0', jour: 0, dose: 200, voie: 'IV' }, { label: 'S4', jour: 28, dose: 200, voie: 'IV' }, { label: 'S8', jour: 56, dose: 200, voie: 'IV' }],
       entretien: { debutJour: 112, intervalleJours: 56, dose: 100, doseType: 'mg', voie: 'SC', label: '100 mg SC toutes les 8 semaines dès S16 (ou 200 mg toutes les 4 semaines dès S12)' },
@@ -218,7 +218,7 @@ window.RYZE = window.RYZE || {};
       optimisation: 'Alternative d’induction SC : 400 mg (2 × 200 mg) S0/S4/S8. Bénéfice insuffisant : 200 mg SC toutes les 4 semaines dès S12.', surveillanceDefaut: ['nfs', 'crp', 'bh', 'clin', 'calpro', 'endo', 'vacc'], remarque: ''
     },
     {
-      id: 'ada', dci: 'Adalimumab', specialites: 'Humira®, Amgevita®, Hyrimoz®, Idacio®, Yuflyma®…', classe: 'Anti-TNFα',
+      id: 'ada', dureeSeanceMin: 30, dci: 'Adalimumab', specialites: 'Humira®, Amgevita®, Hyrimoz®, Idacio®, Yuflyma®…', classe: 'Anti-TNFα',
       voie: 'SC', indications: ['MC', 'RCH'], articleId: 'ADA40', doseType: 'mg', doseRef: 40,
       induction: [{ label: 'S0', jour: 0, dose: 160, voie: 'SC' }, { label: 'S2', jour: 14, dose: 80, voie: 'SC' }],
       entretien: { debutJour: 28, intervalleJours: 14, dose: 40, voie: 'SC', label: '40 mg SC toutes les 2 semaines dès S4' },
@@ -228,7 +228,7 @@ window.RYZE = window.RYZE || {};
       surveillanceDefaut: ['nfs', 'crp', 'bh', 'clin', 'calpro', 'tdm', 'endo', 'derm', 'vacc'], remarque: 'MC : induction 80 mg S0 / 40 mg S2 possible (RCP) ; 160/80 mg = réponse plus rapide, plus d’effets indésirables.'
     },
     {
-      id: 'gol-rch', dci: 'Golimumab — RCH', specialites: 'Simponi®', classe: 'Anti-TNFα',
+      id: 'gol-rch', dureeSeanceMin: 30, dci: 'Golimumab — RCH', specialites: 'Simponi®', classe: 'Anti-TNFα',
       voie: 'SC', indications: ['RCH'], articleId: 'GOL50', doseType: 'mg', doseRef: 50,
       induction: [{ label: 'S0', jour: 0, dose: 200, voie: 'SC' }, { label: 'S2', jour: 14, dose: 100, voie: 'SC' }],
       entretien: { debutJour: 42, intervalleJours: 28, dose: 50, voie: 'SC', label: '50 mg (< 80 kg) ou 100 mg (≥ 80 kg) SC toutes les 4 semaines dès S6' },
@@ -236,7 +236,7 @@ window.RYZE = window.RYZE || {};
       optimisation: 'Dose d’entretien selon le poids (100 mg si ≥ 80 kg).', surveillanceDefaut: ['nfs', 'crp', 'bh', 'clin', 'calpro', 'endo', 'derm', 'vacc'], remarque: ''
     },
     {
-      id: 'upa', dci: 'Upadacitinib', specialites: 'Rinvoq®', classe: 'Inhibiteur de JAK1', voie: 'PO', indications: ['MC', 'RCH'], articleId: null, doseType: 'po',
+      id: 'upa', dureeSeanceMin: 0, dci: 'Upadacitinib', specialites: 'Rinvoq®', classe: 'Inhibiteur de JAK1', voie: 'PO', indications: ['MC', 'RCH'], articleId: null, doseType: 'po',
       induction: [{ label: 'Induction', jour: 0, dose: null, voie: 'PO', texte: '45 mg/j pendant 8 sem. (RCH) ou 12 sem. (MC)' }],
       entretien: { debutJour: 56, intervalleJours: 28, dose: null, voie: 'PO', label: '15 mg/j (30 mg/j si maladie sévère / réfractaire) — renouvellement mensuel', texte: '15 ou 30 mg/j' },
       dureePerfusion: '—', preparation: '—', premedication: '—', surveillancePerf: 'Bilan lipidique S8–S12, NFS, bilan hépatique, CPK ; zona (vaccin recombinant recommandé).',
@@ -244,7 +244,7 @@ window.RYZE = window.RYZE || {};
       surveillanceDefaut: ['nfs', 'crp', 'bh', 'clin', 'calpro', 'endo', 'lip', 'derm', 'vacc'], remarque: 'Contraception efficace obligatoire.'
     },
     {
-      id: 'tofa', dci: 'Tofacitinib — RCH', specialites: 'Xeljanz®', classe: 'Inhibiteur de JAK (pan-JAK)', voie: 'PO', indications: ['RCH'], articleId: null, doseType: 'po',
+      id: 'tofa', dureeSeanceMin: 0, dci: 'Tofacitinib — RCH', specialites: 'Xeljanz®', classe: 'Inhibiteur de JAK (pan-JAK)', voie: 'PO', indications: ['RCH'], articleId: null, doseType: 'po',
       induction: [{ label: 'Induction', jour: 0, dose: null, voie: 'PO', texte: '10 mg × 2/j pendant 8 sem. (prolongeable à 16 sem.)' }],
       entretien: { debutJour: 56, intervalleJours: 28, dose: null, voie: 'PO', label: '5 mg × 2/j (10 mg × 2/j si nécessaire, durée minimale)', texte: '5 mg × 2/j' },
       dureePerfusion: '—', preparation: '—', premedication: '—', surveillancePerf: 'NFS, bilan hépatique, lipides à 8 sem. ; risque thromboembolique et zona (vaccin recombinant).',
@@ -271,13 +271,13 @@ window.RYZE = window.RYZE || {};
     const cures = []; let n = 1;
     proto.induction.forEach(et => {
       const d = R.doseEtape(proto, et, poids, 'induction');
-      cures.push({ n: n++, phase: 'Induction', label: et.label, jour: et.jour, datePrevue: R.jourOuvre(R.addDays(dateDebut, et.jour)), voie: et.voie, dose: d.dose, doseTexte: d.texte, flacons: d.flacons, articleId: proto.articleId, statut: 'prevue' });
+      cures.push({ n: n++, cycle: 1, protocoleId: proto.id, phase: 'Induction', label: et.label, jour: et.jour, datePrevue: R.jourOuvre(R.addDays(dateDebut, et.jour)), voie: et.voie, dose: d.dose, doseTexte: d.texte, flacons: d.flacons, articleId: proto.articleId, statut: 'prevue' });
     });
     const e = proto.entretien;
     if (e) {
       for (let j = e.debutJour; j <= horizonJours; j += e.intervalleJours) {
         const d = R.doseEtape(proto, { dose: e.dose, doseType: e.doseType, texte: e.texte }, poids, 'entretien');
-        cures.push({ n: n++, phase: 'Entretien', label: R.libelleJour(j), jour: j, datePrevue: R.jourOuvre(R.addDays(dateDebut, j)), voie: e.voie, dose: d.dose, doseTexte: d.texte, flacons: d.flacons, articleId: proto.articleEntretienId || proto.articleId, statut: 'prevue' });
+        cures.push({ n: n++, cycle: 1, protocoleId: proto.id, phase: 'Entretien', label: R.libelleJour(j), jour: j, datePrevue: R.jourOuvre(R.addDays(dateDebut, j)), voie: e.voie, dose: d.dose, doseTexte: d.texte, flacons: d.flacons, articleId: proto.articleEntretienId || proto.articleId, statut: 'prevue' });
       }
     }
     return cures;
@@ -292,6 +292,39 @@ window.RYZE = window.RYZE || {};
       else s.jours.forEach(j => out.push({ id: s.id, label: s.label, cat: s.cat, mode: 'echeance', jour: j, echeance: R.addDays(dateDebut, j), statut: 'prevue', cible: s.cible }));
     });
     return out.sort((a, b) => (a.jour || 0) - (b.jour || 0));
+  };
+
+  /* ---------- Changement de protocole (nouveau cycle) ---------- */
+  R.j0 = (p, cycle) => { const h = (p.historiqueProtocoles || []).find(x => x.cycle === (cycle || p.cycleCourant || 1)); return h ? h.dateDebut : p.dateDebut; };
+  R.changerProtocole = function (p, o) {
+    /* o : { protocoleId, dateDebut, poids, motif, par, debut: 'induction'|'entretien', horizonJours } */
+    const proto = R.proto ? R.proto(o.protocoleId) : R.PROTOCOLES_DEFAUT.find(x => x.id === o.protocoleId);
+    p.historiqueProtocoles = p.historiqueProtocoles || [{ cycle: 1, protocoleId: p.protocoleId, dateDebut: p.dateDebut, poids: p.poids, statut: 'en cours', modifications: [] }];
+    const ancien = p.historiqueProtocoles[p.historiqueProtocoles.length - 1];
+    const cyc = ancien.cycle;
+    const curesAnc = p.cures.filter(c => (c.cycle || 1) === cyc);
+    const planifiees = curesAnc.filter(c => c.statut === 'prevue' || c.statut === 'reportee');
+    ancien.planifieJusqua = curesAnc.length ? curesAnc[curesAnc.length - 1].label : '—';
+    const derniereFaite = [...curesAnc].reverse().find(c => c.statut === 'realisee');
+    ancien.arreteA = R.libelleJour(Math.max(0, Math.round(R.diffDays(ancien.dateDebut, o.dateDebut) / 7) * 7));
+    ancien.derniereCure = derniereFaite ? derniereFaite.label + ' le ' + R.fmtDate(derniereFaite.dateReelle || derniereFaite.datePrevue) : 'aucune';
+    ancien.dateFin = o.dateDebut; ancien.motifFin = o.motif; ancien.statut = 'terminé'; ancien.parFin = o.par;
+    planifiees.forEach(c => { c.statut = 'annulee'; c.motif = 'Changement de protocole : ' + o.motif; });
+    const tmp = Object.assign({}, proto);
+    if (o.debut === 'entretien' && proto.entretien) { tmp.induction = []; tmp.entretien = Object.assign({}, proto.entretien, { debutJour: 0 }); }
+    const nouvelles = R.genererCures(tmp, o.dateDebut, o.poids || p.poids, o.horizonJours || 365).map(c => Object.assign(c, { cycle: cyc + 1, protocoleId: proto.id }));
+    p.cures.push(...nouvelles);
+    p.cures.sort((a, b) => a.datePrevue.localeCompare(b.datePrevue)); p.cures.forEach((c, i) => c.n = i + 1);
+    /* surveillance : les contrôles prévus restent, on ajoute ceux propres au nouveau protocole s'ils n'existent pas déjà */
+    const ajouts = R.genererSurveillance(proto.surveillanceDefaut.filter(id => !(id === 'fcu' && p.sexe === 'M')), o.dateDebut, o.horizonJours || 365)
+      .filter(s => s.mode === 'echeance' && !p.surveillance.some(x => x.id === s.id && x.statut !== 'faite' && x.echeance && Math.abs(R.diffDays(x.echeance, s.echeance)) < 21))
+      .map(s => Object.assign(s, { cycle: cyc + 1 }));
+    p.surveillance.push(...ajouts);
+    p.protocoleId = proto.id; p.cycleCourant = cyc + 1; p.poids = o.poids || p.poids;
+    p.statut = tmp.induction.length ? 'induction' : 'entretien'; p.motifSuspension = '';
+    p.historiqueProtocoles.push({ cycle: cyc + 1, protocoleId: proto.id, dateDebut: o.dateDebut, poids: o.poids || p.poids, statut: 'en cours', motif: o.motif, par: o.par, debut: o.debut || 'induction', modifications: [], planifieJusqua: nouvelles.length ? nouvelles[nouvelles.length - 1].label : '—' });
+    p.notes = p.notes || []; p.notes.unshift({ date: o.dateDebut <= R.today() ? o.dateDebut : R.today(), par: o.par, txt: `Changement de protocole (cycle ${cyc + 1}) : ${proto.dci} à partir du ${R.fmtDate(o.dateDebut)} — ${o.motif}` });
+    return nouvelles;
   };
 
   /* ---------- Jeu de démonstration ---------- */
@@ -343,7 +376,7 @@ window.RYZE = window.RYZE || {};
       { ipp: '2019-07744', nom: 'CHRAIBI', prenom: 'Leila', ddn: '1972-09-08', sexe: 'F', poids: 66, taille: 162, patho: 'RCH', montreal: 'E2', diag: '2015-03', medecin: 'u-chef', proto: 'ifx-iv', ancre: { idx: 9, js: 1 }, heure: '10:30', fauteuil: 3, tt: 'Mésalazine 3 g/j', allergies: '—', reaction: 2, premed: true },
       { ipp: '2025-03310', nom: 'AMRANI', prenom: 'Hamza', ddn: '1985-12-14', sexe: 'M', poids: 70, taille: 174, patho: 'RCH', montreal: 'E3', diag: '2021-08', medecin: 'u-med1', proto: 'vdz-iv', ancre: { idx: 4, js: 0 }, heure: '11:00', fauteuil: 1, tt: '—', allergies: '—', retard: 'calpro' },
       { ipp: '2025-01098', nom: 'SEBTI', prenom: 'Imane', ddn: '1998-04-03', sexe: 'F', poids: 55, taille: 161, patho: 'MC', montreal: 'A2 L3 B3p', diag: '2022-11', medecin: 'u-med2', proto: 'ifx-iv', ancre: { idx: 4, js: 2 }, heure: '13:30', fauteuil: 1, tt: 'Méthotrexate 15 mg/sem SC', allergies: '—', optimisation: 10 },
-      { ipp: '2026-01560', nom: 'LAHLOU', prenom: 'Mehdi', ddn: '1968-02-21', sexe: 'M', poids: 88, taille: 175, patho: 'RCH', montreal: 'E3', diag: '2018-06', medecin: 'u-chef', proto: 'mir-rch', ancre: { idx: 2, js: 8 }, heure: '09:30', fauteuil: 2, tt: '—', allergies: '—', prev: 'Vedolizumab 2022–2026 (perte de réponse)' },
+      { ipp: '2026-01560', nom: 'LAHLOU', prenom: 'Mehdi', ddn: '1968-02-21', sexe: 'M', poids: 88, taille: 175, patho: 'RCH', montreal: 'E3', diag: '2018-06', medecin: 'u-chef', proto: 'mir-rch', ancre: { idx: 2, js: 8 }, heure: '09:30', fauteuil: 2, tt: '—', allergies: '—', prev: 'Infliximab 2019–2021 (réaction à la perfusion)', bascule: { de: 'vdz-iv', joursAvant: 238, motif: 'Perte de réponse secondaire : calprotectine 820 µg/g, Mayo endoscopique 3 malgré intervalle 4 semaines' } },
       { ipp: '2025-02207', nom: 'RAMI', prenom: 'Sofia', ddn: '1993-08-11', sexe: 'F', poids: 62, taille: 168, patho: 'MC', montreal: 'A2 L1 B1', diag: '2020-01', medecin: 'u-med1', proto: 'ust', ancre: { idx: 3, js: 4 }, heure: '14:00', fauteuil: 4, tt: '—', allergies: '—' },
       { ipp: '2025-00871', nom: 'KETTANI', prenom: 'Adam', ddn: '1983-10-05', sexe: 'M', poids: 77, taille: 179, patho: 'MC', montreal: 'A2 L1 B1', diag: '2024-12', medecin: 'u-med2', proto: 'ada', ancre: { idx: 12, js: 3 }, heure: '', fauteuil: 0, tt: '—', allergies: '—' },
       { ipp: '2020-04419', nom: 'FASSI', prenom: 'Rania', ddn: '1976-06-17', sexe: 'F', poids: 69, taille: 165, patho: 'RCH', montreal: 'E2', diag: '2017-09', medecin: 'u-med1', proto: 'ifx-iv', ancre: { idx: 6, js: 3 }, heure: '10:00', fauteuil: 2, tt: 'Mésalazine 4 g/j', allergies: '—', suspendu: 'Infection ORL en cours (antibiothérapie) — cure reportée après guérison' },
@@ -356,24 +389,36 @@ window.RYZE = window.RYZE || {};
       const probe = R.genererCures(proto, '2000-01-01', s.poids, 800);
       const jourAncre = probe[s.ancre.idx].jour;
       const debut = R.addDays(lundi, s.ancre.js - jourAncre);
-      const cures = R.genererCures(proto, debut, s.poids, jourAncre + 400);
+      let cures = R.genererCures(proto, debut, s.poids, jourAncre + 400);
+      let historique = [{ cycle: 1, protocoleId: proto.id, dateDebut: debut, poids: s.poids, statut: 'en cours', modifications: [], planifieJusqua: cures[cures.length - 1].label }];
+      let dateDebutDossier = debut, cycleCourant = 1;
+      if (s.bascule) {
+        const ancienProto = R.PROTOCOLES_DEFAUT.find(x => x.id === s.bascule.de); const debutAncien = R.addDays(debut, -s.bascule.joursAvant);
+        cures = R.genererCures(ancienProto, debutAncien, s.poids, s.bascule.joursAvant + 300);
+        cures.forEach(c => { if (c.datePrevue < debut) c.statut = 'realisee'; });
+        const tmpP = { cures, surveillance: [], sexe: s.sexe, poids: s.poids, protocoleId: ancienProto.id, dateDebut: debutAncien, notes: [] };
+        R.changerProtocole(tmpP, { protocoleId: proto.id, dateDebut: debut, poids: s.poids, motif: s.bascule.motif, par: s.medecin, debut: 'induction', horizonJours: jourAncre + 400 });
+        cures = tmpP.cures; historique = tmpP.historiqueProtocoles; dateDebutDossier = debutAncien; cycleCourant = 2;
+        cures.filter(c => c.cycle === 2).forEach(c => { c.heure = s.heure; c.fauteuil = s.fauteuil; });
+      }
       if (s.optimisation) cures.forEach(c => { if (c.phase === 'Entretien' && c.n >= 4) { c.dose = Math.round(s.optimisation * s.poids); c.flacons = Math.ceil(c.dose / 100); c.doseTexte = `${s.optimisation} mg/kg → ${c.dose} mg (optimisation)`; } });
       cures.forEach((c, k) => {
         if (c.voie === 'IV') { c.heure = s.heure || '09:00'; c.fauteuil = s.fauteuil || 1; }
-        if (c.datePrevue < today) {
+        if (c.datePrevue < today && (c.statut === 'prevue' || (c.statut === 'realisee' && !c.dateReelle))) {
           c.statut = 'realisee'; c.dateReelle = c.datePrevue; c.poids = Math.round((s.poids + (rand() - 0.5) * 3) * 10) / 10;
           c.lot = pick(lotsHistoriques[c.articleId] || ['—']); c.ide = c.voie === 'IV' ? pick(ides).id : null;
           c.duree = c.voie === 'IV' ? (proto.id === 'vdz-iv' ? '30 min' : (k >= 3 && proto.id === 'ifx-iv' ? '1 h' : '2 h')) : '—';
           c.tolerance = 'Bonne'; c.premedication = s.premed && k > s.reaction ? 'Paracétamol 1 g + dexchlorphéniramine 5 mg IV' : 'Aucune';
           c.validationPharma = { par: 'u-pha1', date: R.addDays(c.datePrevue, -1) };
           c.constantes = c.voie === 'IV' ? { ta: `${118 + Math.floor(rand() * 16)}/${70 + Math.floor(rand() * 12)}`, fc: 64 + Math.floor(rand() * 20), temp: (36.4 + rand() * 0.6).toFixed(1) } : null;
+          if (c.cycle === 1 && s.bascule && k === cures.filter(x => x.cycle === 1).length - 1) c.tolerance = 'Bonne — mais perte de réponse clinique (Mayo partiel 6)';
           if (s.reaction === k) c.tolerance = 'Réaction à la perfusion (prurit, flush, à 40 min) — arrêt 15 min, dexchlorphéniramine 5 mg IV, reprise à débit réduit. Prémédication systématique ensuite.';
         }
         if (s.suspendu && c.datePrevue >= today && c.statut === 'prevue' && !cures.some(x => x.statut === 'reportee')) { c.statut = 'reportee'; c.motif = s.suspendu; }
         if (c.statut === 'prevue' && c.datePrevue <= R.addDays(lundi, 6) && c.voie === 'IV' && i % 3 !== 2) c.validationPharma = { par: 'u-pha1', date: R.addDays(today, -1) };
       });
       const survIds = proto.surveillanceDefaut.filter(id => !(id === 'fcu' && s.sexe === 'M'));
-      const surveillance = R.genererSurveillance(survIds, debut, jourAncre + 400).map(x => {
+      const surveillance = R.genererSurveillance(survIds, dateDebutDossier, jourAncre + 400 + (s.bascule ? s.bascule.joursAvant : 0)).map(x => {
         if (x.echeance && x.echeance < today) {
           const enRetard = s.retard === x.id && R.diffDays(x.echeance, today) < 60;
           if (!enRetard) { x.statut = 'faite'; x.dateFaite = R.addDays(x.echeance, Math.floor(rand() * 5)); x.resultat = resultatDemo(x.id, rand); }
@@ -391,10 +436,10 @@ window.RYZE = window.RYZE || {};
       const derniere = cures.filter(c => c.statut === 'realisee').slice(-1)[0];
       return {
         id: 'p' + (i + 1), ipp: s.ipp, nom: s.nom, prenom: s.prenom, ddn: s.ddn, sexe: s.sexe, poids: s.poids, taille: s.taille, tel: `06 ${String(10 + Math.floor(rand() * 89))} ${String(10 + Math.floor(rand() * 89))} ${String(10 + Math.floor(rand() * 89))} ${String(10 + Math.floor(rand() * 89))}`,
-        pathologie: s.patho, montreal: s.montreal, dateDiag: s.diag + '-01', medecinId: s.medecin, protocoleId: s.proto, dateDebut: debut,
+        pathologie: s.patho, montreal: s.montreal, dateDiag: s.diag + '-01', medecinId: s.medecin, protocoleId: s.proto, dateDebut: dateDebutDossier, cycleCourant, historiqueProtocoles: historique, carnetMixte: i % 2 === 0,
         traitementsAssocies: s.tt, allergies: s.allergies, antecedentsBio: s.prev || 'Aucune biothérapie antérieure',
         statut: s.suspendu ? 'suspendu' : (cures.some(c => c.phase === 'Induction' && c.statut === 'prevue') ? 'induction' : 'entretien'),
-        motifSuspension: s.suspendu || '', cures, surveillance, bilan, notes: [], creeLe: R.addDays(debut, -21), creePar: s.medecin, derniereCure: derniere ? derniere.dateReelle : null
+        motifSuspension: s.suspendu || '', cures, surveillance, bilan, notes: s.bascule ? [{ date: debut, par: s.medecin, txt: `Changement de protocole (cycle 2) : ${proto.dci} à partir du ${R.fmtDate(debut)} — ${s.bascule.motif}` }] : [], creeLe: R.addDays(dateDebutDossier, -21), creePar: s.medecin, derniereCure: derniere ? derniere.dateReelle : null
       };
     });
 
@@ -418,8 +463,8 @@ window.RYZE = window.RYZE || {};
     ];
 
     return {
-      version: 2, user: null, route: { page: 'dashboard', params: {} },
-      settings: { etablissement: 'Centre Hospitalier Universitaire', service: 'Service de Gastro-entérologie et Hépatologie', unite: 'Hôpital de jour — Biothérapies', telHDJ: '05 XX XX XX XX (poste 4412)', telUrgences: '05 XX XX XX XX (urgences 24 h/24)', chef: 'Pr Nawal BENJELLOUN', fauteuils: 6, joursPeremptionAlerte: 90, stockSecuriteJours: 15, horizonPrevisionJours: 28 },
+      version: 3, user: null, route: { page: 'dashboard', params: {} },
+      settings: { hdj: { jours: [1, 2, 3, 4, 5], ouverture: '08:00', fermeture: '16:00', fauteuils: 6, maxParJour: 12, pas: 30 }, etablissement: 'Centre Hospitalier Universitaire', service: 'Service de Gastro-entérologie et Hépatologie', unite: 'Hôpital de jour — Biothérapies', telHDJ: '05 XX XX XX XX (poste 4412)', telUrgences: '05 XX XX XX XX (urgences 24 h/24)', chef: 'Pr Nawal BENJELLOUN', fauteuils: 6, joursPeremptionAlerte: 90, stockSecuriteJours: 15, horizonPrevisionJours: 28 },
       users, protocoles: JSON.parse(JSON.stringify(R.PROTOCOLES_DEFAUT)), stock, mouvements, patients, rdv, journal: []
     };
   };
