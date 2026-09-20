@@ -351,6 +351,13 @@ input[readonly]{background:var(--surface-2);color:var(--ink-2)}
 @media (max-width:860px){.rp-months{grid-template-columns:1fr}.cal-months{grid-template-columns:repeat(3,1fr)}}
 @media print{.rapport .print-only{display:flex!important}.rapport .kpi{break-inside:avoid}.rapport .card{break-inside:avoid;box-shadow:none}.page-head .page-actions{display:none}}
 
+.picker{position:relative}
+.picker-results{position:absolute;left:0;right:0;top:calc(100% + 4px);background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);z-index:5;overflow:hidden}
+.picker-results:empty{display:none}
+.picker-results button{display:flex;gap:8px;align-items:center;width:100%;text-align:left;padding:8px 10px;border:0;background:none;cursor:pointer;font:inherit;color:inherit}
+.picker-results button:hover{background:var(--hover)}
+.tbl tr.sep td{background:var(--accent-tint);color:var(--accent-ink);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.06em;padding:6px 14px;border-bottom:0}
+
 /* ---------- Protocoles ---------- */
 .proto-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
 .proto{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:10px}

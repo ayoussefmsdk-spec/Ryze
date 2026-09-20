@@ -179,6 +179,11 @@
   };
   R.icon = (n, cls) => `<svg class="${cls || ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ''}</svg>`;
 
+  /* ---------- Sélecteur de patient avec recherche (pour les formulaires) ---------- */
+  R.patientPicker = (name, selId) => { const p = selId ? R.patient(selId) : null; return `<div class="picker"><input type="text" class="picker-input" placeholder="Tapez un nom, un prénom ou un n° de dossier…" data-input="pickPatient" data-target="${name}" value="${p ? R.esc(R.nomComplet(p) + ' — ' + p.ipp) : ''}" autocomplete="off"><input type="hidden" name="${name}" value="${selId || ''}"><div class="picker-results"></div></div>`; };
+  R.numeroDossier = () => { const y = R.today().slice(0, 4); let n = S.patients.filter(p => String(p.ipp).startsWith('RZ-' + y)).length + 1; let code; do { code = `RZ-${y}-${String(n).padStart(4, '0')}`; n++; } while (S.patients.some(p => p.ipp === code)); return code; };
+  R.noteLigne = n => `<div class="when">${R.fmtDateLong(n.date)}${n.heure ? ' à ' + n.heure : ''} · <b>${R.esc(R.userName(n.par))}</b>${R.userById(n.par) ? ` <span class="muted">(${R.esc(R.userById(n.par).fonction)})</span>` : ''}</div>`;
+
   /* ---------- Modale, toast ---------- */
   R.modal = ({ title, body, foot, wide, form }) => {
     document.getElementById('modal-root').innerHTML = `<div class="modal-overlay"><form class="modal${wide ? ' wide' : ''}" ${form ? `data-form="${form}"` : ''} novalidate>
@@ -429,6 +434,13 @@
     calPicker(el) { const pk = R.ui.cal.picker; R.ui.cal.picker = pk && pk.nav === el.dataset.nav ? null : { nav: el.dataset.nav, annee: +el.dataset.annee }; R.render(); },
     calPickerAnnee(el) { if (R.ui.cal.picker) { R.ui.cal.picker.annee += +el.dataset.delta; R.render(); } },
     calPickerFermer() { R.ui.cal.picker = null; R.render(); },
+    pickPatient(el) {
+      const q = el.value.trim().toLowerCase(); const box = el.parentElement.querySelector('.picker-results'); const hidden = el.parentElement.querySelector('input[type=hidden]'); hidden.value = '';
+      if (q.length < 1) { box.innerHTML = ''; return; }
+      const res = S.patients.filter(p => (p.nom + ' ' + p.prenom + ' ' + p.ipp).toLowerCase().includes(q)).sort((a, b) => a.nom.localeCompare(b.nom)).slice(0, 8);
+      box.innerHTML = res.length ? res.map(p => `<button type="button" data-action="pickPatientChoisir" data-id="${p.id}" data-label="${R.esc(R.nomComplet(p) + ' — ' + p.ipp)}"><span class="avatar" style="width:24px;height:24px;font-size:10px">${R.initials(p.prenom, p.nom)}</span><b>${R.esc(R.nomComplet(p))}</b> <span class="mono muted small">${R.esc(p.ipp)}</span> <span class="muted small">· ${R.esc(R.proto(p.protocoleId)?.dci || '')}</span></button>`).join('') : '<div class="empty" style="padding:10px">Aucun patient</div>';
+    },
+    pickPatientChoisir(el) { const box = el.closest('.picker'); box.querySelector('input[type=hidden]').value = el.dataset.id; box.querySelector('.picker-input').value = el.dataset.label; box.querySelector('.picker-results').innerHTML = ''; },
     resetDemo() { R.reset(); }, viderDemo() { R.vider(); },
     viderDemoConfirm() { R.confirmer('Démarrer avec une base vide ?', 'Les patients et rendez-vous de démonstration seront supprimés. Les protocoles et les codes d’accès sont conservés.', 'viderDemo'); }
   });

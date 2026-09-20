@@ -50,8 +50,7 @@ window.RYZE = window.RYZE || {};
   /* ---------- Pathologies ---------- */
   R.PATHOS = {
     MC:  { label: 'Maladie de Crohn', court: 'MC' },
-    RCH: { label: 'Rectocolite hémorragique', court: 'RCH' },
-    MICI_I: { label: 'Colite inclassée', court: 'MICI-I' }
+    RCH: { label: 'Rectocolite hémorragique', court: 'RCH' }
   };
 
   /* ---------- Catalogue des molécules / articles de stock ---------- */
