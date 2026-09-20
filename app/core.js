@@ -4,7 +4,7 @@
    ===================================================================== */
 'use strict';
 (function (R) {
-  const KEY = 'ryze-hdj-v1', VERSION = 3;
+  const KEY = 'ryze-hdj-v1', VERSION = 4;
   const S = {};
   R.S = S; R.ui = { filtres: {}, semaineOffset: 0, cal: {} };
   R.pages = {}; R.actions = {};
@@ -23,6 +23,8 @@
       (s.patients || []).forEach(p => { p.cures.forEach(c => { c.cycle = c.cycle || 1; c.protocoleId = c.protocoleId || p.protocoleId; }); p.cycleCourant = p.cycleCourant || 1; p.carnetMixte = !!p.carnetMixte; p.historiqueProtocoles = p.historiqueProtocoles || [{ cycle: 1, protocoleId: p.protocoleId, dateDebut: p.dateDebut, poids: p.poids, statut: 'en cours', modifications: [], planifieJusqua: p.cures.length ? p.cures[p.cures.length - 1].label : '—' }]; });
       s.version = 3;
     }
+    if (s.version === 3) { s.version = 4; }
+    if (!s.rdv) s.rdv = []; if (!s.journal) s.journal = []; (s.patients || []).forEach(p => { p.notes = p.notes || []; p.surveillance = p.surveillance || []; p.bilan = p.bilan || []; p.cures = p.cures || []; });
     if (s.user && !(s.users || []).some(u => u.id === s.user)) s.user = null;
     return s;
   }
@@ -32,13 +34,17 @@
   function remplacer(obj) { Object.keys(S).forEach(k => delete S[k]); Object.assign(S, obj); }
   remplacer(charger() || Object.assign(R.seed(), { semaineSeed: R.semaineRef(), version: VERSION }));
   S.version = VERSION;
-  R.save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* stockage indisponible */ } };
+  R.save = () => { try { S.enregistreLe = new Date().toISOString(); localStorage.setItem(KEY, JSON.stringify(S)); if (R.ui.saveError) { R.ui.saveError = false; R.bandeau(); } } catch (e) { R.ui.saveError = true; R.bandeau(); console.error('Sauvegarde impossible', e); } };
   R.touch = () => { S.dirty = true; R.save(); };
+  R.bandeau = () => { let b = document.getElementById('bandeau'); if (!R.ui.saveError) { if (b) b.remove(); return; } if (!b) { b = document.createElement('div'); b.id = 'bandeau'; b.className = 'bandeau'; document.body.appendChild(b); } b.innerHTML = '<b>Sauvegarde impossible dans ce navigateur</b> (espace plein ou stockage bloqué). Vos dernières modifications ne sont pas conservées : exportez la base depuis Paramètres avant de fermer la page.'; };
+  window.addEventListener('storage', e => { if (e.key !== KEY || !e.newValue) return; try { const s = JSON.parse(e.newValue); if (s.enregistreLe && s.enregistreLe !== S.enregistreLe) { const route = S.route, user = S.user; remplacer(migrer(s)); S.route = route; S.user = user; R.render(); R.toast('Données mises à jour depuis un autre onglet', 'warn'); } } catch (x) {} });
   R.reset = () => { try { localStorage.removeItem(KEY); } catch (e) {} const u = S.user; remplacer(Object.assign(R.seed(), { semaineSeed: R.semaineRef(), version: VERSION, user: u })); R.save(); R.go('dashboard'); R.toast('Données de démonstration réinitialisées', 'good'); };
   R.vider = () => { try { localStorage.removeItem(KEY); } catch (e) {} const u = S.user; remplacer(Object.assign(R.seedVide(), { semaineSeed: R.semaineRef(), version: VERSION, user: u })); R.save(); R.go('dashboard'); R.toast('Base vide : ajoutez vos patients et rendez-vous', 'good'); };
   R.journal = (txt) => { S.journal = S.journal || []; S.journal.unshift({ date: R.today(), heure: new Date().toTimeString().slice(0, 5), par: S.user, txt }); S.journal = S.journal.slice(0, 200); };
 
   /* ---------- Helpers ---------- */
+  const ageOrig = R.age; R.age = ddn => { if (!ddn || isNaN(R.parse(ddn))) return '—'; return ageOrig(ddn); };
+  const fmtOrig = R.fmtDate, fmtLongOrig = R.fmtDateLong; R.fmtDate = (s, o) => (!s || isNaN(R.parse(s))) ? '—' : fmtOrig(s, o); R.fmtDateLong = s => (!s || isNaN(R.parse(s))) ? '—' : fmtLongOrig(s);
   R.esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   R.user = () => S.users.find(u => u.id === S.user);
   R.userById = id => S.users.find(u => u.id === id);
@@ -139,9 +145,34 @@
     return { seances, controles, rdv, plein: !patientId && seances >= R.hdj().maxParJour };
   };
 
+  /* ---------- Prolongation de la planification ---------- */
+  R.prolonger = (p, mois) => {
+    const pr = R.proto(p.protocoleId); if (!pr || !pr.entretien) return 0;
+    const cyc = p.cycleCourant || 1; const curesCyc = p.cures.filter(c => (c.cycle || 1) === cyc && c.statut !== 'annulee');
+    const derniere = curesCyc[curesCyc.length - 1]; if (!derniere) return 0;
+    const ref = curesCyc.filter(c => c.phase === 'Entretien').slice(-1)[0] || derniere;
+    const inter = curesCyc.length >= 2 ? Math.max(7, R.diffDays(curesCyc[curesCyc.length - 2].datePrevue, derniere.datePrevue)) : (pr.entretien.intervalleJours || 56);
+    const fin = R.addDays(derniere.datePrevue, Math.round((mois || 12) * 30.4)); const j0 = R.j0(p, cyc); const nouvelles = [];
+    for (let d = R.addDays(derniere.datePrevue, inter); d <= fin; d = R.addDays(d, inter)) { const dd = R.jourOuvre(d); nouvelles.push({ n: 0, cycle: cyc, protocoleId: pr.id, phase: 'Entretien', label: R.libelleJour(R.diffDays(j0, dd)), jour: R.diffDays(j0, dd), datePrevue: dd, voie: ref.voie, dose: ref.dose, doseTexte: ref.doseTexte, flacons: ref.flacons, articleId: ref.articleId, statut: 'prevue' }); }
+    R.reserverCures(nouvelles, ref.heure); p.cures.push(...nouvelles); p.cures.sort((a, b) => a.datePrevue.localeCompare(b.datePrevue)); p.cures.forEach((c, i) => c.n = i + 1);
+    /* contrôles périodiques du protocole (consultation, créatinine…) */
+    const ids = pr.surveillanceDefaut.filter(id => R.surv(id)?.mode === 'periodique' && p.surveillance.some(s => s.id === id));
+    ids.forEach(id => { const it = R.surv(id); const last = p.surveillance.filter(s => s.id === id && s.echeance).sort((a, b) => a.echeance.localeCompare(b.echeance)).slice(-1)[0]; for (let d = R.addDays(last ? last.echeance : R.today(), it.tousLes); d <= fin; d = R.addDays(d, it.tousLes)) p.surveillance.push({ id, label: it.label, cat: it.cat, mode: 'echeance', jour: R.diffDays(j0, d), echeance: d, statut: 'prevue', cycle: cyc }); });
+    const h = (p.historiqueProtocoles || []).find(x => x.statut === 'en cours'); if (h && nouvelles.length) h.planifieJusqua = nouvelles[nouvelles.length - 1].label;
+    return nouvelles.length;
+  };
+  R.finPlanification = p => { const c = p.cures.filter(x => x.statut === 'prevue'); return c.length ? c[c.length - 1].datePrevue : null; };
+  R.conflitsCapacite = () => {
+    const out = [], t = R.today(), h = R.hdj();
+    for (let i = 0; i < 90; i++) { const d = R.addDays(t, i); const s = R.seances(d).filter(x => x.cure.statut === 'prevue'); if (!s.length) continue; if (!R.jourOuvert(d)) { out.push({ date: d, motif: `${s.length} séance(s) un jour de fermeture` }); continue; } if (s.length > h.maxParJour) { out.push({ date: d, motif: `${s.length} séances pour ${h.maxParJour} maximum` }); continue; } let max = 0; s.forEach(x => { const n = s.filter(y => y.deb < x.fin && x.deb < y.fin).length; if (n > max) max = n; }); if (max > h.fauteuils) out.push({ date: d, motif: `${max} séances simultanées pour ${h.fauteuils} fauteuils` }); }
+    return out;
+  };
+
   /* ---------- Alertes ---------- */
   R.alertes = () => {
     const out = [], t = R.today();
+    R.conflitsCapacite().forEach(c => out.push({ sev: 'crit', t: `Capacité dépassée le ${R.fmtDate(c.date)}`, d: `${c.motif} — déplacez des séances ou ajustez la capacité`, go: ['planning', { date: c.date }] }));
+    if (S.derniereSauvegarde ? R.diffDays(S.derniereSauvegarde, t) > 7 : S.patients.some(p => p.creePar)) out.push({ sev: 'info', t: 'Sauvegarde recommandée', d: S.derniereSauvegarde ? `Dernier export le ${R.fmtDate(S.derniereSauvegarde)} — exportez la base depuis Paramètres` : 'Aucun export de la base encore réalisé — Paramètres → Exporter', go: ['parametres', {}] });
     S.patients.forEach(p => {
       p.cures.filter(c => c.statut === 'prevue' && c.datePrevue < t).forEach(c => out.push({ sev: 'crit', t: `Séance n°${c.n} non réalisée — ${R.nomComplet(p)}`, d: `${R.protoDeCure(p, c)?.dci} ${c.label} prévue le ${R.fmtDate(c.datePrevue)}`, go: ['patient', { id: p.id, tab: 'plan' }] }));
       p.cures.filter(c => c.statut === 'reportee' || c.statut === 'manquee').forEach(c => out.push({ sev: 'warn', t: `${c.statut === 'manquee' ? 'Séance manquée' : 'Séance'} à replanifier — ${R.nomComplet(p)}`, d: `${c.label} · ${c.motif || ''}`, go: ['patient', { id: p.id, tab: 'plan' }] }));
@@ -149,6 +180,7 @@
       p.surveillance.filter(s => s.statut === 'prevue' && s.echeance && s.echeance < t).forEach(s => out.push({ sev: 'warn', t: `Contrôle en retard — ${R.nomComplet(p)}`, d: `${s.label} · échéance ${R.fmtDate(s.echeance)}`, go: ['patient', { id: p.id, tab: 'plan' }] }));
       if (p.statut === 'induction') { const manq = p.bilan.filter(b => b.statut === 'attente' && ['igra', 'rxt', 'vhb'].includes(b.id)); if (manq.length) out.push({ sev: 'warn', t: `Bilan pré-thérapeutique incomplet — ${R.nomComplet(p)}`, d: manq.map(b => R.BILAN_PRE.find(x => x.id === b.id)?.label.split(' (')[0]).join(' · '), go: ['patient', { id: p.id, tab: 'bilan' }] }); }
       if (p.statut === 'suspendu') out.push({ sev: 'info', t: `Traitement suspendu — ${R.nomComplet(p)}`, d: p.motifSuspension, go: ['patient', { id: p.id }] });
+      if (p.statut !== 'termine' && p.statut !== 'suspendu') { const fin = R.finPlanification(p); if (!fin || R.diffDays(t, fin) < 60) out.push({ sev: 'warn', t: `Planification à prolonger — ${R.nomComplet(p)}`, d: fin ? `Dernière séance planifiée le ${R.fmtDate(fin)}` : 'Aucune séance planifiée', go: ['patient', { id: p.id, tab: 'plan' }] }); }
     });
     const rank = { crit: 0, warn: 1, info: 2 };
     return out.sort((a, b) => rank[a.sev] - rank[b.sev]);
@@ -186,7 +218,7 @@
 
   /* ---------- Modale, toast ---------- */
   R.modal = ({ title, body, foot, wide, form }) => {
-    document.getElementById('modal-root').innerHTML = `<div class="modal-overlay"><form class="modal${wide ? ' wide' : ''}" ${form ? `data-form="${form}"` : ''} novalidate>
+    document.getElementById('modal-root').innerHTML = `<div class="modal-overlay"><form class="modal${wide ? ' wide' : ''}" ${form ? `data-form="${form}"` : ''}>
       <div class="modal-head"><h3>${title}</h3><button type="button" class="x-btn" data-action="closeModal" aria-label="Fermer">${R.icon('x')}</button></div>
       <div class="modal-body">${body}</div>${foot ? `<div class="modal-foot">${foot}</div>` : ''}</form></div>`;
     const first = document.querySelector('#modal-root input:not([readonly]):not([type=hidden]), #modal-root select, #modal-root textarea'); if (first) first.focus();
@@ -443,6 +475,10 @@
       box.innerHTML = res.length ? res.map(p => `<button type="button" data-action="pickPatientChoisir" data-id="${p.id}" data-label="${R.esc(R.nomComplet(p) + ' — ' + p.ipp)}"><span class="avatar" style="width:24px;height:24px;font-size:10px">${R.initials(p.prenom, p.nom)}</span><b>${R.esc(R.nomComplet(p))}</b> <span class="mono muted small">${R.esc(p.ipp)}</span> <span class="muted small">· ${R.esc(R.proto(p.protocoleId)?.dci || '')}</span></button>`).join('') : '<div class="empty" style="padding:10px">Aucun patient</div>';
     },
     pickPatientChoisir(el) { const box = el.closest('.picker'); box.querySelector('input[type=hidden]').value = el.dataset.id; box.querySelector('.picker-input').value = el.dataset.label; box.querySelector('.picker-results').innerHTML = ''; },
+    exporterBase() { S.derniereSauvegarde = R.today(); R.save(); const txt = JSON.stringify(S); const nom = `ryze-sauvegarde-${R.today()}.json`; try { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'application/json' })); a.download = nom; document.body.appendChild(a); a.click(); a.remove(); } catch (e) {} R.modal({ title: 'Export de la base', body: `<p class="small" style="margin:0 0 8px">Le fichier <b>${nom}</b> a été proposé au téléchargement. Si rien ne s’est passé, copiez le contenu ci-dessous dans un fichier texte.</p><textarea id="export-txt" style="min-height:160px;font-family:'IBM Plex Mono',monospace;font-size:11px">${R.esc(txt)}</textarea>`, foot: `<button type="button" class="btn" data-action="copierExport">Copier</button><button type="button" class="btn primary" data-action="closeModal">Fermer</button>` }); R.render(); },
+    copierExport() { const t = document.getElementById('export-txt'); t.select(); try { document.execCommand('copy'); R.toast('Copié dans le presse-papiers', 'good'); } catch (e) { R.toast('Sélectionnez le texte et copiez-le manuellement', 'warn'); } },
+    importerBase() { R.modal({ title: 'Importer une sauvegarde', body: `<p class="small" style="margin:0">Choisissez un fichier exporté par Ryze. <b>Les données actuelles seront remplacées.</b></p><input type="file" id="import-file" accept="application/json,.json">`, foot: `<button type="button" class="btn" data-action="closeModal">Annuler</button><button type="button" class="btn danger" data-action="importerBaseOk">Remplacer par ce fichier</button>` }); },
+    importerBaseOk() { const f = document.getElementById('import-file').files[0]; if (!f) { R.toast('Choisissez un fichier', 'crit'); return; } const rd = new FileReader(); rd.onload = () => { try { const s = JSON.parse(rd.result); if (!s || !s.patients || !s.users || !s.settings) throw new Error('format'); remplacer(migrer(s)); S.user = null; S.dirty = true; R.save(); R.closeModal(); R.render(); R.toast('Base importée : reconnectez-vous', 'good'); } catch (e) { R.toast('Fichier invalide', 'crit'); } }; rd.readAsText(f); },
     resetDemo() { R.reset(); }, viderDemo() { R.vider(); },
     viderDemoConfirm() { R.confirmer('Démarrer avec une base vide ?', 'Les patients et rendez-vous de démonstration seront supprimés. Les protocoles et les codes d’accès sont conservés.', 'viderDemo'); }
   });

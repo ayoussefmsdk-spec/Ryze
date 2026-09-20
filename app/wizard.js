@@ -13,7 +13,8 @@
     return { step: 1, d: { nom: '', prenom: '', ddn: '', sexe: 'F', ipp: '', tel: '', poids: '', taille: '', pathologie: 'MC', montreal: '', dateDiag: '', medecinId: u && u.medecin ? u.id : (medecins()[0] || {}).id, traitementsAssocies: '', allergies: '', antecedentsBio: '', comorbidites: '' },
       bilan: R.BILAN_PRE.map(b => ({ id: b.id, statut: 'attente', date: '', commentaire: '' })), protocoleId: null, dateDebut: R.addDays(R.today(), 7), heure: '09:00', fauteuil: 1, horizon: 365, carnetMixte: true, induction: [], entretien: null, premed: '', surv: {}, survCustom: [] };
   }
-  const W = () => R.ui.w || (R.ui.w = nouveauW());
+  const W = () => { if (!R.ui.w) { R.ui.w = (S.brouillon && S.brouillon.d) ? S.brouillon : nouveauW(); } return R.ui.w; };
+  let brouillonTimer = null; R.brouillon = () => { S.brouillon = R.ui.w; clearTimeout(brouillonTimer); brouillonTimer = setTimeout(R.save, 800); };
   const protoTemp = () => Object.assign({}, R.proto(W().protocoleId), { induction: W().induction, entretien: W().entretien });
   const calcCures = () => { const w = W(); if (!w.protocoleId) return []; const cures = R.genererCures(protoTemp(), w.dateDebut, +w.d.poids || 70, w.horizon); return R.reserverCures(cures, w.heure); };
   function survDefaults(pr) { const s = {}; R.SURVEILLANCE.forEach(it => { s[it.id] = { on: pr.surveillanceDefaut.includes(it.id) && !(it.id === 'fcu' && W().d.sexe === 'M'), jours: it.mode === 'echeances' ? [...it.jours] : null, tousLes: it.tousLes || null }; }); return s; }
@@ -78,6 +79,7 @@
       const w = W(); const steps = ['Patient', 'Traitement et cycles', 'Carnet'];
       return `<div class="page-head"><div><h1>Nouveau dossier de biothérapie</h1><p>Trois étapes : le patient, le protocole avec ses cycles, puis le carnet à imprimer</p></div><div class="page-actions"><button class="btn ghost" data-action="wAbandon">Abandonner</button></div></div>
       <div class="stepper" style="grid-template-columns:repeat(3,1fr)">${steps.map((s, i) => `<div class="step${w.step === i + 1 ? ' active' : w.step > i + 1 ? ' done' : ''}"><span class="step-n">${w.step > i + 1 ? '✓' : i + 1}</span><span class="lbl">${s}</span></div>`).join('')}</div>
+      ${S.brouillon && S.brouillon.d && S.brouillon.d.nom && w.step === 1 ? `<div class="callout info mb16">Brouillon conservé automatiquement : vous pouvez fermer la page et reprendre plus tard.</div>` : ''}
       ${w.step === 1 ? step1(w) : ''}
       ${w.step === 2 ? step3(w) + (w.protocoleId ? '<div class="mt16">' + step4(w) + '</div>' : '') : ''}
       ${w.step === 3 ? step5(w) : ''}
@@ -99,17 +101,17 @@
     const d = w.d;
     return { id: R.uid('p'), ipp: d.ipp.trim() || R.numeroDossier(), nom: d.nom.trim().toUpperCase(), prenom: d.prenom.trim(), ddn: d.ddn, sexe: d.sexe, poids: +d.poids, taille: +d.taille || null, tel: d.tel, pathologie: d.pathologie, montreal: d.montreal, dateDiag: d.dateDiag, medecinId: d.medecinId, protocoleId: pr.id, dateDebut: w.dateDebut, traitementsAssocies: d.traitementsAssocies || '—', allergies: d.allergies || '—', antecedentsBio: d.antecedentsBio || 'Aucune biothérapie antérieure', comorbidites: d.comorbidites, premedication: w.premed, statut: 'induction', motifSuspension: '', cures, surveillance, carnetMixte: !!w.carnetMixte, cycleCourant: 1, historiqueProtocoles: [{ cycle: 1, protocoleId: pr.id, dateDebut: w.dateDebut, poids: +d.poids, statut: 'en cours', posologie: w.variante != null && pr.variantes ? pr.variantes[w.variante].nom : 'Posologie standard', modifications: [], planifieJusqua: cures.length ? cures[cures.length - 1].label : '—', par: S.user }], bilan: JSON.parse(JSON.stringify(w.bilan)), notes: [{ date: R.today(), heure: new Date().toTimeString().slice(0, 5), par: S.user, txt: `Dossier créé — ${pr.dci}, ${w.induction.length} étape(s) d’induction puis entretien tous les ${w.entretien.intervalleJours} j.` }], creeLe: R.today(), creePar: S.user, derniereCure: null, protocoleSnapshot: { induction: w.induction, entretien: w.entretien } };
   }
-  function creer() { if (!valider(1) || !valider(2)) return null; const p = construirePatient(); S.patients.push(p); R.journal(`Dossier créé — ${R.nomComplet(p)} (${R.proto(p.protocoleId).dci})`); R.ui.w = null; R.touch(); return p; }
+  function creer() { if (!valider(1) || !valider(2)) return null; if (S.patients.some(x => x.ipp && x.ipp === W().d.ipp.trim())) { R.toast('Ce numéro de dossier existe déjà', 'crit'); return null; } const p = construirePatient(); S.patients.push(p); R.journal(`Dossier créé — ${R.nomComplet(p)} (${R.proto(p.protocoleId).dci})`); R.ui.w = null; S.brouillon = null; R.touch(); return p; }
   Object.assign(R.actions, {
-    wBind(el) { const w = W(); if (el.dataset.root) w[el.dataset.k] = el.value; else w.d[el.dataset.k] = el.value; },
+    wBind(el) { const w = W(); if (el.dataset.root) w[el.dataset.k] = el.value; else w.d[el.dataset.k] = el.value; R.brouillon(); },
     wBindR(el) { R.actions.wBind(el); const w = W(); if (el.dataset.k === 'sexe' && w.protocoleId) w.surv = Object.assign(survDefaults(R.proto(w.protocoleId)), Object.fromEntries(Object.entries(w.surv).filter(([k]) => k !== 'fcu'))); R.render(); },
-    wNext() { const w = W(); if (!valider(w.step)) return; w.step++; R.render(); },
+    wNext() { const w = W(); if (!valider(w.step)) return; w.step++; R.brouillon(); R.render(); },
     wPrev() { W().step--; R.render(); },
     wAbandon() { R.confirmer('Abandonner la saisie ?', 'Les informations saisies dans l’assistant seront perdues.', 'wAbandonOk'); },
-    wAbandonOk() { R.ui.w = null; R.go('patients'); },
+    wAbandonOk() { R.ui.w = null; S.brouillon = null; R.save(); R.go('patients'); },
     wBilan(el) { const b = W().bilan.find(x => x.id === el.dataset.bid); b[el.dataset.k] = el.value; if (el.dataset.k === 'statut') { if (el.value.startsWith('fait') && !b.date) b.date = R.today(); R.render(); } },
     wBilanTout() { W().bilan.forEach(b => { if (b.statut === 'attente') { b.statut = 'fait_normal'; b.date = b.date || R.today(); } }); R.render(); },
-    wProto(el) { const w = W(); const pr = R.proto(el.dataset.id); w.protocoleId = pr.id; w.variante = null; w.induction = JSON.parse(JSON.stringify(pr.induction)); w.entretien = JSON.parse(JSON.stringify(pr.entretien || { debutJour: 56, intervalleJours: 56, dose: null, voie: 'IV', label: '' })); w.surv = survDefaults(pr); w.premed = /Non systématique|Aucune|—/.test(pr.premedication) ? 'Aucune' : pr.premedication; R.render(); },
+    wProto(el) { const w = W(); const pr = R.proto(el.dataset.id); w.protocoleId = pr.id; w.variante = null; setTimeout(R.brouillon, 0); w.induction = JSON.parse(JSON.stringify(pr.induction)); w.entretien = JSON.parse(JSON.stringify(pr.entretien || { debutJour: 56, intervalleJours: 56, dose: null, voie: 'IV', label: '' })); w.surv = survDefaults(pr); w.premed = /Non systématique|Aucune|—/.test(pr.premedication) ? 'Aucune' : pr.premedication; R.render(); },
     wStep(el) { const e = W().induction[+el.dataset.i]; const k = el.dataset.k; e[k] = (k === 'label' || k === 'voie') ? el.value : (el.value === '' ? null : +el.value); R.render(); },
     wAddStep() { const w = W(); const last = w.induction[w.induction.length - 1] || { jour: -14, dose: null, voie: 'IV' }; const jour = last.jour + 14; w.induction.push({ label: R.libelleJour(jour), jour, dose: last.dose, voie: last.voie }); R.render(); },
     wDelStep(el) { W().induction.splice(+el.dataset.i, 1); R.render(); },
