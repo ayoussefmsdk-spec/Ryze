@@ -358,6 +358,19 @@ input[readonly]{background:var(--surface-2);color:var(--ink-2)}
 .picker-results button:hover{background:var(--hover)}
 .tbl tr.sep td{background:var(--accent-tint);color:var(--accent-ink);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.06em;padding:6px 14px;border-bottom:0}
 
+.menu{position:relative;display:inline-block}
+.menu summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;width:30px;height:28px;border:1px solid var(--line-strong);border-radius:7px;background:var(--surface);font-weight:700;letter-spacing:.05em}
+.menu summary::-webkit-details-marker{display:none}
+.menu summary:hover{background:var(--hover)}
+.menu[open] summary{background:var(--accent-tint);border-color:var(--accent)}
+.menu-list{position:absolute;right:0;top:calc(100% + 4px);background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);z-index:6;min-width:190px;padding:4px;display:flex;flex-direction:column}
+.menu-list button{border:0;background:none;text-align:left;padding:8px 10px;border-radius:6px;cursor:pointer;font:inherit;color:inherit;white-space:nowrap}
+.menu-list button:hover{background:var(--hover)}
+.menu-list button.danger{color:var(--crit-ink)}
+.note-chip{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:1px 6px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:help}
+.jour-row{display:grid;grid-template-columns:60px 1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line-soft)}
+.jour-row:last-child{border-bottom:0}
+
 /* ---------- Protocoles ---------- */
 .proto-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
 .proto{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:10px}
