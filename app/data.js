@@ -21,7 +21,7 @@ window.RYZE = window.RYZE || {};
   R.fmtDateLong = s => s ? R.parse(s).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : '—';
   R.fmtMois = s => R.parse(s).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
   R.age = ddn => { const d = R.parse(ddn), t = new Date(); let a = t.getFullYear() - d.getFullYear(); const m = t.getMonth() - d.getMonth(); if (m < 0 || (m === 0 && t.getDate() < d.getDate())) a--; return a; };
-  R.libelleJour = j => j === 0 ? 'S0' : (j % 7 === 0 ? `S${j / 7}` : `J${j}`);
+  R.libelleJour = j => j === 0 ? 'S0' : (j % 7 === 0 ? `S${j / 7}` : `S${Math.floor(j / 7)}+${j % 7}j`);
   /* Décale une date tombant un week-end au lundi suivant (l'HDJ fonctionne du lundi au vendredi) */
   R.jourOuvre = d => { const wd = R.parse(d).getDay(); return wd === 6 ? R.addDays(d, 2) : wd === 0 ? R.addDays(d, 1) : d; };
 
