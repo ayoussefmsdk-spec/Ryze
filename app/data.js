@@ -141,7 +141,7 @@ window.RYZE = window.RYZE || {};
       premedication: 'Non systématique. Si antécédent de réaction : paracétamol 1 g PO + dexchlorphéniramine 5 mg IV ± hydrocortisone 100–200 mg IV, 30 min avant.',
       surveillancePerf: 'Constantes (TA, FC, T°) avant, toutes les 30 min pendant, puis observation 1–2 h après (RCP). Adrénaline, antihistaminique, corticoïde disponibles.',
       optimisation: 'Perte de réponse : 10 mg/kg (RCP MC) et/ou intervalle 4–6 semaines (pratique GETAID), guidés par le taux résiduel (≥ 5 µg/mL AGA ; 3–7 µg/mL consensus) et les anticorps anti-infliximab.',
-      surveillanceDefaut: ['nfs', 'crp', 'bh', 'clin', 'calpro', 'tdm', 'endo', 'derm', 'vacc'],
+      surveillanceDefaut: ['clin', 'colo', 'recto', 'biostd', 'calpro', 'irm', 'echo', 'tdm', 'actnf'],
       remarque: 'Immunosuppresseur associé (thiopurine) discuté pour limiter l’immunisation (SONIC / UC-SUCCESS).'
     },
     {
@@ -152,7 +152,7 @@ window.RYZE = window.RYZE || {};
       dureePerfusion: '2 h (induction IV)', preparation: 'Idem infliximab IV pour l’induction',
       premedication: 'Non systématique.', surveillancePerf: 'Idem infliximab IV.',
       optimisation: 'Relais depuis l’entretien IV : 120 mg SC 8 semaines après la dernière perfusion. Non-réponse à S14 (2 IV + 5 SC) : arrêt.',
-      surveillanceDefaut: ['nfs', 'crp', 'bh', 'clin', 'calpro', 'tdm', 'endo', 'derm', 'vacc'], remarque: ''
+      surveillanceDefaut: ['clin', 'colo', 'recto', 'biostd', 'calpro', 'irm', 'echo', 'tdm', 'actnf'], remarque: ''
     },
     {
       id: 'vdz-iv', dureeSeanceMin: 150, variantes: [{ nom: 'Intervalle 4 semaines (baisse de réponse)', doseInduction: 300, doseEntretien: 300, intervalleJours: 28 }], dci: 'Vedolizumab', specialites: 'Entyvio®', classe: 'Anti-intégrine α4β7',
@@ -163,7 +163,7 @@ window.RYZE = window.RYZE || {};
       preparation: 'Reconstitution 4,8 mL EPPI, dilution dans 250 mL NaCl 0,9 %',
       premedication: 'Aucune.', surveillancePerf: 'Constantes avant / après ; signes d’hypersensibilité.',
       optimisation: 'Baisse de réponse : intervalle 4 semaines. MC : perfusion supplémentaire à S10 possible, arrêt si absence de bénéfice à S14 ; RCH : réévaluer à S10.',
-      surveillanceDefaut: ['nfs', 'crp', 'bh', 'clin', 'calpro', 'endo', 'vacc'], remarque: 'Action sélective intestinale : profil infectieux favorable.'
+      surveillanceDefaut: ['clin', 'colo', 'recto', 'biostd', 'calpro', 'irm', 'echo'], remarque: 'Action sélective intestinale : profil infectieux favorable.'
     },
     {
       id: 'vdz-sc', dureeSeanceMin: 150, dci: 'Vedolizumab SC', specialites: 'Entyvio® 108 mg SC', classe: 'Anti-intégrine α4β7',
@@ -171,7 +171,7 @@ window.RYZE = window.RYZE || {};
       induction: [{ label: 'S0', jour: 0, dose: 300, voie: 'IV' }, { label: 'S2', jour: 14, dose: 300, voie: 'IV' }],
       entretien: { debutJour: 42, intervalleJours: 14, dose: 108, doseType: 'mg', voie: 'SC', label: '108 mg SC toutes les 2 semaines dès S6' },
       dureePerfusion: '30 min (induction IV)', preparation: 'Idem vedolizumab IV', premedication: 'Aucune.', surveillancePerf: '—',
-      optimisation: '—', surveillanceDefaut: ['nfs', 'crp', 'bh', 'clin', 'calpro', 'endo', 'vacc'], remarque: ''
+      optimisation: '—', surveillanceDefaut: ['clin', 'colo', 'recto', 'biostd', 'calpro', 'irm', 'echo'], remarque: ''
     },
     {
       id: 'ust', dureeSeanceMin: 120, variantes: [{ nom: 'Entretien toutes les 8 semaines (réponse insuffisante)', doseInduction: null, doseEntretien: 90, intervalleJours: 56 }], dci: 'Ustekinumab', specialites: 'Stelara®, Wezlana®, Uzpruvo®, Pyzchiva®', classe: 'Anti-IL-12/23 (p40)',
@@ -182,7 +182,7 @@ window.RYZE = window.RYZE || {};
       dureePerfusion: '≥ 1 h', preparation: 'Dilution dans 250 mL NaCl 0,9 % (retirer un volume équivalent), filtre 0,2 µm',
       premedication: 'Aucune.', surveillancePerf: 'Constantes avant / après.',
       optimisation: 'Réponse insuffisante : intervalle 8 semaines. Induction IV : ≈ 6 mg/kg (≤ 55 kg : 260 mg ; 56–85 kg : 390 mg ; > 85 kg : 520 mg).',
-      surveillanceDefaut: ['nfs', 'crp', 'bh', 'clin', 'calpro', 'endo', 'derm', 'vacc'], remarque: ''
+      surveillanceDefaut: ['clin', 'colo', 'recto', 'biostd', 'calpro', 'irm', 'echo'], remarque: ''
     },
     {
       id: 'rzb-mc', dureeSeanceMin: 120, variantes: [], dci: 'Risankizumab — Crohn', specialites: 'Skyrizi®', classe: 'Anti-IL-23 (p19)',
@@ -190,7 +190,7 @@ window.RYZE = window.RYZE || {};
       induction: [{ label: 'S0', jour: 0, dose: 600, voie: 'IV' }, { label: 'S4', jour: 28, dose: 600, voie: 'IV' }, { label: 'S8', jour: 56, dose: 600, voie: 'IV' }],
       entretien: { debutJour: 84, intervalleJours: 56, dose: 360, doseType: 'mg', voie: 'SC', label: '360 mg SC à S12 puis toutes les 8 semaines' },
       dureePerfusion: '≥ 1 h', preparation: 'Dilution dans 100–250 mL NaCl 0,9 %', premedication: 'Aucune.', surveillancePerf: 'Constantes avant / après.',
-      optimisation: '—', surveillanceDefaut: ['nfs', 'crp', 'bh', 'clin', 'calpro', 'endo', 'vacc'], remarque: 'Bilan hépatique recommandé pendant l’induction.'
+      optimisation: '—', surveillanceDefaut: ['clin', 'colo', 'recto', 'biostd', 'calpro', 'irm', 'echo'], remarque: 'Bilan hépatique recommandé pendant l’induction.'
     },
     {
       id: 'rzb-rch', dureeSeanceMin: 180, dci: 'Risankizumab — RCH', specialites: 'Skyrizi®', classe: 'Anti-IL-23 (p19)',
@@ -198,7 +198,7 @@ window.RYZE = window.RYZE || {};
       induction: [{ label: 'S0', jour: 0, dose: 1200, voie: 'IV' }, { label: 'S4', jour: 28, dose: 1200, voie: 'IV' }, { label: 'S8', jour: 56, dose: 1200, voie: 'IV' }],
       entretien: { debutJour: 84, intervalleJours: 56, dose: 360, doseType: 'mg', voie: 'SC', label: '180 ou 360 mg SC à S12 puis toutes les 8 semaines' },
       dureePerfusion: '≥ 2 h', preparation: 'Dilution dans 250 mL NaCl 0,9 %', premedication: 'Aucune.', surveillancePerf: 'Constantes avant / après.',
-      optimisation: '—', surveillanceDefaut: ['nfs', 'crp', 'bh', 'clin', 'calpro', 'endo', 'vacc'], remarque: ''
+      optimisation: '—', surveillanceDefaut: ['clin', 'colo', 'recto', 'biostd', 'calpro', 'irm', 'echo'], remarque: ''
     },
     {
       id: 'mir-rch', dureeSeanceMin: 90, dci: 'Mirikizumab — RCH', specialites: 'Omvoh®', classe: 'Anti-IL-23 (p19)',
@@ -206,7 +206,7 @@ window.RYZE = window.RYZE || {};
       induction: [{ label: 'S0', jour: 0, dose: 300, voie: 'IV' }, { label: 'S4', jour: 28, dose: 300, voie: 'IV' }, { label: 'S8', jour: 56, dose: 300, voie: 'IV' }],
       entretien: { debutJour: 84, intervalleJours: 28, dose: 200, doseType: 'mg', voie: 'SC', label: '200 mg SC (2 × 100 mg) toutes les 4 semaines dès S12' },
       dureePerfusion: '≥ 30 min', preparation: 'Dilution dans 50–250 mL NaCl 0,9 %', premedication: 'Aucune.', surveillancePerf: 'Constantes avant / après.',
-      optimisation: 'Perte de réponse : 300 mg IV à S12, S16, S20 puis reprise SC.', surveillanceDefaut: ['nfs', 'crp', 'bh', 'clin', 'calpro', 'endo', 'vacc'], remarque: 'Maladie de Crohn : 900 mg IV (3 flacons) S0/S4/S8 (≥ 90 min) puis 300 mg SC (100 + 200 mg) toutes les 4 semaines.'
+      optimisation: 'Perte de réponse : 300 mg IV à S12, S16, S20 puis reprise SC.', surveillanceDefaut: ['clin', 'colo', 'recto', 'biostd', 'calpro', 'irm', 'echo'], remarque: 'Maladie de Crohn : 900 mg IV (3 flacons) S0/S4/S8 (≥ 90 min) puis 300 mg SC (100 + 200 mg) toutes les 4 semaines.'
     },
     {
       id: 'gus-rch', dureeSeanceMin: 120, dci: 'Guselkumab — RCH', specialites: 'Tremfya®', classe: 'Anti-IL-23 (p19)',
@@ -214,7 +214,7 @@ window.RYZE = window.RYZE || {};
       induction: [{ label: 'S0', jour: 0, dose: 200, voie: 'IV' }, { label: 'S4', jour: 28, dose: 200, voie: 'IV' }, { label: 'S8', jour: 56, dose: 200, voie: 'IV' }],
       entretien: { debutJour: 112, intervalleJours: 56, dose: 100, doseType: 'mg', voie: 'SC', label: '100 mg SC toutes les 8 semaines dès S16 (ou 200 mg toutes les 4 semaines dès S12)' },
       dureePerfusion: '≥ 1 h', preparation: 'Dilution dans 250 mL NaCl 0,9 %', premedication: 'Aucune.', surveillancePerf: 'Constantes avant / après.',
-      optimisation: 'Alternative d’induction SC : 400 mg (2 × 200 mg) S0/S4/S8. Bénéfice insuffisant : 200 mg SC toutes les 4 semaines dès S12.', surveillanceDefaut: ['nfs', 'crp', 'bh', 'clin', 'calpro', 'endo', 'vacc'], remarque: ''
+      optimisation: 'Alternative d’induction SC : 400 mg (2 × 200 mg) S0/S4/S8. Bénéfice insuffisant : 200 mg SC toutes les 4 semaines dès S12.', surveillanceDefaut: ['clin', 'colo', 'recto', 'biostd', 'calpro', 'irm', 'echo'], remarque: ''
     },
     {
       id: 'ada', dureeSeanceMin: 30, variantes: [{ nom: '40 mg toutes les semaines', doseInduction: 160, doseEntretien: 40, intervalleJours: 7 }, { nom: '80 mg toutes les 2 semaines', doseInduction: 160, doseEntretien: 80, intervalleJours: 14 }], dci: 'Adalimumab', specialites: 'Humira®, Amgevita®, Hyrimoz®, Idacio®, Yuflyma®…', classe: 'Anti-TNFα',
@@ -224,7 +224,7 @@ window.RYZE = window.RYZE || {};
       dureePerfusion: '— (auto-injection, dispensation rétrocession)', preparation: '—',
       premedication: 'Aucune.', surveillancePerf: 'Éducation à l’auto-injection, rotation des sites.',
       optimisation: 'Réponse insuffisante : 40 mg/semaine ou 80 mg toutes les 2 semaines (taux résiduel cible 8–12 µg/mL).',
-      surveillanceDefaut: ['nfs', 'crp', 'bh', 'clin', 'calpro', 'tdm', 'endo', 'derm', 'vacc'], remarque: 'MC : induction 80 mg S0 / 40 mg S2 possible (RCP) ; 160/80 mg = réponse plus rapide, plus d’effets indésirables.'
+      surveillanceDefaut: ['clin', 'colo', 'recto', 'biostd', 'calpro', 'irm', 'echo', 'tdm', 'actnf'], remarque: 'MC : induction 80 mg S0 / 40 mg S2 possible (RCP) ; 160/80 mg = réponse plus rapide, plus d’effets indésirables.'
     },
     {
       id: 'gol-rch', dureeSeanceMin: 30, dci: 'Golimumab — RCH', specialites: 'Simponi®', classe: 'Anti-TNFα',
@@ -232,7 +232,7 @@ window.RYZE = window.RYZE || {};
       induction: [{ label: 'S0', jour: 0, dose: 200, voie: 'SC' }, { label: 'S2', jour: 14, dose: 100, voie: 'SC' }],
       entretien: { debutJour: 42, intervalleJours: 28, dose: 50, voie: 'SC', label: '50 mg (< 80 kg) ou 100 mg (≥ 80 kg) SC toutes les 4 semaines dès S6' },
       dureePerfusion: '—', preparation: '—', premedication: 'Aucune.', surveillancePerf: 'Éducation à l’auto-injection.',
-      optimisation: 'Dose d’entretien selon le poids (100 mg si ≥ 80 kg).', surveillanceDefaut: ['nfs', 'crp', 'bh', 'clin', 'calpro', 'endo', 'derm', 'vacc'], remarque: ''
+      optimisation: 'Dose d’entretien selon le poids (100 mg si ≥ 80 kg).', surveillanceDefaut: ['clin', 'colo', 'recto', 'biostd', 'calpro', 'irm', 'echo', 'tdm', 'actnf'], remarque: ''
     },
     {
       id: 'upa', dureeSeanceMin: 0, dci: 'Upadacitinib', specialites: 'Rinvoq®', classe: 'Inhibiteur de JAK1', voie: 'PO', indications: ['MC', 'RCH'], articleId: null, doseType: 'po',
@@ -240,14 +240,14 @@ window.RYZE = window.RYZE || {};
       entretien: { debutJour: 56, intervalleJours: 28, dose: null, voie: 'PO', label: '15 mg/j (30 mg/j si maladie sévère / réfractaire) — renouvellement mensuel', texte: '15 ou 30 mg/j' },
       dureePerfusion: '—', preparation: '—', premedication: '—', surveillancePerf: 'Bilan lipidique S8–S12, NFS, bilan hépatique, CPK ; zona (vaccin recombinant recommandé).',
       optimisation: 'Âge ≥ 65 ans : 15 mg/j maximum. Facteurs de risque CV / thromboembolique, tabagisme : dose minimale efficace. Ne pas instaurer si lymphocytes < 500/mm³, PNN < 1 000/mm³, Hb < 8 g/dL.',
-      surveillanceDefaut: ['nfs', 'crp', 'bh', 'clin', 'calpro', 'endo', 'lip', 'derm', 'vacc'], remarque: 'Contraception efficace obligatoire.'
+      surveillanceDefaut: ['clin', 'colo', 'recto', 'biostd', 'calpro', 'irm', 'echo'], remarque: 'Contraception efficace obligatoire.'
     },
     {
       id: 'tofa', dureeSeanceMin: 0, dci: 'Tofacitinib — RCH', specialites: 'Xeljanz®', classe: 'Inhibiteur de JAK (pan-JAK)', voie: 'PO', indications: ['RCH'], articleId: null, doseType: 'po',
       induction: [{ label: 'Induction', jour: 0, dose: null, voie: 'PO', texte: '10 mg × 2/j pendant 8 sem. (prolongeable à 16 sem.)' }],
       entretien: { debutJour: 56, intervalleJours: 28, dose: null, voie: 'PO', label: '5 mg × 2/j (10 mg × 2/j si nécessaire, durée minimale)', texte: '5 mg × 2/j' },
       dureePerfusion: '—', preparation: '—', premedication: '—', surveillancePerf: 'NFS, bilan hépatique, lipides à 8 sem. ; risque thromboembolique et zona (vaccin recombinant).',
-      optimisation: 'Arrêt si absence de bénéfice à 16 semaines. Ne pas instaurer si lymphocytes < 750/mm³, PNN < 1 000/mm³, Hb < 9 g/dL.', surveillanceDefaut: ['nfs', 'crp', 'bh', 'clin', 'calpro', 'endo', 'lip', 'derm', 'vacc'], remarque: ''
+      optimisation: 'Arrêt si absence de bénéfice à 16 semaines. Ne pas instaurer si lymphocytes < 750/mm³, PNN < 1 000/mm³, Hb < 9 g/dL.', surveillanceDefaut: ['clin', 'colo', 'recto', 'biostd', 'calpro', 'irm', 'echo'], remarque: ''
     }
   ];
 
@@ -324,10 +324,11 @@ window.RYZE = window.RYZE || {};
     p.cures.push(...nouvelles);
     p.cures.sort((a, b) => a.datePrevue.localeCompare(b.datePrevue)); p.cures.forEach((c, i) => c.n = i + 1);
     /* surveillance : les contrôles prévus restent, on ajoute ceux propres au nouveau protocole s'ils n'existent pas déjà */
-    const ajouts = R.genererSurveillance(proto.surveillanceDefaut.filter(id => !(id === 'fcu' && p.sexe === 'M')), o.dateDebut, o.horizonJours || 365)
-      .filter(s => s.mode === 'echeance' && !p.surveillance.some(x => x.id === s.id && x.statut !== 'faite' && x.echeance && Math.abs(R.diffDays(x.echeance, s.echeance)) < 21))
-      .map(s => Object.assign(s, { cycle: cyc + 1 }));
-    p.surveillance.push(...ajouts);
+    const cfgN = p.planSurveillance || R.cfgDefaut(proto); if (R.cfgDefaut(proto).items.tdm.on) { cfgN.items.tdm = cfgN.items.tdm || { on: false }; cfgN.items.tdm.on = true; cfgN.items.tdm.periode = cfgN.items.tdm.periode || 91; cfgN.items.actnf = Object.assign(cfgN.items.actnf || {}, { on: true }); }
+    p.planSurveillance = cfgN;
+    const ajouts = R.genererSurveillanceCfg(cfgN, o.dateDebut, o.horizonJours || 365, cyc + 1)
+      .filter(s => s.mode === 'echeance' && !p.surveillance.some(x => x.id === s.id && (x.nom || '') === (s.nom || '') && x.statut !== 'faite' && x.echeance && Math.abs(R.diffDays(x.echeance, s.echeance)) < 21));
+    p.surveillance = p.surveillance.filter(s => s.mode !== 'cure'); p.surveillance.push(...R.genererSurveillanceCfg(cfgN, o.dateDebut, 1, cyc + 1).filter(s => s.mode === 'cure'), ...ajouts);
     p.protocoleId = proto.id; p.cycleCourant = cyc + 1; p.poids = o.poids || p.poids;
     p.statut = tmp.induction.length ? 'induction' : 'entretien'; p.motifSuspension = '';
     p.historiqueProtocoles.push({ cycle: cyc + 1, protocoleId: proto.id, dateDebut: o.dateDebut, poids: o.poids || p.poids, statut: 'en cours', motif: o.motif, par: o.par, debut: o.debut || 'induction', posologie: o.variante ? o.variante.nom : 'Posologie standard', modifications: [], planifieJusqua: nouvelles.length ? nouvelles[nouvelles.length - 1].label : '—' });
@@ -418,6 +419,7 @@ window.RYZE = window.RYZE || {};
           c.duree = c.voie === 'IV' ? (proto.id === 'vdz-iv' ? '30 min' : (k >= 3 && proto.id === 'ifx-iv' ? '1 h' : '2 h')) : '—';
           c.tolerance = 'Bonne'; c.premedication = s.premed && k > s.reaction ? 'Paracétamol 1 g + dexchlorphéniramine 5 mg IV' : 'Aucune';
           c.validationPharma = { par: 'u-pha1', date: R.addDays(c.datePrevue, -1) };
+          c.clinique = { taille: s.taille, puberte: 'Non applicable (adulte)', digestif: ['1–2 selles/j, formées, sans sang', '3 selles/j, pas de sang', 'transit normal'][k % 3], douleur: (i + k) % 4 === 1, douleurLoc: (i + k) % 4 === 1 ? [(i % 2) ? 'abdominale' : 'articulaire'] : [], douleurNote: (i + k) % 4 === 1 ? ((i % 2) ? 'fosse iliaque droite, modérée' : 'genoux, matinale') : '', fievre: false, temperature: null, fievreNote: '', perineal: (i === 7 && k % 2 === 0) ? ['fistule'] : [], cutaneNote: (i === 7 && k % 2 === 0) ? 'fistule périnéale connue, non productive' : '', remarques: '' };
           c.constantes = c.voie === 'IV' ? { ta: `${118 + Math.floor(rand() * 16)}/${70 + Math.floor(rand() * 12)}`, fc: 64 + Math.floor(rand() * 20), temp: (36.4 + rand() * 0.6).toFixed(1) } : null;
           if (c.cycle === 1 && s.bascule && k === cures.filter(x => x.cycle === 1).length - 1) c.tolerance = 'Bonne — mais perte de réponse clinique (Mayo partiel 6)';
           if (s.reaction === k) c.tolerance = 'Réaction à la perfusion (prurit, flush, à 40 min) — arrêt 15 min, dexchlorphéniramine 5 mg IV, reprise à débit réduit. Prémédication systématique ensuite.';
@@ -427,11 +429,11 @@ window.RYZE = window.RYZE || {};
         if (c.statut === 'realisee' && c.voie === 'IV' && (i * 7 + k) % 7 === 3 && R.diffDays(c.dateReelle, today) < 90 && R.diffDays(c.dateReelle, today) > 5) { c.statut = 'manquee'; c.motif = 'Patient non venu, injoignable'; delete c.dateReelle; delete c.lot; delete c.ide; }
         if (c.statut === 'prevue' && c.datePrevue <= R.addDays(lundi, 6) && c.voie === 'IV' && i % 3 !== 2) c.validationPharma = { par: 'u-pha1', date: R.addDays(today, -1) };
       });
-      const survIds = proto.surveillanceDefaut.filter(id => !(id === 'fcu' && s.sexe === 'M'));
-      const surveillance = R.genererSurveillance(survIds, dateDebutDossier, jourAncre + 400 + (s.bascule ? s.bascule.joursAvant : 0)).map(x => {
+      const cfgDemo = R.cfgDefaut(proto); if (i % 3 === 0) cfgDemo.items.vit = { on: true, entries: [{ nom: 'Vitamine D', periode: 182 }] };
+      const surveillance = R.genererSurveillanceCfg(cfgDemo, dateDebutDossier, jourAncre + 400 + (s.bascule ? s.bascule.joursAvant : 0), 1).map(x => {
         if (x.echeance && x.echeance < today) {
           const enRetard = s.retard === x.id && R.diffDays(x.echeance, today) < 60;
-          if (!enRetard) { x.statut = 'faite'; x.dateFaite = R.addDays(x.echeance, Math.floor(rand() * 5)); x.resultat = resultatDemo(x.id, rand); }
+          if (!enRetard) { x.statut = 'faite'; x.dateFaite = R.addDays(x.echeance, Math.floor(rand() * 5)); x.par = s.medecin; if (x.id === 'biostd') { x.valeurs = {}; (x.sous || []).forEach(sid => x.valeurs[sid] = ({ nfs: 'Hb ' + (11.5 + rand() * 3).toFixed(1) + ' g/dL', crp: (1 + Math.floor(rand() * 12)) + '', transa: (18 + Math.floor(rand() * 20)) + ' / ' + (15 + Math.floor(rand() * 25)), b12: (250 + Math.floor(rand() * 300)) + '', alb: (36 + Math.floor(rand() * 8)) + '', ferr: (20 + Math.floor(rand() * 120)) + '' })[sid]); x.resultat = R.itemBilan('biostd').sous.filter(o => x.valeurs[o.id]).map(o => `${o.label} ${x.valeurs[o.id]}${o.unite ? ' ' + o.unite : ''}`).join(' · '); } else x.resultat = resultatDemo(x.id, rand); }
         }
         return x;
       });
@@ -446,7 +448,7 @@ window.RYZE = window.RYZE || {};
       const derniere = cures.filter(c => c.statut === 'realisee').slice(-1)[0];
       return {
         id: 'p' + (i + 1), ipp: s.ipp, nom: s.nom, prenom: s.prenom, ddn: s.ddn, sexe: s.sexe, poids: s.poids, taille: s.taille, tel: `06 ${String(10 + Math.floor(rand() * 89))} ${String(10 + Math.floor(rand() * 89))} ${String(10 + Math.floor(rand() * 89))} ${String(10 + Math.floor(rand() * 89))}`,
-        pathologie: s.patho, montreal: s.montreal, dateDiag: s.diag + '-01', medecinId: s.medecin, protocoleId: s.proto, dateDebut: dateDebutDossier, cycleCourant, historiqueProtocoles: historique, carnetMixte: i % 2 === 0,
+        pathologie: s.patho, montreal: s.montreal, dateDiag: s.diag + '-01', medecinId: s.medecin, protocoleId: s.proto, dateDebut: dateDebutDossier, cycleCourant, historiqueProtocoles: historique, carnetMixte: i % 2 === 0, planSurveillance: cfgDemo,
         traitementsAssocies: s.tt, allergies: s.allergies, antecedentsBio: s.prev || 'Aucune biothérapie antérieure',
         statut: s.suspendu ? 'suspendu' : (cures.some(c => c.phase === 'Induction' && c.statut === 'prevue') ? 'induction' : 'entretien'),
         motifSuspension: s.suspendu || '', cures, surveillance, bilan, notes: s.bascule ? [{ date: debut, par: s.medecin, txt: `Changement de protocole (cycle 2) : ${proto.dci} à partir du ${R.fmtDate(debut)} — ${s.bascule.motif}` }] : [], creeLe: R.addDays(dateDebutDossier, -21), creePar: s.medecin, derniereCure: derniere ? derniere.dateReelle : null
@@ -490,6 +492,10 @@ window.RYZE = window.RYZE || {};
 
   function resultatDemo(id, rand) {
     switch (id) {
+      case 'colo': return rand() > 0.4 ? 'Cicatrisation muqueuse (SES-CD 2), fibroscopie haute normale' : 'Amélioration endoscopique partielle, biopsies en cours';
+      case 'recto': return 'Muqueuse rectale cicatrisée';
+      case 'vit': return `${18 + Math.floor(rand() * 25)} ng/mL`;
+      case 'actnf': return 'Anticorps anti-TNF négatifs';
       case 'calpro': return `${60 + Math.floor(rand() * 120)} µg/g`;
       case 'tdm': return `Résiduel ${(3 + rand() * 5).toFixed(1)} µg/mL — ADA négatifs`;
       case 'endo': return rand() > 0.4 ? 'Cicatrisation muqueuse (SES-CD 2)' : 'Amélioration endoscopique partielle';

@@ -7,7 +7,7 @@
   const KEY = 'ryze-hdj-v1', VERSION = 4;
   const S = {};
   R.S = S; R.ui = { filtres: {}, semaineOffset: 0, cal: {} };
-  R.pages = {}; R.actions = {};
+  R.pages = {}; R.actions = R.actions || {};
 
   /* ---------- Migration des données locales ---------- */
   function migrer(s) {
@@ -155,9 +155,9 @@
     const fin = R.addDays(derniere.datePrevue, Math.round((mois || 12) * 30.4)); const j0 = R.j0(p, cyc); const nouvelles = [];
     for (let d = R.addDays(derniere.datePrevue, inter); d <= fin; d = R.addDays(d, inter)) { const dd = R.jourOuvre(d); nouvelles.push({ n: 0, cycle: cyc, protocoleId: pr.id, phase: 'Entretien', label: R.libelleJour(R.diffDays(j0, dd)), jour: R.diffDays(j0, dd), datePrevue: dd, voie: ref.voie, dose: ref.dose, doseTexte: ref.doseTexte, flacons: ref.flacons, articleId: ref.articleId, statut: 'prevue' }); }
     R.reserverCures(nouvelles, ref.heure); p.cures.push(...nouvelles); p.cures.sort((a, b) => a.datePrevue.localeCompare(b.datePrevue)); p.cures.forEach((c, i) => c.n = i + 1);
-    /* contrôles périodiques du protocole (consultation, créatinine…) */
-    const ids = pr.surveillanceDefaut.filter(id => R.surv(id)?.mode === 'periodique' && p.surveillance.some(s => s.id === id));
-    ids.forEach(id => { const it = R.surv(id); const last = p.surveillance.filter(s => s.id === id && s.echeance).sort((a, b) => a.echeance.localeCompare(b.echeance)).slice(-1)[0]; for (let d = R.addDays(last ? last.echeance : R.today(), it.tousLes); d <= fin; d = R.addDays(d, it.tousLes)) p.surveillance.push({ id, label: it.label, cat: it.cat, mode: 'echeance', jour: R.diffDays(j0, d), echeance: d, statut: 'prevue', cycle: cyc }); });
+    /* contrôles périodiques selon le plan de surveillance du dossier */
+    const cfg = p.planSurveillance || R.cfgDepuisPatient(p); const dernierCtrl = p.surveillance.filter(s => s.echeance).map(s => s.echeance).sort().slice(-1)[0] || R.today();
+    R.genererSurveillanceCfg(cfg, j0, R.diffDays(j0, fin), cyc).filter(s => s.mode === 'echeance' && s.echeance > dernierCtrl).forEach(s => p.surveillance.push(s));
     const h = (p.historiqueProtocoles || []).find(x => x.statut === 'en cours'); if (h && nouvelles.length) h.planifieJusqua = nouvelles[nouvelles.length - 1].label;
     return nouvelles.length;
   };
@@ -178,7 +178,7 @@
       p.cures.filter(c => c.statut === 'reportee' || c.statut === 'manquee').forEach(c => out.push({ sev: 'warn', t: `${c.statut === 'manquee' ? 'Séance manquée' : 'Séance'} à replanifier — ${R.nomComplet(p)}`, d: `${c.label} · ${c.motif || ''}`, go: ['patient', { id: p.id, tab: 'plan' }] }));
       p.cures.filter(c => c.sansCreneau && c.statut === 'prevue').forEach(c => out.push({ sev: 'warn', t: `Aucun créneau trouvé — ${R.nomComplet(p)}`, d: `Séance ${c.label} du ${R.fmtDate(c.datePrevue)} : capacité dépassée, à replacer manuellement`, go: ['patient', { id: p.id, tab: 'plan' }] }));
       p.surveillance.filter(s => s.statut === 'prevue' && s.echeance && s.echeance < t).forEach(s => out.push({ sev: 'warn', t: `Contrôle en retard — ${R.nomComplet(p)}`, d: `${s.label} · échéance ${R.fmtDate(s.echeance)}`, go: ['patient', { id: p.id, tab: 'plan' }] }));
-      if (p.statut === 'induction') { const manq = p.bilan.filter(b => b.statut === 'attente' && ['igra', 'rxt', 'vhb'].includes(b.id)); if (manq.length) out.push({ sev: 'warn', t: `Bilan pré-thérapeutique incomplet — ${R.nomComplet(p)}`, d: manq.map(b => R.BILAN_PRE.find(x => x.id === b.id)?.label.split(' (')[0]).join(' · '), go: ['patient', { id: p.id, tab: 'bilan' }] }); }
+      if (p.statut === 'induction') { const manq = p.bilan.filter(b => b.statut === 'attente' && ['igra', 'rxt', 'vhb'].includes(b.id)); if (manq.length) out.push({ sev: 'warn', t: `Bilan pré-thérapeutique incomplet — ${R.nomComplet(p)}`, d: manq.map(b => R.BILAN_PRE.find(x => x.id === b.id)?.label.split(' (')[0]).join(' · '), go: ['patient', { id: p.id, tab: 'bilans' }] }); }
       if (p.statut === 'suspendu') out.push({ sev: 'info', t: `Traitement suspendu — ${R.nomComplet(p)}`, d: p.motifSuspension, go: ['patient', { id: p.id }] });
       if (p.statut !== 'termine' && p.statut !== 'suspendu') { const fin = R.finPlanification(p); if (!fin || R.diffDays(t, fin) < 60) out.push({ sev: 'warn', t: `Planification à prolonger — ${R.nomComplet(p)}`, d: fin ? `Dernière séance planifiée le ${R.fmtDate(fin)}` : 'Aucune séance planifiée', go: ['patient', { id: p.id, tab: 'plan' }] }); }
     });
