@@ -22,6 +22,8 @@ window.RYZE = window.RYZE || {};
   R.fmtMois = s => R.parse(s).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
   R.age = ddn => { const d = R.parse(ddn), t = new Date(); let a = t.getFullYear() - d.getFullYear(); const m = t.getMonth() - d.getMonth(); if (m < 0 || (m === 0 && t.getDate() < d.getDate())) a--; return a; };
   R.libelleJour = j => j === 0 ? 'S0' : (j % 7 === 0 ? `S${j / 7}` : `S${Math.floor(j / 7)}+${j % 7}j`);
+  /* Libellé d'un contrôle : J14, M1, M3, M6, M12… (mois arrondis), semaines sinon */
+  R.libelleControle = j => { if (!j) return 'J0'; if (j < 28) return `J${j}`; const m = j / 30.4; return Math.abs(m - Math.round(m)) < 0.12 ? `M${Math.round(m)}` : R.libelleJour(j); };
   /* Décale une date tombant un week-end au lundi suivant (l'HDJ fonctionne du lundi au vendredi) */
   R.jourOuvre = d => { const wd = R.parse(d).getDay(); return wd === 6 ? R.addDays(d, 2) : wd === 0 ? R.addDays(d, 1) : d; };
 
