@@ -63,11 +63,15 @@ window.RYZE = window.RYZE || {};
     { id: 'UST90',  dci: 'Ustekinumab',  libelle: 'Ustekinumab 90 mg/1 mL — seringue préremplie SC', unite: 90, uniteLib: 'mg', voie: 'SC', conservation: '2–8 °C (30 j max à T° ambiante ≤ 30 °C)', stabilite: 'Sortir 30 min avant injection.', serie: 3 },
     { id: 'RZB600', dci: 'Risankizumab', libelle: 'Risankizumab 600 mg/10 mL — sol. à diluer IV (flacon)', unite: 600, uniteLib: 'mg', voie: 'IV', conservation: '2–8 °C', stabilite: 'Dilué dans NaCl 0,9 % ou G5 % (1,2–6 mg/mL) : 20 h à 2–8 °C ou 8 h ≤ 25 °C ; perfusion ≥ 1 h (MC) / ≥ 2 h (RCH).', serie: 4 },
     { id: 'RZB360', dci: 'Risankizumab', libelle: 'Risankizumab 360 mg/2,4 mL — cartouche SC (injecteur)', unite: 360, uniteLib: 'mg', voie: 'SC', conservation: '2–8 °C', stabilite: 'Hors frigo ≤ 25 °C : 24 h max. Existe aussi en cartouche 180 mg/1,2 mL (RCH).', serie: 4 },
-    { id: 'MIR300', dci: 'Mirikizumab',  libelle: 'Mirikizumab 300 mg/15 mL — sol. à diluer IV (flacon)', unite: 300, uniteLib: 'mg', voie: 'IV', conservation: '2–8 °C', stabilite: 'Dilué dans 100–250 mL NaCl 0,9 % ou G5 % ; perfusion ≥ 30 min (RCH) / ≥ 90 min (MC). Stabilité après dilution : se référer au RCP en vigueur.', serie: 5 },
+    { id: 'MIR300', dci: 'Mirikizumab',  libelle: 'Mirikizumab 300 mg/15 mL — sol. à diluer IV (flacon)', unite: 300, uniteLib: 'mg', voie: 'IV', conservation: '2–8 °C', stabilite: 'Dilué dans 50–250 mL NaCl 0,9 % ou G5 % ; perfusion ≥ 30 min (RCH) / ≥ 90 min (MC). Stabilité après dilution : se référer au RCP en vigueur.', serie: 5 },
     { id: 'MIR100', dci: 'Mirikizumab',  libelle: 'Mirikizumab 100 mg/1 mL — stylo prérempli SC', unite: 100, uniteLib: 'mg', voie: 'SC', conservation: '2–8 °C (≤ 30 °C 2 semaines max)', stabilite: 'Existe aussi en stylo 200 mg/2 mL.', serie: 5 },
     { id: 'GUS200', dci: 'Guselkumab',   libelle: 'Guselkumab 200 mg/20 mL — sol. à diluer IV (flacon)', unite: 200, uniteLib: 'mg', voie: 'IV', conservation: '2–8 °C', stabilite: 'Dilué dans 250 mL NaCl 0,9 % (0,8 mg/mL) : 10 h ≤ 25 °C ; perfusion ≥ 1 h.', serie: 6 },
     { id: 'GUS100', dci: 'Guselkumab',   libelle: 'Guselkumab 100 mg/1 mL — stylo prérempli SC', unite: 100, uniteLib: 'mg', voie: 'SC', conservation: '2–8 °C', stabilite: '', serie: 6 },
     { id: 'ADA40',  dci: 'Adalimumab',   libelle: 'Adalimumab 40 mg/0,4 mL — stylo prérempli SC', unite: 40, uniteLib: 'mg', voie: 'SC', conservation: '2–8 °C (14 j max à T° ambiante ≤ 25 °C)', stabilite: '', serie: 7 },
+    { id: 'ADA80',  dci: 'Adalimumab',   libelle: 'Adalimumab 80 mg/0,8 mL — stylo prérempli SC (induction)', unite: 80, uniteLib: 'mg', voie: 'SC', conservation: '2–8 °C (14 j max à T° ambiante ≤ 25 °C)', stabilite: '', serie: 7 },
+    { id: 'GOL100', dci: 'Golimumab',    libelle: 'Golimumab 100 mg/1 mL — stylo prérempli SC', unite: 100, uniteLib: 'mg', voie: 'SC', conservation: '2–8 °C', stabilite: '', serie: 8 },
+    { id: 'RZB180', dci: 'Risankizumab', libelle: 'Risankizumab 180 mg/1,2 mL — cartouche SC (injecteur)', unite: 180, uniteLib: 'mg', voie: 'SC', conservation: '2–8 °C', stabilite: '', serie: 11 },
+    { id: 'MIR200', dci: 'Mirikizumab',  libelle: 'Mirikizumab 200 mg/2 mL — stylo prérempli SC', unite: 200, uniteLib: 'mg', voie: 'SC', conservation: '2–8 °C', stabilite: '', serie: 12 },
     { id: 'GOL50',  dci: 'Golimumab',    libelle: 'Golimumab 50 mg/0,5 mL — stylo prérempli SC', unite: 50, uniteLib: 'mg', voie: 'SC', conservation: '2–8 °C', stabilite: '', serie: 8 },
     { id: 'IFX120', dci: 'Infliximab',   libelle: 'Infliximab 120 mg/1 mL — stylo prérempli SC (CT-P13 SC)', unite: 120, uniteLib: 'mg', voie: 'SC', conservation: '2–8 °C (≤ 25 °C 28 j max)', stabilite: '', serie: 1 },
     { id: 'VDZ108', dci: 'Vedolizumab',  libelle: 'Vedolizumab 108 mg/0,68 mL — stylo prérempli SC', unite: 108, uniteLib: 'mg', voie: 'SC', conservation: '2–8 °C (≤ 25 °C 7 j max)', stabilite: '', serie: 2 },
@@ -134,7 +138,7 @@ window.RYZE = window.RYZE || {};
   ---------------------------------------------------- */
   R.PROTOCOLES_DEFAUT = [
     {
-      id: 'ifx-iv', dureeSeanceMin: 180, variantes: [{ nom: 'Optimisée 10 mg/kg toutes les 8 semaines', doseInduction: 5, doseEntretien: 10, intervalleJours: 56 }, { nom: 'Intervalle raccourci 5 mg/kg toutes les 6 semaines', doseInduction: 5, doseEntretien: 5, intervalleJours: 42 }, { nom: 'Intensifiée 10 mg/kg toutes les 4 semaines', doseInduction: 10, doseEntretien: 10, intervalleJours: 28 }], dci: 'Infliximab', specialites: 'Remicade®, Remsima®, Inflectra®, Flixabi®, Zessly®', classe: 'Anti-TNFα',
+      id: 'ifx-iv', dureeSeanceMin: 180, variantes: [{ nom: 'Optimisée 10 mg/kg toutes les 8 semaines', doseInduction: 5, doseEntretien: 10, intervalleJours: 56 }, { nom: 'Intervalle raccourci 5 mg/kg toutes les 6 semaines', doseInduction: 5, doseEntretien: 5, intervalleJours: 42 }, { nom: 'Intensifiée 10 mg/kg toutes les 4 semaines', doseInduction: null, doseEntretien: 10, intervalleJours: 28 }], dci: 'Infliximab', specialites: 'Remicade®, Remsima®, Inflectra®, Flixabi®, Zessly®', classe: 'Anti-TNFα',
       voie: 'IV', indications: ['MC', 'RCH'], articleId: 'IFX100', doseType: 'mgkg', doseRef: 5,
       induction: [{ label: 'S0', jour: 0, dose: 5, voie: 'IV' }, { label: 'S2', jour: 14, dose: 5, voie: 'IV' }, { label: 'S6', jour: 42, dose: 5, voie: 'IV' }],
       entretien: { debutJour: 98, intervalleJours: 56, dose: 5, voie: 'IV', label: 'toutes les 8 semaines' },
@@ -220,7 +224,7 @@ window.RYZE = window.RYZE || {};
     },
     {
       id: 'ada', dureeSeanceMin: 30, variantes: [{ nom: '40 mg toutes les semaines', doseInduction: null, doseEntretien: 40, intervalleJours: 7 }, { nom: '80 mg toutes les 2 semaines', doseInduction: null, doseEntretien: 80, intervalleJours: 14 }], dci: 'Adalimumab', specialites: 'Humira®, Amgevita®, Hyrimoz®, Idacio®, Yuflyma®…', classe: 'Anti-TNFα',
-      voie: 'SC', indications: ['MC', 'RCH'], articleId: 'ADA40', doseType: 'mg', doseRef: 40,
+      voie: 'SC', indications: ['MC', 'RCH'], articleId: 'ADA80', articleEntretienId: 'ADA40', doseType: 'mg', doseRef: 40,
       induction: [{ label: 'S0', jour: 0, dose: 160, voie: 'SC' }, { label: 'S2', jour: 14, dose: 80, voie: 'SC' }],
       entretien: { debutJour: 28, intervalleJours: 14, dose: 40, voie: 'SC', label: '40 mg SC toutes les 2 semaines dès S4' },
       dureePerfusion: '— (auto-injection, dispensation rétrocession)', preparation: '—',
@@ -230,9 +234,9 @@ window.RYZE = window.RYZE || {};
     },
     {
       id: 'gol-rch', dureeSeanceMin: 30, dci: 'Golimumab — RCH', specialites: 'Simponi®', classe: 'Anti-TNFα',
-      voie: 'SC', indications: ['RCH'], articleId: 'GOL50', doseType: 'mg', doseRef: 50,
+      voie: 'SC', indications: ['RCH'], articleId: 'GOL100', articleEntretienId: 'GOL50', doseType: 'mg', doseRef: 50,
       induction: [{ label: 'S0', jour: 0, dose: 200, voie: 'SC' }, { label: 'S2', jour: 14, dose: 100, voie: 'SC' }],
-      entretien: { debutJour: 42, intervalleJours: 28, dose: 50, doseType: 'palier', voie: 'SC', label: '50 mg (< 80 kg) ou 100 mg (≥ 80 kg) SC toutes les 4 semaines dès S6' }, paliers: [{ max: 79.99, dose: 50, flacons: 1, lib: 'stylo' }, { max: Infinity, dose: 100, flacons: 2, lib: 'stylos' }],
+      entretien: { debutJour: 42, intervalleJours: 28, dose: 50, doseType: 'palier', voie: 'SC', label: '50 mg (< 80 kg) ou 100 mg (≥ 80 kg) SC toutes les 4 semaines dès S6' }, paliers: [{ max: 79.99, dose: 50, flacons: 1, lib: 'stylo de 50 mg' }, { max: Infinity, dose: 100, flacons: 1, lib: 'stylo de 100 mg' }],
       dureePerfusion: '—', preparation: '—', premedication: 'Aucune.', surveillancePerf: 'Éducation à l’auto-injection.',
       optimisation: 'Dose d’entretien selon le poids (100 mg si ≥ 80 kg).', surveillanceDefaut: ['clin', 'colo', 'recto', 'biostd', 'calpro', 'irm', 'echo', 'tdm', 'actnf'], remarque: ''
     },
@@ -257,7 +261,7 @@ window.RYZE = window.RYZE || {};
       induction: [{ label: 'Induction', jour: 0, dose: null, voie: 'PO', texte: '10 mg × 2/j pendant 8 sem. (prolongeable à 16 sem.)' }],
       entretien: { debutJour: 56, intervalleJours: 28, dose: null, voie: 'PO', label: '5 mg × 2/j (10 mg × 2/j si nécessaire, durée minimale)', texte: '5 mg × 2/j' },
       dureePerfusion: '—', preparation: '—', premedication: '—', surveillancePerf: 'NFS, bilan hépatique, lipides à 8 sem. ; risque thromboembolique et zona (vaccin recombinant).',
-      optimisation: 'Arrêt si absence de bénéfice à 16 semaines. Ne pas instaurer si lymphocytes < 750/mm³, PNN < 1 000/mm³, Hb < 9 g/dL.', surveillanceDefaut: ['clin', 'colo', 'recto', 'biostd', 'calpro', 'irm', 'echo'], remarque: ''
+      optimisation: 'Arrêt si absence de bénéfice à 16 semaines. Restrictions PRAC : ≥ 65 ans, fumeur ou ancien fumeur, facteurs de risque cardiovasculaire ou thromboembolique, cancer → uniquement en l’absence d’alternative, à la dose minimale ; 10 mg × 2/j d’entretien à éviter chez ces patients. Ne pas instaurer si lymphocytes < 750/mm³, PNN < 1 000/mm³, Hb < 9 g/dL.', surveillanceDefaut: ['clin', 'colo', 'recto', 'biostd', 'calpro', 'irm', 'echo'], remarque: ''
     }
   ];
 
