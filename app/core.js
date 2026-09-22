@@ -375,7 +375,7 @@
           <div class="card-body" style="padding-top:4px;padding-bottom:4px">${!S.patients.length ? `<div class="empty">Aucun patient. ${R.can('dossier', 'w') ? '<br><button class="btn sm primary mt8" data-go="nouveau">Créer le premier dossier</button>' : ''}</div>` : alertes.length ? alertes.slice(0, 8).map(a => `<button class="alert-row" data-go="${a.go[0]}" data-params='${R.params(a.go[1])}'><i class="sev ${a.sev}"></i><div><div class="t">${R.esc(a.t)}</div><div class="d">${R.esc(a.d)}</div></div></button>`).join('') : '<div class="empty">Rien à signaler</div>'}</div>
           ${alertes.length > 8 ? `<div class="card-foot">${alertes.length - 8} autre(s) — voir Patients</div>` : ''}</section>
       </div>
-      <div class="grid c21">
+      <div class="stack" style="margin-bottom:16px">
         <section class="card"><div class="card-head"><div><h2>Séances de la semaine</h2><div class="sub">perfusions à l’hôpital de jour</div></div><button class="btn sm" data-go="planning">Ouvrir le planning</button></div>
           <div class="card-body flush tbl-wrap"><table class="tbl"><thead><tr><th>Jour</th><th>Heure</th><th>Patient</th><th>Biothérapie</th><th>Dose</th><th>Fauteuil</th><th>Statut</th>${R.can('cures', 'w') ? '<th></th>' : ''}</tr></thead><tbody>
           ${iv.map(x => { const c = x.cure, p = x.patient, pr = R.protoDeCure(p, c); return `<tr class="row-link${c.datePrevue === t ? ' today' : ''}${c.statut === 'realisee' ? ' done' : ''}" data-go="patient" data-params='${R.params({ id: p.id, tab: 'plan' })}'>

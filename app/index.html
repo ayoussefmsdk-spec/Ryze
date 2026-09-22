@@ -423,6 +423,7 @@ input[readonly]{background:var(--surface-2);color:var(--ink-2)}
 .doc-stamp{display:inline-block;padding:2px 8px;border:1.5px solid var(--doc-ink);border-radius:3px;font-family:'IBM Plex Mono',monospace;font-size:9pt;font-weight:600}
 
 /* ---------- Responsive ---------- */
+@media (max-width:1400px){.grid.c21:has(.tbl),.grid.c12:has(.tbl),.grid.c11:has(.tbl){grid-template-columns:1fr}}
 @media (max-width:1080px){.grid.c21,.grid.c12,.grid.c111{grid-template-columns:1fr}.stepper{grid-template-columns:repeat(5,1fr)}.step span.lbl{display:none}}
 @media (max-width:860px){
   .shell{grid-template-columns:1fr}
