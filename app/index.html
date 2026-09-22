@@ -286,6 +286,7 @@ input[readonly]{background:var(--surface-2);color:var(--ink-2)}
 .week .day-head b{display:block;font-weight:600}
 .week .day-head small{color:var(--muted);font-size:11.5px}
 .week .day-head.today{background:var(--accent-tint)}
+.week .day-head.sel{box-shadow:inset 0 -3px 0 var(--accent)}
 .week .day{border-left:1px solid var(--line-soft);padding:8px;min-height:260px;display:flex;flex-direction:column;gap:6px}
 .week .day:first-child{border-left:0}
 .evt{border-radius:7px;padding:6px 8px;font-size:12px;border-left:3px solid var(--accent);background:var(--surface-2);cursor:pointer;line-height:1.3}
@@ -368,6 +369,7 @@ input[readonly]{background:var(--surface-2);color:var(--ink-2)}
 .menu-list button:hover{background:var(--hover)}
 .menu-list button.danger{color:var(--crit-ink)}
 .note-chip{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:1px 6px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:help}
+.note-chip.crit{color:var(--crit);border-color:var(--crit);background:var(--crit-tint,var(--surface-2))}
 .jour-row{display:grid;grid-template-columns:60px 1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line-soft)}
 .jour-row:last-child{border-bottom:0}
 

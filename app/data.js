@@ -169,7 +169,7 @@ window.RYZE = window.RYZE || {};
     },
     {
       id: 'vdz-sc', dureeSeanceMin: 150, dci: 'Vedolizumab SC', specialites: 'Entyvio® 108 mg SC', classe: 'Anti-intégrine α4β7',
-      voie: 'IV puis SC', indications: ['MC', 'RCH'], articleId: 'VDZ300', doseType: 'mg', doseRef: 300,
+      voie: 'IV puis SC', indications: ['MC', 'RCH'], articleId: 'VDZ300', articleEntretienId: 'VDZ108', doseType: 'mg', doseRef: 300,
       induction: [{ label: 'S0', jour: 0, dose: 300, voie: 'IV' }, { label: 'S2', jour: 14, dose: 300, voie: 'IV' }],
       entretien: { debutJour: 42, intervalleJours: 14, dose: 108, doseType: 'mg', voie: 'SC', label: '108 mg SC toutes les 2 semaines dès S6' },
       dureePerfusion: '30 min (induction IV)', preparation: 'Idem vedolizumab IV', premedication: 'Aucune.', surveillancePerf: '—',
@@ -219,7 +219,7 @@ window.RYZE = window.RYZE || {};
       optimisation: 'Alternative d’induction SC : 400 mg (2 × 200 mg) S0/S4/S8. Bénéfice insuffisant : 200 mg SC toutes les 4 semaines dès S12.', surveillanceDefaut: ['clin', 'colo', 'recto', 'biostd', 'calpro', 'irm', 'echo'], remarque: ''
     },
     {
-      id: 'ada', dureeSeanceMin: 30, variantes: [{ nom: '40 mg toutes les semaines', doseInduction: 160, doseEntretien: 40, intervalleJours: 7 }, { nom: '80 mg toutes les 2 semaines', doseInduction: 160, doseEntretien: 80, intervalleJours: 14 }], dci: 'Adalimumab', specialites: 'Humira®, Amgevita®, Hyrimoz®, Idacio®, Yuflyma®…', classe: 'Anti-TNFα',
+      id: 'ada', dureeSeanceMin: 30, variantes: [{ nom: '40 mg toutes les semaines', doseInduction: null, doseEntretien: 40, intervalleJours: 7 }, { nom: '80 mg toutes les 2 semaines', doseInduction: null, doseEntretien: 80, intervalleJours: 14 }], dci: 'Adalimumab', specialites: 'Humira®, Amgevita®, Hyrimoz®, Idacio®, Yuflyma®…', classe: 'Anti-TNFα',
       voie: 'SC', indications: ['MC', 'RCH'], articleId: 'ADA40', doseType: 'mg', doseRef: 40,
       induction: [{ label: 'S0', jour: 0, dose: 160, voie: 'SC' }, { label: 'S2', jour: 14, dose: 80, voie: 'SC' }],
       entretien: { debutJour: 28, intervalleJours: 14, dose: 40, voie: 'SC', label: '40 mg SC toutes les 2 semaines dès S4' },
@@ -232,14 +232,22 @@ window.RYZE = window.RYZE || {};
       id: 'gol-rch', dureeSeanceMin: 30, dci: 'Golimumab — RCH', specialites: 'Simponi®', classe: 'Anti-TNFα',
       voie: 'SC', indications: ['RCH'], articleId: 'GOL50', doseType: 'mg', doseRef: 50,
       induction: [{ label: 'S0', jour: 0, dose: 200, voie: 'SC' }, { label: 'S2', jour: 14, dose: 100, voie: 'SC' }],
-      entretien: { debutJour: 42, intervalleJours: 28, dose: 50, voie: 'SC', label: '50 mg (< 80 kg) ou 100 mg (≥ 80 kg) SC toutes les 4 semaines dès S6' },
+      entretien: { debutJour: 42, intervalleJours: 28, dose: 50, doseType: 'palier', voie: 'SC', label: '50 mg (< 80 kg) ou 100 mg (≥ 80 kg) SC toutes les 4 semaines dès S6' }, paliers: [{ max: 79.99, dose: 50, flacons: 1, lib: 'stylo' }, { max: Infinity, dose: 100, flacons: 2, lib: 'stylos' }],
       dureePerfusion: '—', preparation: '—', premedication: 'Aucune.', surveillancePerf: 'Éducation à l’auto-injection.',
       optimisation: 'Dose d’entretien selon le poids (100 mg si ≥ 80 kg).', surveillanceDefaut: ['clin', 'colo', 'recto', 'biostd', 'calpro', 'irm', 'echo', 'tdm', 'actnf'], remarque: ''
     },
     {
-      id: 'upa', dureeSeanceMin: 0, dci: 'Upadacitinib', specialites: 'Rinvoq®', classe: 'Inhibiteur de JAK1', voie: 'PO', indications: ['MC', 'RCH'], articleId: null, doseType: 'po',
-      induction: [{ label: 'Induction', jour: 0, dose: null, voie: 'PO', texte: '45 mg/j pendant 8 sem. (RCH) ou 12 sem. (MC)' }],
-      entretien: { debutJour: 56, intervalleJours: 28, dose: null, voie: 'PO', label: '15 mg/j (30 mg/j si maladie sévère / réfractaire) — renouvellement mensuel', texte: '15 ou 30 mg/j' },
+      id: 'upa-mc', dureeSeanceMin: 0, dci: 'Upadacitinib — Crohn', specialites: 'Rinvoq®', classe: 'Inhibiteur de JAK1', voie: 'PO', indications: ['MC'], articleId: null, doseType: 'po',
+      induction: [{ label: 'Induction', jour: 0, dose: null, voie: 'PO', texte: '45 mg/j pendant 12 sem.' }],
+      entretien: { debutJour: 84, intervalleJours: 28, dose: null, voie: 'PO', label: '15 mg/j (30 mg/j si maladie sévère / réfractaire) dès S12 — renouvellement mensuel', texte: '15 ou 30 mg/j' },
+      dureePerfusion: '—', preparation: '—', premedication: '—', surveillancePerf: 'Bilan lipidique S8–S12, NFS, bilan hépatique, CPK ; zona (vaccin recombinant recommandé).',
+      optimisation: 'Âge ≥ 65 ans : 15 mg/j maximum. Facteurs de risque CV / thromboembolique, tabagisme : dose minimale efficace. Ne pas instaurer si lymphocytes < 500/mm³, PNN < 1 000/mm³, Hb < 8 g/dL.',
+      surveillanceDefaut: ['clin', 'colo', 'recto', 'biostd', 'calpro', 'irm', 'echo'], remarque: 'Contraception efficace obligatoire.'
+    },
+    {
+      id: 'upa-rch', dureeSeanceMin: 0, dci: 'Upadacitinib — RCH', specialites: 'Rinvoq®', classe: 'Inhibiteur de JAK1', voie: 'PO', indications: ['RCH'], articleId: null, doseType: 'po',
+      induction: [{ label: 'Induction', jour: 0, dose: null, voie: 'PO', texte: '45 mg/j pendant 8 sem.' }],
+      entretien: { debutJour: 56, intervalleJours: 28, dose: null, voie: 'PO', label: '15 mg/j (30 mg/j si maladie sévère / réfractaire) dès S8 — renouvellement mensuel', texte: '15 ou 30 mg/j' },
       dureePerfusion: '—', preparation: '—', premedication: '—', surveillancePerf: 'Bilan lipidique S8–S12, NFS, bilan hépatique, CPK ; zona (vaccin recombinant recommandé).',
       optimisation: 'Âge ≥ 65 ans : 15 mg/j maximum. Facteurs de risque CV / thromboembolique, tabagisme : dose minimale efficace. Ne pas instaurer si lymphocytes < 500/mm³, PNN < 1 000/mm³, Hb < 8 g/dL.',
       surveillanceDefaut: ['clin', 'colo', 'recto', 'biostd', 'calpro', 'irm', 'echo'], remarque: 'Contraception efficace obligatoire.'
@@ -259,7 +267,7 @@ window.RYZE = window.RYZE || {};
     if (dt === 'po') return { dose: null, texte: etape.texte || proto.entretien.texte || '', flacons: 0 };
     if (dt === 'palier') {
       const p = (proto.paliers || []).find(x => poids <= x.max) || proto.paliers[proto.paliers.length - 1];
-      return { dose: p.dose, flacons: p.flacons, texte: `${p.dose} mg (${p.flacons} flacons)` };
+      return { dose: p.dose, flacons: p.flacons, texte: `${p.dose} mg (${p.flacons} ${p.lib || 'flacons'})` };
     }
     const art = R.article(phase === 'entretien' && proto.articleEntretienId ? proto.articleEntretienId : proto.articleId);
     let dose = dt === 'mgkg' ? Math.round(etape.dose * poids) : etape.dose;
@@ -270,13 +278,14 @@ window.RYZE = window.RYZE || {};
   R.genererCures = function (proto, dateDebut, poids, horizonJours) {
     horizonJours = horizonJours || 365;
     const cures = []; let n = 1;
-    proto.induction.forEach(et => {
+    (proto.induction || []).forEach(et => {
       const d = R.doseEtape(proto, et, poids, 'induction');
       cures.push({ n: n++, cycle: 1, protocoleId: proto.id, phase: 'Induction', label: et.label, jour: et.jour, datePrevue: R.jourOuvre(R.addDays(dateDebut, et.jour)), voie: et.voie, dose: d.dose, doseTexte: d.texte, flacons: d.flacons, articleId: proto.articleId, statut: 'prevue' });
     });
     const e = proto.entretien;
     if (e) {
-      for (let j = e.debutJour; j <= horizonJours; j += e.intervalleJours) {
+      const inter = Math.max(7, +e.intervalleJours || 56);
+      for (let j = +e.debutJour || 0; j <= horizonJours; j += inter) {
         const d = R.doseEtape(proto, { dose: e.dose, doseType: e.doseType, texte: e.texte }, poids, 'entretien');
         cures.push({ n: n++, cycle: 1, protocoleId: proto.id, phase: 'Entretien', label: R.libelleJour(j), jour: j, datePrevue: R.jourOuvre(R.addDays(dateDebut, j)), voie: e.voie, dose: d.dose, doseTexte: d.texte, flacons: d.flacons, articleId: proto.articleEntretienId || proto.articleId, statut: 'prevue' });
       }
@@ -313,7 +322,7 @@ window.RYZE = window.RYZE || {};
     const ancien = p.historiqueProtocoles[p.historiqueProtocoles.length - 1];
     const cyc = ancien.cycle;
     const curesAnc = p.cures.filter(c => (c.cycle || 1) === cyc);
-    const planifiees = curesAnc.filter(c => c.statut === 'prevue' || c.statut === 'reportee');
+    const planifiees = curesAnc.filter(c => c.statut === 'prevue' || c.statut === 'reportee' || c.statut === 'manquee');
     ancien.planifieJusqua = curesAnc.length ? curesAnc[curesAnc.length - 1].label : '—';
     const derniereFaite = [...curesAnc].reverse().find(c => c.statut === 'realisee');
     ancien.arreteA = R.libelleJour(Math.max(0, Math.round(R.diffDays(ancien.dateDebut, o.dateDebut) / 7) * 7));
@@ -326,7 +335,9 @@ window.RYZE = window.RYZE || {};
     p.cures.push(...nouvelles);
     p.cures.sort((a, b) => a.datePrevue.localeCompare(b.datePrevue)); p.cures.forEach((c, i) => c.n = i + 1);
     /* surveillance : les contrôles prévus restent, on ajoute ceux propres au nouveau protocole s'ils n'existent pas déjà */
-    const cfgN = p.planSurveillance || R.cfgDefaut(proto); if (R.cfgDefaut(proto).items.tdm.on) { cfgN.items.tdm = cfgN.items.tdm || { on: false }; cfgN.items.tdm.on = true; cfgN.items.tdm.periode = cfgN.items.tdm.periode || 91; cfgN.items.actnf = Object.assign(cfgN.items.actnf || {}, { on: true }); }
+    const cfgN = p.planSurveillance ? JSON.parse(JSON.stringify(p.planSurveillance)) : R.cfgDefaut(proto); const antiTNF = /TNF/.test(proto.classe || '');
+    ['tdm', 'actnf'].forEach(id => { cfgN.items[id] = Object.assign(cfgN.items[id] || {}, { on: antiTNF }); if (id === 'tdm' && antiTNF) cfgN.items.tdm.periode = cfgN.items.tdm.periode || 91; });
+    if (!antiTNF) p.surveillance.forEach(s => { if ((s.id === 'tdm' || s.id === 'actnf') && s.statut === 'prevue' && s.echeance >= o.dateDebut) { s.statut = 'annulee'; s.note = (s.note ? s.note + ' · ' : '') + 'Sans objet après changement de protocole'; } });
     p.planSurveillance = cfgN;
     const ajouts = R.genererSurveillanceCfg(cfgN, o.dateDebut, o.horizonJours || 365, cyc + 1)
       .filter(s => s.mode === 'echeance' && !p.surveillance.some(x => x.id === s.id && (x.nom || '') === (s.nom || '') && x.statut !== 'faite' && x.echeance && Math.abs(R.diffDays(x.echeance, s.echeance)) < 21));
@@ -426,9 +437,9 @@ window.RYZE = window.RYZE || {};
           if (c.cycle === 1 && s.bascule && k === cures.filter(x => x.cycle === 1).length - 1) c.tolerance = 'Bonne — mais perte de réponse clinique (Mayo partiel 6)';
           if (s.reaction === k) c.tolerance = 'Réaction à la perfusion (prurit, flush, à 40 min) — arrêt 15 min, dexchlorphéniramine 5 mg IV, reprise à débit réduit. Prémédication systématique ensuite.';
         }
-        if (s.suspendu && c.datePrevue >= today && c.statut === 'prevue' && !cures.some(x => x.statut === 'reportee')) { c.statut = 'reportee'; c.motif = s.suspendu; c.reports = [{ date: R.addDays(today, -2), categorie: 'clinique', motif: s.suspendu, de: c.datePrevue }]; }
-        if (c.statut === 'realisee' && c.voie === 'IV' && k > 0 && (i + k) % 5 === 0 && R.diffDays(c.dateReelle, today) < 120) c.reports = [{ date: R.addDays(c.datePrevue, -3), categorie: ['stock', 'patient', 'capacite', 'clinique'][(Math.floor((i + k) / 5) + 3) % 4], motif: ['rupture de stock du flacon', 'patient indisponible (déplacement)', 'fauteuils complets ce jour', 'infection ORL en cours'][(Math.floor((i + k) / 5) + 3) % 4], de: R.addDays(c.datePrevue, -2) }];
-        if (c.statut === 'realisee' && c.voie === 'IV' && (i * 7 + k) % 7 === 3 && R.diffDays(c.dateReelle, today) < 90 && R.diffDays(c.dateReelle, today) > 5) { c.statut = 'manquee'; c.motif = 'Patient non venu, injoignable'; delete c.dateReelle; delete c.lot; delete c.ide; }
+        if (s.suspendu && c.datePrevue >= today && c.statut === 'prevue' && !cures.some(x => x.statut === 'reportee')) { c.statut = 'reportee'; c.motif = s.suspendu; c.reports = [{ date: R.addDays(today, -2), categorie: 'clinique', motif: s.suspendu, de: c.datePrevue, vers: null, par: 'u-med1' }]; }
+        if (c.statut === 'realisee' && c.voie === 'IV' && k > 0 && (i + k) % 5 === 0 && R.diffDays(c.dateReelle, today) < 120) c.reports = [{ date: R.addDays(c.datePrevue, -3), categorie: ['stock', 'patient', 'capacite', 'clinique'][(Math.floor((i + k) / 5) + 3) % 4], motif: ['rupture de stock du flacon', 'patient indisponible (déplacement)', 'fauteuils complets ce jour', 'infection ORL en cours'][(Math.floor((i + k) / 5) + 3) % 4], de: R.addDays(c.datePrevue, -2), vers: c.datePrevue, par: 'u-ide1' }];
+        if (c.statut === 'realisee' && c.voie === 'IV' && (i * 7 + k) % 7 === 3 && R.diffDays(c.dateReelle, today) < 90 && R.diffDays(c.dateReelle, today) > 5) { c.statut = 'manquee'; c.motif = 'Patient non venu, injoignable'; c.dateManquee = c.datePrevue; delete c.dateReelle; delete c.lot; delete c.ide; delete c.reports; delete c.tolerance; delete c.constantes; delete c.clinique; }
         if (c.statut === 'prevue' && c.datePrevue <= R.addDays(lundi, 6) && c.voie === 'IV' && i % 3 !== 2) c.validationPharma = { par: 'u-pha1', date: R.addDays(today, -1) };
       });
       const cfgDemo = R.cfgDefaut(proto); if (i % 3 === 0) cfgDemo.items.vit = { on: true, entries: [{ nom: 'Vitamine D', periode: 182 }] };

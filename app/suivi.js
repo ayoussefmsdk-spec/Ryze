@@ -25,7 +25,7 @@
       ] },
       { id: 'vit', label: 'Dosage vitaminique', type: 'libre', desc: 'saisissez le dosage souhaité et sa période ; plusieurs possibles', placeholder: 'ex. vitamine D, folates, zinc' },
       { id: 'calpro', label: 'Calprotectine fécale', periode: 182, unite: 'µg/g', cible: '< 250 µg/g' },
-      { id: 'tdm', label: 'Dosage infliximab (taux résiduel) et anticorps anti-infliximab', periodeChoix: true, unite: 'µg/mL', cible: 'résiduel 3–7 µg/mL', defaut: false },
+      { id: 'tdm', label: 'Dosage de l’anti-TNF (taux résiduel : infliximab, adalimumab…)', periodeChoix: true, unite: 'µg/mL', cible: 'résiduel 3–7 µg/mL', defaut: false },
       { id: 'actnf', label: 'Suivi annuel des anticorps anti-TNF', periode: 365, defaut: false }
     ] },
     { id: 'radio', label: 'Bilan radiologique', periode: 365, items: [
@@ -41,7 +41,7 @@
 
   /* ---------- Configuration d'un plan de surveillance ---------- */
   R.cfgDefaut = proto => {
-    const cfg = { groupes: {}, items: {} }; const defs = (proto && proto.surveillanceDefaut) || [];
+    const cfg = { groupes: {}, items: {} }; const ANC = { nfs: 'biostd', crp: 'biostd', bh: 'biostd', creat: 'biostd', endo: 'colo', coloscopie: 'colo', calprotectine: 'calpro', tdm: 'tdm' }; const defs = ((proto && proto.surveillanceDefaut) || []).map(id => ANC[id] || id); if (defs.includes('colo') && ((proto && proto.surveillanceDefaut) || []).includes('endo')) defs.push('recto');
     const antiTNF = proto && /TNF/.test(proto.classe || '');
     R.BILANS.forEach(g => g.items.forEach(it => { const on = it.fixe || defs.includes(it.id) || (it.defaut !== false && !defs.length) || (antiTNF && (it.id === 'tdm' || it.id === 'actnf')); cfg.items[it.id] = { on: !!on, periode: null, sous: it.type === 'composite' ? it.sous.map(s => s.id) : undefined, entries: it.type === 'libre' ? [] : undefined }; if (it.id === 'tdm' && on && !cfg.items[it.id].periode) cfg.items[it.id].periode = 91; }));
     return cfg;
@@ -50,9 +50,10 @@
   R.periodeItem = (cfg, g, it, c) => { if (it.periode === 'cure' || g.periode === 'cure') return 'cure'; return +(c && c.periode) || it.periode || +(cfg.groupes && cfg.groupes[g.id]) || g.periode; };
   R.genererSurveillanceCfg = (cfg, dateDebut, horizon, cycle) => {
     const out = []; horizon = horizon || 365;
-    const serie = (g, it, per, extra) => { const base = Object.assign({ id: it.id, label: it.label, cat: g.label, type: it.type, cible: it.cible, unite: it.unite, gen: true, cycle: cycle || 1 }, extra); if (per === 'cure') { out.push(Object.assign(base, { mode: 'cure', echeance: null, statut: 'cure' })); return; } for (let j = per; j <= horizon; j += per) out.push(Object.assign({}, base, { mode: 'echeance', jour: j, echeance: R.addDays(dateDebut, j), statut: 'prevue', periode: per })); };
+    const serie = (g, it, per, extra) => { const base = Object.assign({ id: it.id, label: it.label, cat: g.label, type: it.type, cible: it.cible, unite: it.unite, gen: true, cycle: cycle || 1 }, extra); if (per === 'cure') { out.push(Object.assign(base, { mode: 'cure', echeance: null, statut: 'cure' })); return; } per = Math.max(7, +per || 91); for (let j = per; j <= horizon; j += per) out.push(Object.assign({}, base, { mode: 'echeance', jour: j, echeance: R.addDays(dateDebut, j), statut: 'prevue', periode: per })); };
     R.BILANS.forEach(g => g.items.forEach(it => { const c = cfg.items && cfg.items[it.id]; if (!c || !c.on) return;
       if (it.type === 'libre') { (c.entries || []).filter(e => e.nom && e.nom.trim()).forEach(e => serie(g, it, +e.periode || R.periodeItem(cfg, g, it, c), { label: `${it.label} : ${e.nom.trim()}`, nom: e.nom.trim() })); return; }
+      if (it.type === 'composite' && Array.isArray(c.sous) && !c.sous.length) return; /* aucune analyse cochée : rien à programmer */
       serie(g, it, R.periodeItem(cfg, g, it, c), it.type === 'composite' ? { sous: (c.sous && c.sous.length ? c.sous : it.sous.map(s => s.id)) } : {}); }));
     return out.sort((a, b) => (a.jour || 0) - (b.jour || 0));
   };

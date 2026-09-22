@@ -24,6 +24,7 @@
       s.version = 3;
     }
     if (s.version === 3) { s.version = 4; }
+    if (s.brouillon) { s.brouillons = s.brouillons || {}; if (s.user && s.brouillon.d) s.brouillons[s.user] = s.brouillon; delete s.brouillon; }
     if (!s.rdv) s.rdv = []; if (!s.journal) s.journal = []; (s.patients || []).forEach(p => { p.notes = p.notes || []; p.surveillance = p.surveillance || []; p.bilan = p.bilan || []; p.cures = p.cures || []; });
     if (s.user && !(s.users || []).some(u => u.id === s.user)) s.user = null;
     return s;
@@ -35,9 +36,9 @@
   remplacer(charger() || Object.assign(R.seed(), { semaineSeed: R.semaineRef(), version: VERSION }));
   S.version = VERSION;
   R.save = () => { try { S.enregistreLe = new Date().toISOString(); localStorage.setItem(KEY, JSON.stringify(S)); if (R.ui.saveError) { R.ui.saveError = false; R.bandeau(); } } catch (e) { R.ui.saveError = true; R.bandeau(); console.error('Sauvegarde impossible', e); } };
-  R.touch = () => { S.dirty = true; R.save(); };
+  R.touch = () => { S.dirty = true; S.modifieLe = new Date().toISOString(); R.save(); };
   R.bandeau = () => { let b = document.getElementById('bandeau'); if (!R.ui.saveError) { if (b) b.remove(); return; } if (!b) { b = document.createElement('div'); b.id = 'bandeau'; b.className = 'bandeau'; document.body.appendChild(b); } b.innerHTML = '<b>Sauvegarde impossible dans ce navigateur</b> (espace plein ou stockage bloqué). Vos dernières modifications ne sont pas conservées : exportez la base depuis Paramètres avant de fermer la page.'; };
-  window.addEventListener('storage', e => { if (e.key !== KEY || !e.newValue) return; try { const s = JSON.parse(e.newValue); if (s.enregistreLe && s.enregistreLe !== S.enregistreLe) { const route = S.route, user = S.user; remplacer(migrer(s)); S.route = route; S.user = user; R.render(); R.toast('Données mises à jour depuis un autre onglet', 'warn'); } } catch (x) {} });
+  window.addEventListener('storage', e => { if (e.key !== KEY || !e.newValue) return; try { const s = JSON.parse(e.newValue); if (s.modifieLe && s.modifieLe !== S.modifieLe) { const route = S.route, user = S.user; remplacer(migrer(s)); S.route = route; S.user = user && S.users.some(x => x.id === user && x.actif) ? user : null; R.render(); R.toast('Données mises à jour depuis un autre onglet', 'warn'); } } catch (x) {} });
   R.reset = () => { try { localStorage.removeItem(KEY); } catch (e) {} const u = S.user; remplacer(Object.assign(R.seed(), { semaineSeed: R.semaineRef(), version: VERSION, user: u })); R.save(); R.go('dashboard'); R.toast('Données de démonstration réinitialisées', 'good'); };
   R.vider = () => { try { localStorage.removeItem(KEY); } catch (e) {} const u = S.user; remplacer(Object.assign(R.seedVide(), { semaineSeed: R.semaineRef(), version: VERSION, user: u })); R.save(); R.go('dashboard'); R.toast('Base vide : ajoutez vos patients et rendez-vous', 'good'); };
   R.journal = (txt) => { S.journal = S.journal || []; S.journal.unshift({ date: R.today(), heure: new Date().toTimeString().slice(0, 5), par: S.user, txt }); S.journal = S.journal.slice(0, 200); };
@@ -83,7 +84,7 @@
   /* séances IV d'une date : { deb, fin, fauteuil, patient, cure } ; exclude = { pid, n } ; extra = séances virtuelles */
   R.seances = (date, exclude, extra) => {
     const out = [];
-    S.patients.forEach(p => p.cures.forEach(c => { if (c.datePrevue !== date || c.voie !== 'IV' || c.statut === 'annulee' || c.statut === 'reportee') return; if (exclude && exclude.pid === p.id && exclude.n === c.n) return; const deb = R.toMin(c.heure || R.hdj().ouverture); out.push({ deb, fin: deb + R.dureeSeance(R.protoDeCure(p, c), c), fauteuil: c.fauteuil || 0, patient: p, cure: c }); }));
+    S.patients.forEach(p => p.cures.forEach(c => { if (c.datePrevue !== date || c.voie !== 'IV' || c.statut === 'annulee' || c.statut === 'reportee' || c.statut === 'manquee' || c._reserv) return; if (exclude && exclude.pid === p.id && exclude.n === c.n) return; const deb = R.toMin(c.heure || R.hdj().ouverture); out.push({ deb, fin: deb + R.dureeSeance(R.protoDeCure(p, c), c), fauteuil: c.fauteuil || 0, patient: p, cure: c }); }));
     (extra || []).filter(x => x.date === date).forEach(x => out.push({ deb: R.toMin(x.heure), fin: R.toMin(x.heure) + x.duree, fauteuil: x.fauteuil, patient: null, cure: null }));
     return out.sort((a, b) => a.deb - b.deb);
   };
@@ -102,21 +103,26 @@
     const h = R.hdj(); const pas = h.pas || 30;
     for (let i = 0; i < 90; i++) {
       const d = R.addDays(date, i); if (!R.jourOuvert(d)) continue;
-      const start = i === 0 && heureSouhaitee ? R.toMin(heureSouhaitee) : R.toMin(h.ouverture);
-      for (let m = start; m + duree <= R.toMin(h.fermeture); m += pas) { const v = R.verifierCreneau(d, R.toH(m), duree, exclude, extra); if (v.ok) return { date: d, heure: R.toH(m), fauteuil: v.fauteuil, decale: i > 0 }; }
+      const ouv = R.toMin(h.ouverture), fer = R.toMin(h.fermeture); const hs = heureSouhaitee ? R.toMin(heureSouhaitee) : ouv; const mins = [];
+      for (let m = hs; m + duree <= fer; m += pas) mins.push(m);
+      for (let m = ouv; m < hs && m + duree <= fer; m += pas) mins.push(m);
+      for (const m of mins) { const v = R.verifierCreneau(d, R.toH(m), duree, exclude, extra); if (v.ok) return { date: d, heure: R.toH(m), fauteuil: v.fauteuil, decale: i > 0 }; }
     }
     return null;
   };
   /* Réserve un créneau pour chaque cure IV d'une liste (dans l'ordre), en tenant compte des cures déjà réservées de la liste */
   R.reserverCures = (cures, heureSouhaitee, extra) => {
     const virt = [...(extra || [])];
+    cures.forEach(c => { c._reserv = true; });
     cures.forEach(c => {
-      if (c.voie !== 'IV' || c.statut === 'annulee' || c.statut === 'realisee') return;
+      if (c.voie !== 'IV' || c.statut === 'annulee' || c.statut === 'realisee') { delete c._reserv; return; }
       const duree = R.dureeSeance(R.proto(c.protocoleId), c);
       const cr = R.prochainCreneau(c.datePrevue, duree, heureSouhaitee, null, virt);
       if (cr) { if (cr.date !== c.datePrevue) { c.dateTheorique = c.datePrevue; c.datePrevue = cr.date; c.decalee = true; } c.heure = cr.heure; c.fauteuil = cr.fauteuil; virt.push({ date: cr.date, heure: cr.heure, duree, fauteuil: cr.fauteuil }); }
       else { c.heure = heureSouhaitee || R.hdj().ouverture; c.fauteuil = 0; c.sansCreneau = true; }
+      delete c._reserv;
     });
+    cures.forEach(c => { delete c._reserv; });
     return cures;
   };
   R.occupationJour = d => { const s = R.seances(d); const h = R.hdj(); let max = 0; s.forEach(x => { const n = s.filter(y => y.deb < x.fin && x.deb < y.fin).length; if (n > max) max = n; }); return { seances: s.length, max: h.maxParJour, fauteuilsMax: max, fauteuils: h.fauteuils, ouvert: R.jourOuvert(d) }; };
@@ -139,7 +145,7 @@
   };
   R.compterJour = (iso, patientId) => {
     const pats = patientId ? S.patients.filter(p => p.id === patientId) : S.patients;
-    const seances = pats.reduce((n, p) => n + p.cures.filter(c => c.datePrevue === iso && c.statut !== 'annulee' && (c.voie === 'IV' || patientId)).length, 0);
+    const seances = pats.reduce((n, p) => n + p.cures.filter(c => c.datePrevue === iso && c.statut !== 'annulee' && c.statut !== 'reportee' && c.statut !== 'manquee' && (c.voie === 'IV' || patientId)).length, 0);
     const controles = pats.reduce((n, p) => n + p.surveillance.filter(s => s.mode === 'echeance' && s.echeance === iso && s.statut !== 'annulee').length, 0);
     const rdv = S.rdv.filter(r => r.date === iso && (!patientId || r.patientId === patientId)).length;
     return { seances, controles, rdv, plein: !patientId && seances >= R.hdj().maxParJour };
@@ -147,17 +153,18 @@
 
   /* ---------- Prolongation de la planification ---------- */
   R.prolonger = (p, mois) => {
-    const pr = R.proto(p.protocoleId); if (!pr || !pr.entretien) return 0;
-    const cyc = p.cycleCourant || 1; const curesCyc = p.cures.filter(c => (c.cycle || 1) === cyc && c.statut !== 'annulee');
+    const pr0 = R.proto(p.protocoleId); if (!pr0 || !pr0.entretien) return 0;
+    const cyc = p.cycleCourant || 1; const hist = (p.historiqueProtocoles || []).find(x => x.cycle === cyc) || {}; const pr = R.appliquerVariante(pr0, hist.variante || null); const curesCyc = p.cures.filter(c => (c.cycle || 1) === cyc && c.statut !== 'annulee');
     const derniere = curesCyc[curesCyc.length - 1]; if (!derniere) return 0;
     const ref = curesCyc.filter(c => c.phase === 'Entretien').slice(-1)[0] || derniere;
-    const inter = curesCyc.length >= 2 ? Math.max(7, R.diffDays(curesCyc[curesCyc.length - 2].datePrevue, derniere.datePrevue)) : (pr.entretien.intervalleJours || 56);
+    const inter = Math.max(7, +pr.entretien.intervalleJours || 56);
     const fin = R.addDays(derniere.datePrevue, Math.round((mois || 12) * 30.4)); const j0 = R.j0(p, cyc); const nouvelles = [];
     for (let d = R.addDays(derniere.datePrevue, inter); d <= fin; d = R.addDays(d, inter)) { const dd = R.jourOuvre(d); nouvelles.push({ n: 0, cycle: cyc, protocoleId: pr.id, phase: 'Entretien', label: R.libelleJour(R.diffDays(j0, dd)), jour: R.diffDays(j0, dd), datePrevue: dd, voie: ref.voie, dose: ref.dose, doseTexte: ref.doseTexte, flacons: ref.flacons, articleId: ref.articleId, statut: 'prevue' }); }
     R.reserverCures(nouvelles, ref.heure); p.cures.push(...nouvelles); p.cures.sort((a, b) => a.datePrevue.localeCompare(b.datePrevue)); p.cures.forEach((c, i) => c.n = i + 1);
     /* contrôles périodiques selon le plan de surveillance du dossier */
-    const cfg = p.planSurveillance || R.cfgDepuisPatient(p); const dernierCtrl = p.surveillance.filter(s => s.echeance).map(s => s.echeance).sort().slice(-1)[0] || R.today();
-    R.genererSurveillanceCfg(cfg, j0, R.diffDays(j0, fin), cyc).filter(s => s.mode === 'echeance' && s.echeance > dernierCtrl).forEach(s => p.surveillance.push(s));
+    const cfg = p.planSurveillance || R.cfgDepuisPatient(p); const cle = s => s.id + (s.nom ? '|' + s.nom : ''); const dernier = {};
+    p.surveillance.filter(s => s.echeance && s.statut !== 'annulee').forEach(s => { const k = cle(s); if (!dernier[k] || s.echeance > dernier[k]) dernier[k] = s.echeance; });
+    R.genererSurveillanceCfg(cfg, j0, R.diffDays(j0, fin), cyc).filter(s => s.mode === 'echeance' && s.echeance > (dernier[cle(s)] || R.today())).forEach(s => p.surveillance.push(s));
     const h = (p.historiqueProtocoles || []).find(x => x.statut === 'en cours'); if (h && nouvelles.length) h.planifieJusqua = nouvelles[nouvelles.length - 1].label;
     return nouvelles.length;
   };
@@ -174,10 +181,10 @@
     R.conflitsCapacite().forEach(c => out.push({ sev: 'crit', t: `Capacité dépassée le ${R.fmtDate(c.date)}`, d: `${c.motif} — déplacez des séances ou ajustez la capacité`, go: ['planning', { date: c.date }] }));
     if (S.derniereSauvegarde ? R.diffDays(S.derniereSauvegarde, t) > 7 : S.patients.some(p => p.creePar)) out.push({ sev: 'info', t: 'Sauvegarde recommandée', d: S.derniereSauvegarde ? `Dernier export le ${R.fmtDate(S.derniereSauvegarde)} — exportez la base depuis Paramètres` : 'Aucun export de la base encore réalisé — Paramètres → Exporter', go: ['parametres', {}] });
     S.patients.forEach(p => {
-      p.cures.filter(c => c.statut === 'prevue' && c.datePrevue < t).forEach(c => out.push({ sev: 'crit', t: `Séance n°${c.n} non réalisée — ${R.nomComplet(p)}`, d: `${R.protoDeCure(p, c)?.dci} ${c.label} prévue le ${R.fmtDate(c.datePrevue)}`, go: ['patient', { id: p.id, tab: 'plan' }] }));
-      p.cures.filter(c => c.statut === 'reportee' || c.statut === 'manquee').forEach(c => out.push({ sev: 'warn', t: `${c.statut === 'manquee' ? 'Séance manquée' : 'Séance'} à replanifier — ${R.nomComplet(p)}`, d: `${c.label} · ${c.motif || ''}`, go: ['patient', { id: p.id, tab: 'plan' }] }));
-      p.cures.filter(c => c.sansCreneau && c.statut === 'prevue').forEach(c => out.push({ sev: 'warn', t: `Aucun créneau trouvé — ${R.nomComplet(p)}`, d: `Séance ${c.label} du ${R.fmtDate(c.datePrevue)} : capacité dépassée, à replacer manuellement`, go: ['patient', { id: p.id, tab: 'plan' }] }));
-      p.surveillance.filter(s => s.statut === 'prevue' && s.echeance && s.echeance < t).forEach(s => out.push({ sev: 'warn', t: `Contrôle en retard — ${R.nomComplet(p)}`, d: `${s.label} · échéance ${R.fmtDate(s.echeance)}`, go: ['patient', { id: p.id, tab: 'plan' }] }));
+      p.cures.filter(c => c.statut === 'prevue' && c.datePrevue < t).forEach(c => out.push({ sev: 'crit', t: `Séance n°${c.n} non réalisée — ${R.nomComplet(p)}`, d: `${R.protoDeCure(p, c)?.dci} ${R.esc(c.label)} prévue le ${R.fmtDate(c.datePrevue)}`, go: ['patient', { id: p.id, tab: 'plan' }] }));
+      p.cures.filter(c => c.statut === 'reportee' || c.statut === 'manquee').forEach(c => out.push({ sev: 'warn', t: `${c.statut === 'manquee' ? 'Séance manquée' : 'Séance'} à replanifier — ${R.nomComplet(p)}`, d: `${R.esc(c.label)} · ${c.motif || ''}`, go: ['patient', { id: p.id, tab: 'plan' }] }));
+      p.cures.filter(c => c.sansCreneau && c.statut === 'prevue').forEach(c => out.push({ sev: 'warn', t: `Aucun créneau trouvé — ${R.nomComplet(p)}`, d: `Séance ${R.esc(c.label)} du ${R.fmtDate(c.datePrevue)} : capacité dépassée, à replacer manuellement`, go: ['patient', { id: p.id, tab: 'plan' }] }));
+      p.surveillance.filter(s => s.statut === 'prevue' && s.echeance && s.echeance < t).forEach(s => out.push({ sev: 'warn', t: `Contrôle en retard — ${R.nomComplet(p)}`, d: `${s.label} · échéance ${R.fmtDate(s.echeance)}`, go: ['patient', { id: p.id, tab: 'surveillance' }] }));
       if (p.statut === 'induction') { const manq = p.bilan.filter(b => b.statut === 'attente' && ['igra', 'rxt', 'vhb'].includes(b.id)); if (manq.length) out.push({ sev: 'warn', t: `Bilan pré-thérapeutique incomplet — ${R.nomComplet(p)}`, d: manq.map(b => R.BILAN_PRE.find(x => x.id === b.id)?.label.split(' (')[0]).join(' · '), go: ['patient', { id: p.id, tab: 'bilans' }] }); }
       if (p.statut === 'suspendu') out.push({ sev: 'info', t: `Traitement suspendu — ${R.nomComplet(p)}`, d: p.motifSuspension, go: ['patient', { id: p.id }] });
       if (p.statut !== 'termine' && p.statut !== 'suspendu') { const fin = R.finPlanification(p); if (!fin || R.diffDays(t, fin) < 60) out.push({ sev: 'warn', t: `Planification à prolonger — ${R.nomComplet(p)}`, d: fin ? `Dernière séance planifiée le ${R.fmtDate(fin)}` : 'Aucune séance planifiée', go: ['patient', { id: p.id, tab: 'plan' }] }); }
@@ -267,18 +274,18 @@
   R.go = (page, params) => { R.closeModal(); S.route = { page, params: params || {} }; R.save(); R.render(); window.scrollTo(0, 0); };
   R.render = () => {
     try { rendre(); } catch (e) {
-      console.error('Rendu impossible, réinitialisation des données locales', e);
-      try { localStorage.removeItem(KEY); } catch (x) {}
-      remplacer(Object.assign(R.seed(), { semaineSeed: R.semaineRef(), version: VERSION }));
-      try { rendre(); R.toast('Données locales incompatibles : démonstration rechargée', 'warn'); } catch (e2) { document.getElementById('app').innerHTML = '<div class="empty">Erreur d’affichage : ' + R.esc(e2.message) + '</div>'; }
+      console.error('Rendu impossible', e);
+      /* on ne supprime jamais les données : on propose de revenir à l'accueil ou d'exporter la base */
+      document.getElementById('app').innerHTML = `<div class="login-wrap"><div class="card" style="max-width:520px;margin:40px auto"><div class="card-head"><h2>Erreur d’affichage</h2></div><div class="card-body"><p class="small">Cette page n’a pas pu être affichée. Vos données sont conservées.</p><pre class="small muted" style="white-space:pre-wrap">${R.esc(e && e.message || e)}</pre><div class="row" style="gap:8px;flex-wrap:wrap"><button type="button" class="btn primary" data-action="secoursAccueil">Revenir à l’accueil</button><button type="button" class="btn" data-action="exporterBase">Exporter la base</button><button type="button" class="btn ghost" data-action="secoursRecharger">Recharger la page</button></div></div></div></div>`;
     }
   };
   function rendre() {
     const app = document.getElementById('app');
-    if (!S.user) { app.innerHTML = loginView(); return; }
-    const page = R.pages[S.route.page] ? S.route.page : 'dashboard';
+    const uc = S.user ? S.users.find(x => x.id === S.user) : null;
+    if (!uc || uc.actif === false) { if (S.user) { S.user = null; R.save(); } app.innerHTML = loginView(); return; }
+    let page = R.pages[S.route.page] ? S.route.page : 'dashboard';
     const item = NAV.find(i => i.id === page);
-    if (item && !R.can(item.mod, item.w ? 'w' : 'r')) { S.route = { page: 'dashboard', params: {} }; return rendre(); }
+    if ((item && !R.can(item.mod, item.w ? 'w' : 'r')) || (page === 'parametres' && !R.can('equipe', 'w'))) { page = 'dashboard'; S.route = { page, params: {} }; }
     const pg = R.pages[page]; const alertes = R.alertes(); const nCrit = alertes.filter(a => a.sev === 'crit').length; const u = R.user(); const sem = R.semaine();
     app.innerHTML = `<div class="shell">
       <aside class="rail" id="rail">
@@ -310,7 +317,7 @@
           <li>${R.icon('check')}<span>Séances et contrôles dans une seule planification, marqués réalisés avec notes.</span></li>
           <li>${R.icon('check')}<span>Carnet de suivi imprimable pour chaque patient.</span></li>
         </ul>
-        <div class="demo-note">${S.vide ? 'Base vide : aucun patient. ' : 'Prototype de démonstration — patients et effectifs fictifs. '}<button type="button" class="btn sm ghost" data-action="${S.vide ? 'resetDemo' : 'viderDemoConfirm'}">${S.vide ? 'Recharger la démonstration' : 'Démarrer avec une base vide'}</button></div>
+        ${S.dirty ? '' : `<div class="demo-note">${S.vide ? 'Base vide : aucun patient. ' : 'Prototype de démonstration — patients et effectifs fictifs. '}<button type="button" class="btn sm ghost" data-action="${S.vide ? 'resetDemo' : 'viderDemoConfirm'}">${S.vide ? 'Recharger la démonstration' : 'Démarrer avec une base vide'}</button></div>`}
       </div>
       <div class="login-right">
         <form data-form="loginCode" class="stack">
@@ -332,7 +339,7 @@
       const curesSem = R.curesEntre(sem.lundi, sem.dimanche); const iv = curesSem.filter(x => x.cure.voie === 'IV');
       const faites = iv.filter(x => x.cure.statut === 'realisee').length;
       const ctrl = R.controlesEntre(sem.lundi, sem.dimanche); const rdv = R.rdvEntre(sem.lundi, sem.dimanche);
-      const alertes = R.alertes(); const retards = alertes.filter(a => a.sev === 'crit').length + S.patients.reduce((n, p) => n + p.surveillance.filter(s => s.statut === 'prevue' && s.echeance && s.echeance < t).length, 0);
+      const alertes = R.alertes(); const retards = S.patients.reduce((n, p) => n + p.cures.filter(c => c.statut === 'prevue' && c.datePrevue < t).length, 0) + S.patients.reduce((n, p) => n + p.surveillance.filter(s => s.statut === 'prevue' && s.echeance && s.echeance < t).length, 0);
       const chart = R.curesParMois();
       return `
       <div class="page-head"><div><h1>Tableau de bord</h1><p>${R.esc(S.settings.unite)} · semaine du ${R.fmtDateLong(sem.lundi)} au ${R.fmtDateLong(sem.jours[4])}</p></div>
@@ -343,8 +350,8 @@
         <button class="kpi" data-go="planning"><div class="label">Contrôles et rendez-vous</div><div class="value">${ctrl.length + rdv.length}</div><div class="sub">${ctrl.length} contrôle(s) · ${rdv.length} rendez-vous cette semaine</div></button>
         <button class="kpi${retards ? ' attention' : ''}" data-go="patients"><div class="label">Retards</div><div class="value">${retards}</div><div class="sub">séances non réalisées et contrôles dépassés</div></button>
       </div>
-      ${(() => { const jour = R.jourOuvert(t) ? t : null; const sIV = jour ? R.curesEntre(t, t) : []; const sCtrl = jour ? R.controlesEntre(t, t) : []; const rdvJ = jour ? R.rdvEntre(t, t) : []; const rows = [...sIV.map(x => ({ h: x.cure.heure || (x.cure.voie !== 'IV' ? x.cure.voie : '—'), sort: x.cure.heure || '98', badge: '<span class="badge type-seance" style="padding:1px 7px">Séance</span>', t: R.nomComplet(x.patient), d: `${R.protoDeCure(x.patient, x.cure)?.dci} ${x.cure.label} · ${x.cure.doseTexte}${x.cure.voie === 'IV' ? ' · fauteuil ' + (x.cure.fauteuil || '—') : ''}`, pid: x.patient.id, st: R.statutCureBadge(x.cure), act: x.cure.statut === 'prevue' && R.can('cures', 'w') ? `<button class="btn sm primary" data-action="cureEnregistrer" data-pid="${x.patient.id}" data-n="${x.cure.n}">${R.icon('check', 'ico')}Fait</button><button class="btn sm" data-action="cureReporter" data-pid="${x.patient.id}" data-n="${x.cure.n}">Reporter</button>` : '' })), ...sCtrl.map(x => ({ h: '—', sort: '97', badge: '<span class="badge type-ctrl" style="padding:1px 7px">Contrôle</span>', t: R.nomComplet(x.patient), d: x.surv.label, pid: x.patient.id, st: R.statutSurvBadge(x.surv), act: x.surv.statut === 'prevue' && R.can('cures', 'w') ? `<button class="btn sm primary" data-action="survSaisir" data-pid="${x.patient.id}" data-i="${x.patient.surveillance.indexOf(x.surv)}">${R.icon('check', 'ico')}Fait</button><button class="btn sm" data-action="survReporter" data-pid="${x.patient.id}" data-i="${x.patient.surveillance.indexOf(x.surv)}">Reporter</button>` : '' })), ...rdvJ.map(r => ({ h: r.heure, sort: r.heure, badge: '<span class="badge type-rdv" style="padding:1px 7px">RDV</span>', t: R.nomComplet(R.patient(r.patientId) || { nom: '?', prenom: '' }), d: `${r.type} · ${r.objet}`, pid: r.patientId, st: '', act: '' }))].sort((a, b) => a.sort.localeCompare(b.sort));
-        return `<section class="card mb16"><div class="card-head"><div><h2>Ma journée — ${R.fmtDateLong(t)}</h2><div class="sub">${jour ? `${sIV.length} séance(s) · ${sCtrl.length} contrôle(s) · ${rdvJ.length} rendez-vous — cochez « Fait » ou « Reporter » directement ici` : 'hôpital de jour fermé aujourd’hui'}</div></div><button class="btn sm" data-go="planning">Voir le planning</button></div><div class="card-body" style="padding-top:2px;padding-bottom:2px">${rows.map(x => `<div class="jour-row"><span class="mono muted">${R.esc(x.h)}</span><div><div class="row" style="gap:6px">${x.badge}<button type="button" style="border:0;background:none;padding:0;cursor:pointer;font:inherit;font-weight:600;color:inherit" data-go="patient" data-params='${R.params({ id: x.pid, tab: 'plan' })}'>${R.esc(x.t)}</button></div><div class="small ink2">${R.esc(x.d)}</div></div><div class="row" style="gap:6px">${x.st}${x.act}</div></div>`).join('') || '<div class="empty">Rien de programmé aujourd’hui</div>'}</div></section>`; })()}
+      ${(() => { const jour = R.jourOuvert(t) ? t : null; const sIV = R.curesEntre(t, t); const sCtrl = R.controlesEntre(t, t); const rdvJ = R.rdvEntre(t, t); const rows = [...sIV.map(x => ({ h: x.cure.heure || (x.cure.voie !== 'IV' ? x.cure.voie : '—'), sort: x.cure.heure || '98', badge: '<span class="badge type-seance" style="padding:1px 7px">Séance</span>', t: R.nomComplet(x.patient), d: `${R.protoDeCure(x.patient, x.cure)?.dci} ${R.esc(x.cure.label)} · ${x.cure.doseTexte}${x.cure.voie === 'IV' ? ' · fauteuil ' + (x.cure.fauteuil || '—') : ''}`, pid: x.patient.id, st: R.statutCureBadge(x.cure), act: x.cure.statut === 'prevue' && R.can('cures', 'w') ? `<button class="btn sm primary" data-action="cureEnregistrer" data-pid="${x.patient.id}" data-n="${x.cure.n}">${R.icon('check', 'ico')}Fait</button><button class="btn sm" data-action="cureReporter" data-pid="${x.patient.id}" data-n="${x.cure.n}">Reporter</button>` : '' })), ...sCtrl.map(x => ({ h: '—', sort: '97', badge: '<span class="badge type-ctrl" style="padding:1px 7px">Contrôle</span>', t: R.nomComplet(x.patient), d: x.surv.label, pid: x.patient.id, st: R.statutSurvBadge(x.surv), act: x.surv.statut === 'prevue' && R.can('cures', 'w') ? `<button class="btn sm primary" data-action="survSaisir" data-pid="${x.patient.id}" data-i="${x.patient.surveillance.indexOf(x.surv)}">${R.icon('check', 'ico')}Fait</button><button class="btn sm" data-action="survReporter" data-pid="${x.patient.id}" data-i="${x.patient.surveillance.indexOf(x.surv)}">Reporter</button>` : '' })), ...rdvJ.map(r => ({ h: r.heure, sort: r.heure, badge: '<span class="badge type-rdv" style="padding:1px 7px">RDV</span>', t: R.nomComplet(R.patient(r.patientId) || { nom: '?', prenom: '' }), d: `${r.type} · ${r.objet}`, pid: r.patientId, st: '', act: '' }))].sort((a, b) => a.sort.localeCompare(b.sort));
+        return `<section class="card mb16"><div class="card-head"><div><h2>Ma journée — ${R.fmtDateLong(t)}</h2><div class="sub">${sIV.length} séance(s) · ${sCtrl.length} contrôle(s) · ${rdvJ.length} rendez-vous${jour ? ' — cochez « Fait » ou « Reporter » directement ici' : ' · hôpital de jour fermé aujourd’hui'}</div></div><button class="btn sm" data-go="planning">Voir le planning</button></div><div class="card-body" style="padding-top:2px;padding-bottom:2px">${rows.map(x => `<div class="jour-row"><span class="mono muted">${R.esc(x.h)}</span><div><div class="row" style="gap:6px">${x.badge}<button type="button" style="border:0;background:none;padding:0;cursor:pointer;font:inherit;font-weight:600;color:inherit" data-go="patient" data-params='${R.params({ id: x.pid, tab: 'plan' })}'>${R.esc(x.t)}</button></div><div class="small ink2">${R.esc(x.d)}</div></div><div class="row" style="gap:6px">${x.st}${x.act}</div></div>`).join('') || '<div class="empty">Rien de programmé aujourd’hui</div>'}</div></section>`; })()}
       <div class="grid c21">
         <section class="card"><div class="card-head"><div><h2>Séances de perfusion réalisées par mois</h2><div class="sub">12 derniers mois</div></div></div><div class="card-body">${R.columnChart(chart)}</div></section>
         <section class="card"><div class="card-head"><h2>À traiter</h2><span class="badge ${alertes.some(a => a.sev === 'crit') ? 'crit' : alertes.length ? 'warn' : 'good'}">${alertes.length}</span></div>
@@ -357,7 +364,7 @@
           ${iv.map(x => { const c = x.cure, p = x.patient, pr = R.protoDeCure(p, c); return `<tr class="row-link${c.datePrevue === t ? ' today' : ''}${c.statut === 'realisee' ? ' done' : ''}" data-go="patient" data-params='${R.params({ id: p.id, tab: 'plan' })}'>
             <td class="nowrap">${R.fmtDate(c.datePrevue, { weekday: 'short', day: 'numeric' })}</td><td class="mono">${c.heure || '—'}</td>
             <td class="name">${R.esc(R.nomComplet(p))}<small>${R.esc(p.ipp)}</small></td>
-            <td>${R.esc(pr?.dci || '')} <span class="tag">${c.label}</span></td>
+            <td>${R.esc(pr?.dci || '')} <span class="tag">${R.esc(c.label)}</span></td>
             <td class="small dose">${R.esc(c.doseTexte)}</td><td class="num">${c.fauteuil || '—'}</td>
             <td>${R.statutCureBadge(c)}</td>${R.can('cures', 'w') ? `<td class="actions">${c.statut === 'prevue' ? `<button class="btn sm primary" data-action="cureEnregistrer" data-pid="${p.id}" data-n="${c.n}">Marquer réalisée</button>` : ''}</td>` : ''}</tr>`; }).join('') || '<tr><td colspan="8" class="empty">Aucune séance cette semaine</td></tr>'}
           </tbody></table></div></section>
@@ -400,7 +407,7 @@
     const ctrlFaits = S.patients.flatMap(p => p.surveillance.filter(s => s.statut === 'faite' && s.dateFaite >= debut && s.dateFaite <= fin));
     const parMol = {}; realisees.forEach(x => { const k = R.protoDeCure(x.p, x.c)?.dci || '?'; parMol[k] = (parMol[k] || 0) + 1; });
     let joursOuverts = 0; for (let d = debut; d <= fin; d = R.addDays(d, 1)) if (R.jourOuvert(d)) joursOuverts++;
-    const capacite = joursOuverts * R.hdj().maxParJour; const passees = cures.filter(x => x.c.datePrevue >= debut && x.c.datePrevue <= (fin < t ? fin : t) && x.c.statut !== 'annulee').length;
+    const capacite = joursOuverts * R.hdj().maxParJour; const passees = cures.filter(x => { const d = x.c.dateReelle || x.c.datePrevue; return d >= debut && d <= (fin < t ? fin : t) && ['realisee', 'manquee', 'prevue'].includes(x.c.statut); }).length;
     const reactions = realisees.filter(x => /Réaction/.test(x.c.tolerance || '')).length;
     const changements = S.patients.flatMap(p => (p.historiqueProtocoles || []).filter(h => h.cycle > 1 && h.dateDebut >= debut && h.dateDebut <= fin));
     const parJour = {}; realisees.forEach(x => { parJour[x.c.dateReelle] = (parJour[x.c.dateReelle] || 0) + 1; });
@@ -475,12 +482,13 @@
       box.innerHTML = res.length ? res.map(p => `<button type="button" data-action="pickPatientChoisir" data-id="${p.id}" data-label="${R.esc(R.nomComplet(p) + ' — ' + p.ipp)}"><span class="avatar" style="width:24px;height:24px;font-size:10px">${R.initials(p.prenom, p.nom)}</span><b>${R.esc(R.nomComplet(p))}</b> <span class="mono muted small">${R.esc(p.ipp)}</span> <span class="muted small">· ${R.esc(R.proto(p.protocoleId)?.dci || '')}</span></button>`).join('') : '<div class="empty" style="padding:10px">Aucun patient</div>';
     },
     pickPatientChoisir(el) { const box = el.closest('.picker'); box.querySelector('input[type=hidden]').value = el.dataset.id; box.querySelector('.picker-input').value = el.dataset.label; box.querySelector('.picker-results').innerHTML = ''; },
-    exporterBase() { S.derniereSauvegarde = R.today(); R.save(); const txt = JSON.stringify(S); const nom = `ryze-sauvegarde-${R.today()}.json`; try { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'application/json' })); a.download = nom; document.body.appendChild(a); a.click(); a.remove(); } catch (e) {} R.modal({ title: 'Export de la base', body: `<p class="small" style="margin:0 0 8px">Le fichier <b>${nom}</b> a été proposé au téléchargement. Si rien ne s’est passé, copiez le contenu ci-dessous dans un fichier texte.</p><textarea id="export-txt" style="min-height:160px;font-family:'IBM Plex Mono',monospace;font-size:11px">${R.esc(txt)}</textarea>`, foot: `<button type="button" class="btn" data-action="copierExport">Copier</button><button type="button" class="btn primary" data-action="closeModal">Fermer</button>` }); R.render(); },
+    secoursAccueil() { S.route = { page: 'dashboard', params: {} }; R.save(); R.render(); }, secoursRecharger() { location.reload(); },
+    exporterBase() { if (S.user && !R.can('equipe', 'w')) { R.toast('Réservé à l’accès complet', 'crit'); return; } S.derniereSauvegarde = R.today(); R.save(); const txt = JSON.stringify(S); const nom = `ryze-sauvegarde-${R.today()}.json`; try { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'application/json' })); a.download = nom; document.body.appendChild(a); a.click(); a.remove(); } catch (e) {} R.modal({ title: 'Export de la base', body: `<p class="small" style="margin:0 0 8px">Le fichier <b>${nom}</b> a été proposé au téléchargement. Si rien ne s’est passé, copiez le contenu ci-dessous dans un fichier texte.</p><textarea id="export-txt" style="min-height:160px;font-family:'IBM Plex Mono',monospace;font-size:11px">${R.esc(txt)}</textarea>`, foot: `<button type="button" class="btn" data-action="copierExport">Copier</button><button type="button" class="btn primary" data-action="closeModal">Fermer</button>` }); R.render(); },
     copierExport() { const t = document.getElementById('export-txt'); t.select(); try { document.execCommand('copy'); R.toast('Copié dans le presse-papiers', 'good'); } catch (e) { R.toast('Sélectionnez le texte et copiez-le manuellement', 'warn'); } },
-    importerBase() { R.modal({ title: 'Importer une sauvegarde', body: `<p class="small" style="margin:0">Choisissez un fichier exporté par Ryze. <b>Les données actuelles seront remplacées.</b></p><input type="file" id="import-file" accept="application/json,.json">`, foot: `<button type="button" class="btn" data-action="closeModal">Annuler</button><button type="button" class="btn danger" data-action="importerBaseOk">Remplacer par ce fichier</button>` }); },
-    importerBaseOk() { const f = document.getElementById('import-file').files[0]; if (!f) { R.toast('Choisissez un fichier', 'crit'); return; } const rd = new FileReader(); rd.onload = () => { try { const s = JSON.parse(rd.result); if (!s || !s.patients || !s.users || !s.settings) throw new Error('format'); remplacer(migrer(s)); S.user = null; S.dirty = true; R.save(); R.closeModal(); R.render(); R.toast('Base importée : reconnectez-vous', 'good'); } catch (e) { R.toast('Fichier invalide', 'crit'); } }; rd.readAsText(f); },
-    resetDemo() { R.reset(); }, viderDemo() { R.vider(); },
-    viderDemoConfirm() { R.confirmer('Démarrer avec une base vide ?', 'Les patients et rendez-vous de démonstration seront supprimés. Les protocoles et les codes d’accès sont conservés.', 'viderDemo'); }
+    importerBase() { if (!R.can('equipe', 'w')) { R.toast('Réservé à l’accès complet', 'crit'); return; } R.modal({ title: 'Importer une sauvegarde', body: `<p class="small" style="margin:0">Choisissez un fichier exporté par Ryze. <b>Les données actuelles seront remplacées.</b></p><input type="file" id="import-file" accept="application/json,.json">`, foot: `<button type="button" class="btn" data-action="closeModal">Annuler</button><button type="button" class="btn danger" data-action="importerBaseOk">Remplacer par ce fichier</button>` }); },
+    importerBaseOk() { if (!R.can('equipe', 'w')) return; const f = document.getElementById('import-file').files[0]; if (!f) { R.toast('Choisissez un fichier', 'crit'); return; } const rd = new FileReader(); rd.onload = () => { try { const s = JSON.parse(rd.result); if (!s || !s.patients || !s.users || !s.settings) throw new Error('format'); remplacer(migrer(s)); S.user = null; S.dirty = true; R.save(); R.closeModal(); R.render(); R.toast('Base importée : reconnectez-vous', 'good'); } catch (e) { R.toast('Fichier invalide', 'crit'); } }; rd.readAsText(f); },
+    resetDemo() { if (S.user && !R.can('equipe', 'w')) return; R.reset(); }, viderDemo() { if (S.user && !R.can('equipe', 'w')) return; R.vider(); },
+    viderDemoConfirm() { if (S.user && !R.can('equipe', 'w')) { R.toast('Réservé à l’accès complet', 'crit'); return; } R.confirmer('Démarrer avec une base vide ?', 'Les patients et rendez-vous de démonstration seront supprimés. Les protocoles et les codes d’accès sont conservés.', 'viderDemo'); }
   });
 
   /* ---------- Délégation d'événements ---------- */
