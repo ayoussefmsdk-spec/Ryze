@@ -11,7 +11,7 @@ app/
                articles de stock), générateur de cycles, jeu de démonstration fictif
   core.js      état, droits par rôle, navigation, tableau de bord, graphique
   pages.js     patients, fiche patient (cures, surveillance, bilan, notes), planning HDJ,
-               protocoles, stock & pharmacie, équipe & accès, paramètres
+               protocoles, activité & rapports, équipe & accès, paramètres
   wizard.js    assistant « Nouveau dossier » (5 étapes) et carnet imprimable
 ```
 
@@ -25,7 +25,7 @@ Ouvrir `app/index.html` dans un navigateur suffit : aucune dépendance, aucun se
 | Patients | recherche, filtres, dossier : planification unifiée (séances et contrôles marqués réalisés avec notes), changement de protocole avec historique par cycle, modification de posologie tracée, bilan pré-thérapeutique, notes |
 | Nouveau dossier | identité → bilan → protocole par cycles (induction / entretien, doses au poids, arrondi au flacon) → plan de surveillance → récapitulatif |
 | Planning HDJ | calendrier mensuel navigable, journée détaillée, semaine ; capacité paramétrable (fauteuils, séances max/jour, horaires, jours) ; refus des surréservations et proposition du prochain créneau |
-| Protocoles | 13 protocoles MICI (infliximab IV/SC, adalimumab, vedolizumab IV/SC, ustekinumab, golimumab, risankizumab MC/RCH, mirikizumab, guselkumab, upadacitinib, tofacitinib), éditables |
+| Protocoles | 14 protocoles MICI (infliximab IV/SC, adalimumab, vedolizumab IV/SC, ustekinumab, golimumab, risankizumab MC/RCH, mirikizumab, guselkumab, upadacitinib MC/RCH, tofacitinib), éditables avec variantes de posologie |
 | Équipe & codes | codes d'accès personnels, deux niveaux (accès complet, accès hôpital de jour) |
 | Carnet | document A4 : identité et traitement, historique des cycles, planification unifiée (séances + contrôles) ou tableaux séparés selon l'option du dossier, conduite à tenir |
 
