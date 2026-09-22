@@ -25,7 +25,7 @@
       ] },
       { id: 'vit', label: 'Dosage vitaminique', type: 'libre', desc: 'saisissez le dosage souhaité et sa période ; plusieurs possibles', placeholder: 'ex. vitamine D, folates, zinc' },
       { id: 'calpro', label: 'Calprotectine fécale', periode: 182, unite: 'µg/g', cible: '< 250 µg/g' },
-      { id: 'tdm', label: 'Dosage de l’anti-TNF (taux résiduel : infliximab, adalimumab…)', periodeChoix: true, unite: 'µg/mL', cible: 'résiduel 3–7 µg/mL', defaut: false },
+      { id: 'tdm', label: 'Dosage de l’anti-TNF (taux résiduel : infliximab, adalimumab…)', periodeChoix: true, unite: 'µg/mL', cible: 'résiduel selon la molécule : infliximab 3–7 µg/mL, adalimumab ≥ 7,5 µg/mL', defaut: false },
       { id: 'actnf', label: 'Suivi annuel des anticorps anti-TNF', periode: 365, defaut: false }
     ] },
     { id: 'radio', label: 'Bilan radiologique', periode: 365, items: [

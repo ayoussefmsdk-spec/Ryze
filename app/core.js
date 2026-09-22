@@ -58,7 +58,7 @@
   R.uid = (pfx) => pfx + Math.random().toString(36).slice(2, 8);
   R.nomComplet = p => `${p.nom} ${p.prenom}`;
   R.params = obj => R.esc(JSON.stringify(obj || {}));
-  R.prochaineCure = p => p.cures.find(c => c.statut === 'prevue') || null;
+  R.prochaineCure = p => p.cures.find(c => c.statut === 'reportee' || c.statut === 'manquee') || p.cures.find(c => c.statut === 'prevue') || null;
   R.derniereCure = p => [...p.cures].reverse().find(c => c.statut === 'realisee') || null;
   R.badge = (cls, txt) => `<span class="badge ${cls}"><i class="dot"></i>${R.esc(txt)}</span>`;
   R.statutPatientBadge = p => p.statut === 'suspendu' ? R.badge('crit', 'Suspendu') : p.statut === 'induction' ? R.badge('info', 'Induction') : p.statut === 'termine' ? R.badge('', 'Terminé') : R.badge('good', 'Entretien');
@@ -181,9 +181,10 @@
     R.conflitsCapacite().forEach(c => out.push({ sev: 'crit', t: `Capacité dépassée le ${R.fmtDate(c.date)}`, d: `${c.motif} — déplacez des séances ou ajustez la capacité`, go: ['planning', { date: c.date }] }));
     if (S.derniereSauvegarde ? R.diffDays(S.derniereSauvegarde, t) > 7 : S.patients.some(p => p.creePar)) out.push({ sev: 'info', t: 'Sauvegarde recommandée', d: S.derniereSauvegarde ? `Dernier export le ${R.fmtDate(S.derniereSauvegarde)} — exportez la base depuis Paramètres` : 'Aucun export de la base encore réalisé — Paramètres → Exporter', go: ['parametres', {}] });
     S.patients.forEach(p => {
-      p.cures.filter(c => c.statut === 'prevue' && c.datePrevue < t).forEach(c => out.push({ sev: 'crit', t: `Séance n°${c.n} non réalisée — ${R.nomComplet(p)}`, d: `${R.protoDeCure(p, c)?.dci} ${R.esc(c.label)} prévue le ${R.fmtDate(c.datePrevue)}`, go: ['patient', { id: p.id, tab: 'plan' }] }));
-      p.cures.filter(c => c.statut === 'reportee' || c.statut === 'manquee').forEach(c => out.push({ sev: 'warn', t: `${c.statut === 'manquee' ? 'Séance manquée' : 'Séance'} à replanifier — ${R.nomComplet(p)}`, d: `${R.esc(c.label)} · ${c.motif || ''}`, go: ['patient', { id: p.id, tab: 'plan' }] }));
-      p.cures.filter(c => c.sansCreneau && c.statut === 'prevue').forEach(c => out.push({ sev: 'warn', t: `Aucun créneau trouvé — ${R.nomComplet(p)}`, d: `Séance ${R.esc(c.label)} du ${R.fmtDate(c.datePrevue)} : capacité dépassée, à replacer manuellement`, go: ['patient', { id: p.id, tab: 'plan' }] }));
+      if (p.statut !== 'suspendu') { p.cures.filter(c => c.statut === 'prevue' && c.datePrevue < t && c.voie === 'IV').forEach(c => out.push({ sev: 'crit', t: `Séance n°${c.n} non réalisée — ${R.nomComplet(p)}`, d: `${R.protoDeCure(p, c)?.dci} ${c.label} prévue le ${R.fmtDate(c.datePrevue)}`, go: ['patient', { id: p.id, tab: 'plan' }] }));
+        const dom = p.cures.filter(c => c.statut === 'prevue' && c.datePrevue < t && c.voie !== 'IV'); if (dom.length) out.push({ sev: 'info', t: `${dom.length} injection(s) à domicile à confirmer — ${R.nomComplet(p)}`, d: `${R.protoDeCure(p, dom[0])?.dci} ${dom[0].label} du ${R.fmtDate(dom[0].datePrevue)}${dom.length > 1 ? ' et suivantes' : ''} : à cocher « Fait » après vérification avec le patient`, go: ['patient', { id: p.id, tab: 'plan' }] }); }
+      p.cures.filter(c => c.statut === 'reportee' || c.statut === 'manquee').forEach(c => out.push({ sev: 'warn', t: `${c.statut === 'manquee' ? 'Séance manquée' : 'Séance'} à replanifier — ${R.nomComplet(p)}`, d: `${c.label} · ${c.motif || ''}`, go: ['patient', { id: p.id, tab: 'plan' }] }));
+      p.cures.filter(c => c.sansCreneau && c.statut === 'prevue').forEach(c => out.push({ sev: 'warn', t: `Aucun créneau trouvé — ${R.nomComplet(p)}`, d: `Séance ${c.label} du ${R.fmtDate(c.datePrevue)} : capacité dépassée, à replacer manuellement`, go: ['patient', { id: p.id, tab: 'plan' }] }));
       p.surveillance.filter(s => s.statut === 'prevue' && s.echeance && s.echeance < t).forEach(s => out.push({ sev: 'warn', t: `Contrôle en retard — ${R.nomComplet(p)}`, d: `${s.label} · échéance ${R.fmtDate(s.echeance)}`, go: ['patient', { id: p.id, tab: 'surveillance' }] }));
       if (p.statut === 'induction') { const manq = p.bilan.filter(b => b.statut === 'attente' && ['igra', 'rxt', 'vhb'].includes(b.id)); if (manq.length) out.push({ sev: 'warn', t: `Bilan pré-thérapeutique incomplet — ${R.nomComplet(p)}`, d: manq.map(b => R.BILAN_PRE.find(x => x.id === b.id)?.label.split(' (')[0]).join(' · '), go: ['patient', { id: p.id, tab: 'bilans' }] }); }
       if (p.statut === 'suspendu') out.push({ sev: 'info', t: `Traitement suspendu — ${R.nomComplet(p)}`, d: p.motifSuspension, go: ['patient', { id: p.id }] });
@@ -339,7 +340,7 @@
       const curesSem = R.curesEntre(sem.lundi, sem.dimanche); const iv = curesSem.filter(x => x.cure.voie === 'IV');
       const faites = iv.filter(x => x.cure.statut === 'realisee').length;
       const ctrl = R.controlesEntre(sem.lundi, sem.dimanche); const rdv = R.rdvEntre(sem.lundi, sem.dimanche);
-      const alertes = R.alertes(); const retards = S.patients.reduce((n, p) => n + p.cures.filter(c => c.statut === 'prevue' && c.datePrevue < t).length, 0) + S.patients.reduce((n, p) => n + p.surveillance.filter(s => s.statut === 'prevue' && s.echeance && s.echeance < t).length, 0);
+      const alertes = R.alertes(); const retards = S.patients.filter(p => p.statut !== 'suspendu').reduce((n, p) => n + p.cures.filter(c => c.statut === 'prevue' && c.datePrevue < t && c.voie === 'IV').length, 0) + S.patients.reduce((n, p) => n + p.surveillance.filter(s => s.statut === 'prevue' && s.echeance && s.echeance < t).length, 0);
       const chart = R.curesParMois();
       return `
       <div class="page-head"><div><h1>Tableau de bord</h1><p>${R.esc(S.settings.unite)} · semaine du ${R.fmtDateLong(sem.lundi)} au ${R.fmtDateLong(sem.jours[4])}</p></div>

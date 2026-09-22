@@ -267,7 +267,9 @@
       c.premedication = fd.get('premedication'); c.duree = fd.get('duree'); c.constantes = { ta: fd.get('ta'), fc: fd.get('fc'), temp: fd.get('temp') };
       c.tolerance = fd.get('tolerance') + (fd.get('commentaire') ? ' — ' + fd.get('commentaire') : ''); c.ide = S.user; c.motif = ''; c.sansCreneau = false;
       c.clinique = R.lireClinique(fd); c.clinique.poids = c.poids; if (c.clinique.taille) p.taille = c.clinique.taille;
-      p.poids = c.poids; recalcStatut(p); p.derniereCure = c.dateReelle; R.journal(`Séance n°${c.n} réalisée — ${R.nomComplet(p)}`); R.touch(); R.closeModal(); R.toast(`Séance n°${c.n} enregistrée`, 'good'); R.render();
+      const ref = (p.historiqueProtocoles || []).find(h => h.statut === 'en cours')?.poids || p.poids; const ecart = ref && c.poids ? Math.abs(c.poids - ref) / ref : 0;
+      p.poids = c.poids; recalcStatut(p); p.derniereCure = c.dateReelle;
+      if (ecart > 0.1 && p.cures.some(x => x.statut === 'prevue' && /kg|palier|flacon/.test(x.doseTexte || ''))) setTimeout(() => R.toast(`Poids ${c.poids} kg : ${Math.round(ecart * 100)} % d’écart avec le poids de référence (${ref} kg). Vérifiez la posologie des séances à venir (« Modifier la posologie »).`, 'warn'), 400); R.journal(`Séance n°${c.n} réalisée — ${R.nomComplet(p)}`); R.touch(); R.closeModal(); R.toast(`Séance n°${c.n} enregistrée`, 'good'); R.render();
     },
     cureDetail(el) {
       const p = R.patient(el.dataset.pid), c = cureRef(p, el.dataset.n);
