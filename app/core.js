@@ -6,7 +6,8 @@
 (function (R) {
   const KEY = 'ryze-hdj-v1', VERSION = 4;
   const S = {};
-  R.S = S; R.ui = { filtres: {}, semaineOffset: 0, cal: {} };
+  R.S = S; R.ui = { filtres: {}, semaineOffset: 0, cal: {}, plies: {} };
+  try { R.ui.plies = JSON.parse(localStorage.getItem('ryze-hdj-ui') || '{}').plies || {}; } catch (e) {}
   R.pages = {}; R.actions = R.actions || {};
 
   /* ---------- Migration des données locales ---------- */
@@ -228,10 +229,25 @@
   R.modal = ({ title, body, foot, wide, form }) => {
     document.getElementById('modal-root').innerHTML = `<div class="modal-overlay"><form class="modal${wide ? ' wide' : ''}" ${form ? `data-form="${form}"` : ''}>
       <div class="modal-head"><h3>${title}</h3><button type="button" class="x-btn" data-action="closeModal" aria-label="Fermer">${R.icon('x')}</button></div>
-      <div class="modal-body">${body}</div>${foot ? `<div class="modal-foot">${foot}</div>` : ''}</form></div>`;
+      <div class="modal-body">${body}</div>${foot ? `<div class="modal-foot">${/required/.test(body) ? '<span class="req-note small muted">* champ obligatoire</span>' : ''}${foot}</div>` : ''}</form></div>`;
+    R.pliables(document.getElementById('modal-root'));
     const first = document.querySelector('#modal-root input:not([readonly]):not([type=hidden]), #modal-root select, #modal-root textarea'); if (first) first.focus();
   };
   R.closeModal = () => { document.getElementById('modal-root').innerHTML = ''; };
+  /* Toute carte avec un titre peut être réduite (clic sur le titre ou le chevron) ; l'état est mémorisé par page et par titre */
+  R.pliables = root => {
+    root = root || document.getElementById('app'); if (!root) return; const page = (S.route && S.route.page) || '';
+    root.querySelectorAll('.card, .cycle-card').forEach(card => {
+      if (card.closest('.carnet-wrap') || card.closest('.login-wrap') || card.dataset.fixe) return;
+      const head = card.querySelector(':scope > .card-head, :scope > .row.between'); if (!head) return; const h = head.querySelector('h2, h3'); if (!h || head.querySelector('.plier')) return;
+      if (!card.querySelector(':scope > .card-body, :scope > .card-foot, :scope > .dl, :scope > form, :scope > .tbl-wrap')) return;
+      const key = page + '|' + h.textContent.trim().replace(/\s+/g, ' ').slice(0, 60); const ferme = !!R.ui.plies[key];
+      card.classList.toggle('plie', ferme);
+      h.classList.add('pli-titre'); h.dataset.action = 'plier'; h.dataset.key = key; h.title = ferme ? 'Cliquer pour développer' : 'Cliquer pour réduire';
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'plier'; b.dataset.action = 'plier'; b.dataset.key = key; b.setAttribute('aria-label', ferme ? 'Développer' : 'Réduire'); b.innerHTML = R.icon('chevD'); head.appendChild(b);
+    });
+  };
+  R.actions.plier = el => { const k = el.dataset.key; if (R.ui.plies[k]) delete R.ui.plies[k]; else R.ui.plies[k] = 1; try { localStorage.setItem('ryze-hdj-ui', JSON.stringify({ plies: R.ui.plies })); } catch (e) {} const card = el.closest('.card, .cycle-card'); if (card) { card.classList.toggle('plie', !!R.ui.plies[k]); card.querySelectorAll('.plier, .pli-titre').forEach(x => { x.title = R.ui.plies[k] ? 'Cliquer pour développer' : 'Cliquer pour réduire'; }); } };
   R.toast = (msg, type) => { const root = document.getElementById('toast-root'); const el = document.createElement('div'); el.className = 'toast ' + (type || ''); el.textContent = msg; root.appendChild(el); setTimeout(() => el.remove(), 4200); };
   R.confirmer = (titre, texte, action, params) => R.modal({ title: titre, body: `<p style="margin:0">${texte}</p>`, foot: `<button type="button" class="btn" data-action="closeModal">Annuler</button><button type="button" class="btn primary" data-action="${action}" data-params='${R.params(params)}'>Confirmer</button>` });
 
@@ -274,7 +290,7 @@
   ];
   R.go = (page, params) => { R.closeModal(); S.route = { page, params: params || {} }; R.save(); R.render(); window.scrollTo(0, 0); };
   R.render = () => {
-    try { rendre(); } catch (e) {
+    try { rendre(); R.pliables(); } catch (e) {
       console.error('Rendu impossible', e);
       /* on ne supprime jamais les données : on propose de revenir à l'accueil ou d'exporter la base */
       document.getElementById('app').innerHTML = `<div class="login-wrap"><div class="card" style="max-width:520px;margin:40px auto"><div class="card-head"><h2>Erreur d’affichage</h2></div><div class="card-body"><p class="small">Cette page n’a pas pu être affichée. Vos données sont conservées.</p><pre class="small muted" style="white-space:pre-wrap">${R.esc(e && e.message || e)}</pre><div class="row" style="gap:8px;flex-wrap:wrap"><button type="button" class="btn primary" data-action="secoursAccueil">Revenir à l’accueil</button><button type="button" class="btn" data-action="exporterBase">Exporter la base</button><button type="button" class="btn ghost" data-action="secoursRecharger">Recharger la page</button></div></div></div></div>`;
