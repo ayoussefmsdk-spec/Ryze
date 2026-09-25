@@ -228,6 +228,72 @@
       return html.replace(/Page \d+ \/ 4<\/span>/g, () => `Page ${++num} / ${total}</span>`);
   };
 
+
+  /* ---------- Impressions ciblées : historique des bilans et contrôles, historique des séances ---------- */
+  R.pages.impression = {
+    render(params) {
+      const p = R.patient(params.id); if (!p) return '<div class="empty">Dossier introuvable.</div>';
+      const quoi = params.quoi === 'seances' ? 'seances' : 'bilans'; const mois = params.mois == null ? 12 : +params.mois; const avenir = !!params.avenir;
+      const depuis = mois ? R.addDays(R.today(), -Math.round(mois * 30.44)) : null; const lien = o => R.params(Object.assign({ id: p.id, quoi, mois, avenir }, o));
+      const opts = [[3, '3 mois'], [6, '6 mois'], [12, '12 mois'], [24, '24 mois'], [0, 'Tout']];
+      return `<div class="row between no-print mb16" style="flex-wrap:wrap;gap:8px"><button class="btn" data-go="patient" data-params='${R.params({ id: p.id, tab: quoi === 'bilans' ? 'bilans' : (p.carnetMixte ? 'plan' : 'cures') })}'>${R.icon('back')}Retour au dossier</button>
+        <div class="row" style="gap:6px;flex-wrap:wrap"><span class="small muted">Période</span>${opts.map(o => `<button type="button" class="btn sm${mois === o[0] ? ' primary' : ''}" data-go="impression" data-params='${lien({ mois: o[0] })}'>${o[1]}</button>`).join('')}
+        <label class="check" style="padding:5px 9px"><input type="checkbox" data-go="impression" data-params='${lien({ avenir: !avenir })}'${avenir ? ' checked' : ''}> inclure ce qui est à venir</label>
+        <button class="btn primary" data-action="imprimer">${R.icon('print')}Imprimer / PDF</button></div></div>${quoi === 'bilans' ? R.impressionBilans(p, depuis, mois, avenir) : R.impressionSeances(p, depuis, mois, avenir)}`;
+    }
+  };
+  const bandeImpr = (p, titre) => { const s = S.settings; return `<div class="doc-band"><div><b>${esc(s.etablissement)}</b>${esc(s.service)}<br>${esc(s.unite)}</div><div class="r"><b>${titre}</b>${esc(R.nomComplet(p))} · IPP ${esc(p.ipp)}<br>Édité le ${R.fmtDate(R.today())}</div></div>`; };
+  const identiteImpr = p => { const pr = R.proto(p.protocoleId) || {}; const paris = R.parisCode(p.paris, p.pathologie); return `<dl class="doc-kv"><div><dt>Patient</dt><dd>${esc(p.nom)} ${esc(p.prenom)} · ${p.sexe === 'F' ? 'F' : 'M'} · ${R.age(p.ddn)} ans</dd></div><div><dt>Né(e) le</dt><dd>${R.fmtDate(p.ddn)}</dd></div><div><dt>Maladie</dt><dd>${esc((R.PATHOS[p.pathologie] || {}).label || '')}${paris ? ' · Paris ' + esc(paris) : ''}</dd></div><div><dt>Traitement</dt><dd>${esc(pr.dci || '')}${(p.cycleCourant || 1) > 1 ? ' · cycle ' + p.cycleCourant : ''}</dd></div></dl>`; };
+  const periodeTxt = mois => mois ? `sur les ${mois} derniers mois` : 'depuis le début du suivi';
+  const docTable = html => html.replace(/<div class="tbl-wrap">/g, '<div>').replace(/class="tbl"/g, 'class="doc-table"');
+  const piedImpr = p => `<div class="doc-foot"><span>${esc(R.nomComplet(p))} — document médical confidentiel</span><span></span></div>`;
+
+  R.impressionBilans = (p, depuis, mois, avenir) => {
+    const t = R.today();
+    const faits = p.surveillance.filter(s => s.statut === 'faite' && (!depuis || (s.dateFaite || '') >= depuis));
+    const tdms = faits.filter(s => s.id === 'tdm').sort((a, b) => b.dateFaite.localeCompare(a.dateFaite));
+    const autres = faits.filter(s => s.mode === 'echeance' && !R.estBio(s) && !R.estClin(s)).sort((a, b) => b.dateFaite.localeCompare(a.dateFaite));
+    const annules = p.surveillance.filter(s => s.statut === 'annulee' && !s.annuleAuto && s.annuleLe && (!depuis || s.annuleLe >= depuis));
+    const retard = p.surveillance.filter(s => s.statut === 'prevue' && s.mode === 'echeance' && s.echeance < t);
+    const aVenir = avenir ? p.surveillance.filter(s => s.statut === 'prevue' && s.mode === 'echeance' && s.echeance >= t).sort((a, b) => a.echeance.localeCompare(b.echeance)).slice(0, 12) : [];
+    const nbBio = faits.filter(s => R.estBio(s) && s.id !== 'tdm').length, nbClin = R.lignesCliniques(p).filter(r => r.d && (!depuis || r.date >= depuis)).length;
+    const courbes = R.courbesDoc(p, { depuis, max: 9, cols: 3 });
+    return `<div class="carnet-wrap"><div class="carnet-page">${bandeImpr(p, 'Compte rendu des bilans et contrôles')}${identiteImpr(p)}
+      <div class="doc-box" style="margin-top:10px;font-size:10pt"><b>Période :</b> ${periodeTxt(mois)} — ${nbBio} bilan(s) biologique(s), ${tdms.length} dosage(s) pharmacologique(s), ${autres.length} endoscopie(s), imagerie(s) ou autre(s) contrôle(s), ${nbClin} examen(s) clinique(s).${retard.length ? ` <b>${retard.length} contrôle(s) en retard</b> : ${retard.map(s => esc(s.label.split(' (')[0]) + ' (' + R.fmtDate(s.echeance) + ')').join(', ')}.` : ''}</div>
+      <div class="doc-h2">Dernières valeurs</div>${R.tableDernieres(p, depuis)}
+      ${courbes ? `<div class="doc-h2">Évolution ${periodeTxt(mois)}</div>${courbes}` : ''}
+      <div class="doc-h2">Résultats biologiques</div><div class="doc-dense">${docTable(R.tableBio(Object.assign({}, p, { surveillance: p.surveillance.filter(s => s.id !== 'tdm') }), depuis))}</div>
+      ${tdms.length ? `<div class="doc-h2">Dosages pharmacologiques</div><table class="doc-table"><thead><tr><th>Date</th><th>Résultat</th><th>Lecture</th><th>Remarques</th></tr></thead><tbody>${tdms.map(s => { const i = R.interpTdm(R.tdmDe(s, p)); return `<tr><td class="m">${R.fmtDate(s.dateFaite)}</td><td>${esc(s.resultat || '')}</td><td style="font-size:9pt">${esc(s.interpretation || i.texte || '')}${i.cible ? ` <span style="color:#7E8C88">(cible ${esc(i.cible)})</span>` : ''}</td><td style="font-size:9pt">${esc(s.note || '')}</td></tr>`; }).join('')}</tbody></table>` : ''}
+      ${autres.length ? `<div class="doc-h2">Endoscopies, imagerie et autres contrôles</div><table class="doc-table"><thead><tr><th>Date</th><th>Examen</th><th>Résultat</th><th>Remarques</th></tr></thead><tbody>${autres.map(s => `<tr><td class="m">${R.fmtDate(s.dateFaite)}</td><td><b>${esc(s.label)}</b><br><span style="font-size:8.5pt;color:#7E8C88">${esc(s.cat || '')}</span></td><td>${esc(s.resultat || '')}</td><td style="font-size:9pt">${esc(s.note || '')}</td></tr>`).join('')}</tbody></table>` : ''}
+      <div class="doc-h2">Examens cliniques</div><div class="doc-dense">${docTable(R.tableClinique(p, depuis))}</div>
+      ${annules.length ? `<div class="doc-h2">Contrôles annulés</div><table class="doc-table"><tbody>${annules.map(s => `<tr><td class="m" style="width:24mm">${R.fmtDate(s.echeance)}</td><td>${esc(s.label)}${s.note ? ' — ' + esc(s.note) : ''} <span style="color:#7E8C88">(annulé le ${R.fmtDate(s.annuleLe)}${s.annulePar ? ' par ' + esc(R.userName(s.annulePar)) : ''})</span></td></tr>`).join('')}</tbody></table>` : ''}
+      ${aVenir.length ? `<div class="doc-h2">Contrôles à venir</div><table class="doc-table"><tbody>${aVenir.map(s => `<tr><td class="m" style="width:24mm">${R.fmtDate(s.echeance)}</td><td>${esc(s.label)}${s.avantSeance ? ' — à prélever avant la perfusion ' + esc(s.avantSeance) : ''}</td></tr>`).join('')}</tbody></table>` : ''}
+      <div class="doc-sign" style="grid-template-columns:1fr 1fr"><div>Médecin<br><span style="color:#7E8C88">${esc(R.userName(p.medecinId))}</span></div><div>Date et signature</div></div>
+      ${piedImpr(p)}</div></div>`;
+  };
+
+  R.impressionSeances = (p, depuis, mois, avenir) => {
+    const t = R.today(); const dateDe = c => c.dateReelle || c.datePrevue;
+    const liste = p.cures.filter(c => (!depuis || dateDe(c) >= depuis) && (avenir || dateDe(c) <= t || c.statut !== 'prevue')).sort((a, b) => dateDe(a).localeCompare(dateDe(b)));
+    const faites = liste.filter(c => c.statut === 'realisee'); const reactions = faites.filter(c => /Réaction/.test(c.tolerance || ''));
+    const absences = p.cures.reduce((n, c) => n + (c.absences || []).filter(a => !depuis || a.date >= depuis).length, 0) || liste.filter(c => c.statut === 'manquee').length;
+    const deplacements = p.cures.flatMap(c => (c.reports || []).filter(r => r.vers && (!depuis || r.date >= depuis))).length;
+    const annulees = liste.filter(c => c.statut === 'annulee').length;
+    const inter = faites.slice(1).map((c, i) => R.diffDays(faites[i].dateReelle, c.dateReelle)).filter(x => x > 0); const interMoy = inter.length ? Math.round(inter.reduce((a, b) => a + b, 0) / inter.length) : null;
+    const mgkg = faites.filter(c => c.dose && c.poids && c.voie === 'IV').map(c => c.dose / c.poids); const mgkgMoy = mgkg.length ? (mgkg.reduce((a, b) => a + b, 0) / mgkg.length) : null;
+    const statut = c => ({ realisee: 'Réalisée', prevue: dateDe(c) < t ? 'Non enregistrée' : 'Prévue', reportee: 'Reportée', manquee: 'Manquée', annulee: 'Annulée' })[c.statut] || c.statut;
+    const ligne = c => { const pr = R.protoDeCure(p, c) || {}; const k = c.constantes || {}; const cl = c.clinique && !R.cliniqueVide(c.clinique) ? R.resumeClinique(c.clinique) : '';
+      const reps = (c.reports || []).filter(r => r.vers).map(r => `déplacée du ${R.fmtDate(r.de)}${r.vers ? ' au ' + R.fmtDate(r.vers) : ''} (${esc(R.CATS_REPORT[r.categorie] || r.categorie || '')}${r.motif ? ' : ' + esc(r.motif) : ''})`);
+      const abs = (c.absences || []).map(a => `absent le ${R.fmtDate(a.date)}${a.motif ? ' (' + esc(a.motif) + ')' : ''}`);
+      return `<tr class="${c.statut === 'realisee' ? '' : 'doc-done'}"><td class="m">${R.fmtDate(dateDe(c))}${c.heure && c.voie === 'IV' ? '<br>' + c.heure : ''}</td><td><b>${esc(c.label)}</b><br><span style="font-size:8.5pt;color:#7E8C88">${esc(c.phase || '')}${(c.cycle || 1) > 1 ? ' · cycle ' + c.cycle : ''}</span></td><td>${esc(pr.dci || '')} ${esc(c.doseTexte || '')}<br><span style="font-size:8.5pt;color:#4E5E59">${c.voie || ''}${c.flacons ? ' · ' + c.flacons + ' unité(s)' : ''}${c.lot ? ' · lot ' + esc(c.lot) : ''}</span></td><td class="m">${c.poids ? c.poids + ' kg' : ''}${c.constantes ? `<br><span style="font-size:8pt">TA ${esc(k.ta || '—')} · FC ${esc(k.fc || '—')} · ${esc(k.temp || '—')} °C</span>` : ''}</td><td style="font-size:9pt">${c.statut === 'realisee' ? esc(c.tolerance || '') : esc(c.motif || '')}${c.premedication && c.premedication !== 'Aucune' ? `<br>Prémédication : ${esc(c.premedication)}` : ''}${cl ? `<br><span style="color:#4E5E59">${esc(cl)}</span>` : ''}${reps.length || abs.length ? `<br><span style="color:#7E8C88">${[...abs, ...reps].join(' ; ')}</span>` : ''}</td><td style="font-size:9pt"><b>${statut(c)}</b>${c.statut === 'realisee' && c.ide ? '<br>' + esc(R.userName(c.ide)) : ''}</td></tr>`; };
+    return `<div class="carnet-wrap"><div class="carnet-page">${bandeImpr(p, 'Historique des séances')}${identiteImpr(p)}
+      <div class="doc-box" style="margin-top:10px;font-size:10pt"><b>Période :</b> ${periodeTxt(mois)} — ${faites.length} séance(s) réalisée(s), ${absences} absence(s), ${deplacements} déplacement(s), ${annulees} annulation(s), ${reactions.length ? `<b>${reactions.length} réaction(s) à la perfusion</b>` : 'aucune réaction à la perfusion'}.${interMoy ? ` Intervalle moyen réel entre deux séances : ${interMoy} jours.` : ''}${mgkgMoy ? ` Dose moyenne reçue en perfusion : ${R.fmtV(mgkgMoy)} mg/kg.` : ''}</div>
+      ${reactions.length ? `<div class="doc-h2">Réactions à la perfusion</div><ul class="doc-list">${reactions.map(c => `<li><b>${R.fmtDate(c.dateReelle)} — ${esc(c.label)}</b> : ${esc(c.tolerance)}</li>`).join('')}</ul>` : ''}
+      <div class="doc-h2">Séances</div>
+      ${liste.length ? `<table class="doc-table"><thead><tr><th style="width:18mm">Date</th><th style="width:18mm">Séance</th><th>Traitement · dose · lot</th><th style="width:26mm">Poids · constantes</th><th>Tolérance · examen · déplacements</th><th style="width:22mm">Statut</th></tr></thead><tbody>${liste.map(ligne).join('')}</tbody></table>` : '<p class="cr-p">Aucune séance sur cette période.</p>'}
+      <div class="doc-sign" style="grid-template-columns:1fr 1fr"><div>Hôpital de jour<br><span style="color:#7E8C88">${esc(S.settings.unite || '')}</span></div><div>Date et signature</div></div>
+      ${piedImpr(p)}</div></div>`;
+  };
   /* ---------- Compte rendu de suivi pour le médecin traitant ---------- */
   R.pages.compteRendu = {
     render(params) {
