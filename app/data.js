@@ -488,7 +488,7 @@ window.RYZE = window.RYZE || {};
       { date: R.addDays(lundi, 1), heure: '14:30', patientId: 'p7', type: 'Consultation', objet: 'Consultation de suivi — calprotectine en retard', avec: 'u-med1' },
       { date: R.addDays(lundi, 2), heure: '15:00', patientId: 'p3', type: 'Éducation', objet: 'Éducation thérapeutique — nouvelle biothérapie', avec: 'u-ide1' },
       { date: R.addDays(lundi, 4), heure: '11:30', patientId: 'p12', type: 'Consultation', objet: 'Réévaluation avant reprise (infection ORL)', avec: 'u-med1' },
-      { date: R.addDays(lundi, 8), heure: '08:00', patientId: 'p1', type: 'Endoscopie', objet: 'Iléo-coloscopie de contrôle (M12)', avec: 'u-chef' }
+      { date: R.addDays(lundi, 8), heure: '08:00', patientId: 'p1', type: 'Endoscopie', objet: 'Coloscopie et fibroscopie haute de contrôle (M12)', avec: 'u-chef' }
     ];
 
     return {

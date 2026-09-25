@@ -43,7 +43,37 @@
   /* compatibilité : R.surv(id) sert encore aux anciens dossiers, à la prolongation et à l'éditeur de protocoles */
   const survAncien = R.surv;
   R.surv = id => { const it = R.itemBilan(id); if (it) { const per = it.periode || it.groupe.periode; return { id: it.id, label: it.label, cat: it.groupe.label, mode: per === 'cure' ? 'cure' : 'periodique', tousLes: per === 'cure' ? null : per, cible: it.cible, type: it.type }; } return survAncien(id); };
-  R.CATALOGUE_SURV = () => [...R.BILANS.flatMap(g => g.items.map(it => ({ id: it.id, cat: g.label, label: it.label }))), ...R.SURVEILLANCE.filter(s => s.mode !== 'cure' && !R.itemBilan(s.id)).map(s => ({ id: s.id, cat: 'Autres contrôles', label: s.label }))];
+  R.CATALOGUE_SURV = () => R.BILANS.flatMap(g => g.items.map(it => ({ id: it.id, cat: g.label, label: it.label })));
+  /* Anciens contrôles du premier catalogue (avant le référentiel du service) : on garde uniquement
+     les résultats déjà saisis des examens qui existent dans le référentiel (calprotectine, dosage anti-TNF,
+     entéro-IRM, échographie, coloscopie), renommés ; tout le reste est retiré puis le plan du service
+     est régénéré pour les échéances à venir. */
+  const ANC_CATS = ['Clinique', 'Biologie', 'Pharmacologie', 'Morphologie', 'Sécurité'];
+  const EQUIV = { calpro: 'calpro', tdm: 'tdm', irm: 'irm', echo: 'echo', endo: 'colo' };
+  R.purgerAncienCatalogue = s => {
+    const t = R.today(); let retires = 0, convertis = 0;
+    (s.patients || []).forEach(p => {
+      const anciens = (p.surveillance || []).filter(x => ANC_CATS.includes(x.cat)); if (!anciens.length) return;
+      p.surveillance = p.surveillance.filter(x => {
+        if (!ANC_CATS.includes(x.cat)) return true;
+        const nid = EQUIV[x.id]; const it = nid && R.itemBilan(nid);
+        if (x.statut === 'faite' && it) { x.id = nid; x.label = it.label; x.cat = it.groupe.label; x.type = it.type; x.unite = it.unite || x.unite; x.cible = it.cible || x.cible; convertis++; return true; }
+        retires++; return false;
+      });
+      const pr = (s.protocoles || []).find(x => x.id === p.protocoleId);
+      const cfg = p.planSurveillance || R.cfgDefaut(pr); p.planSurveillance = cfg;
+      const cyc = p.cycleCourant || 1; const h = (p.historiqueProtocoles || []).find(x => x.cycle === cyc); const j0 = (h && h.dateDebut) || p.dateDebut; if (!j0) return;
+      const prev = (p.cures || []).filter(c => c.statut === 'prevue').map(c => c.datePrevue).sort(); const fin = prev.length ? prev[prev.length - 1] : R.addDays(t, 365);
+      const horizon = Math.max(R.diffDays(j0, fin), R.diffDays(j0, t) + 365);
+      const gen = R.genererSurveillanceCfg(cfg, j0, horizon, cyc).filter(x => x.mode === 'cure' || x.echeance >= t);
+      gen.forEach(g => {
+        if (g.mode === 'cure') { if (!p.surveillance.some(x => x.mode === 'cure' && x.id === g.id)) p.surveillance.push(g); return; }
+        const doublon = p.surveillance.some(x => x.id === g.id && (x.nom || '') === (g.nom || '') && x.statut !== 'annulee' && (x.echeance || x.dateFaite) && Math.abs(R.diffDays(x.echeance || x.dateFaite, g.echeance)) < 21);
+        if (!doublon) p.surveillance.push(g);
+      });
+    });
+    return { retires, convertis };
+  };
 
   /* ---------- Configuration d'un plan de surveillance ---------- */
   R.cfgDefaut = proto => {
