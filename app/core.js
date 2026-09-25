@@ -7,11 +7,12 @@
   const KEY = 'ryze-hdj-v1', VERSION = 6;
   const S = {};
   R.S = S; R.ui = { filtres: {}, semaineOffset: 0, cal: {}, plies: {} };
-  try { R.ui.plies = JSON.parse(localStorage.getItem('ryze-hdj-ui') || '{}').plies || {}; } catch (e) {}
+  let uiInit = {}; try { uiInit = JSON.parse(localStorage.getItem('ryze-hdj-ui') || '{}') || {}; } catch (e) {} R.ui.plies = uiInit.plies || {};
   R.pages = {}; R.actions = R.actions || {};
 
   /* ---------- Migration des données locales ---------- */
   function migrer(s) {
+    (s.patients || []).forEach(p => { p.notes = p.notes || []; p.surveillance = p.surveillance || []; p.bilan = p.bilan || []; p.cures = p.cures || []; }); s.settings = s.settings || {};
     const seedUsers = R.seed().users;
     if (s.version === 1) {
       const map = { medecin: 'complet', pharmacien: 'complet', admin: 'complet', ide: 'hdj', secretaire: 'hdj' };
@@ -33,17 +34,28 @@
     return s;
   }
   function charger() {
-    try { const raw = localStorage.getItem(KEY); if (!raw) return null; const s = JSON.parse(raw); if (!s || !s.users || !s.patients) return null; if (s.version > VERSION) return null; if (!s.dirty && s.semaineSeed !== R.semaineRef()) return null; return migrer(s); } catch (e) { return null; }
+    let raw = null; try { raw = localStorage.getItem(KEY); } catch (e) { return null; }
+    if (!raw) return null;
+    /* une base présente mais illisible n'est jamais écrasée sans copie : elle est mise de côté et signalée à la connexion */
+    const illisible = raison => { try { localStorage.setItem(KEY + '.bak', raw); } catch (e) {} R.ui.baseIllisible = raison; console.error('Base locale non chargée :', raison); return null; };
+    let s; try { s = JSON.parse(raw); } catch (e) { return illisible('contenu illisible'); }
+    if (!s || !s.users || !s.patients) return illisible('structure inattendue');
+    if (+s.version > VERSION) return illisible(`base enregistrée par une version plus récente de l’application (version ${s.version}, celle-ci lit jusqu’à la version ${VERSION})`);
+    if (!s.dirty && s.semaineSeed !== R.semaineRef()) return null;
+    try { return migrer(s); } catch (e) { return illisible('erreur pendant la mise à niveau des données : ' + (e && e.message)); }
   }
   function remplacer(obj) { Object.keys(S).forEach(k => delete S[k]); Object.assign(S, obj); }
   remplacer(charger() || Object.assign(R.seed(), { semaineSeed: R.semaineRef(), version: VERSION }));
-  S.version = VERSION;
-  R.save = () => { try { S.enregistreLe = new Date().toISOString(); localStorage.setItem(KEY, JSON.stringify(S)); if (R.ui.saveError) { R.ui.saveError = false; R.bandeau(); } } catch (e) { R.ui.saveError = true; R.bandeau(); console.error('Sauvegarde impossible', e); } };
+  S.version = VERSION; if (uiInit.route && uiInit.route.page) S.route = uiInit.route;
+  /* si un autre onglet a enregistré une version plus récente, on l'adopte au lieu de l'écraser */
+  const plusRecenteAilleurs = () => { if (!S.modifieLe) return null; let raw = null; try { raw = localStorage.getItem(KEY); } catch (e) { return null; } if (!raw) return null; const m = raw.match(/"modifieLe":"([^"]+)"/); return m && m[1] > S.modifieLe ? raw : null; };
+  R.save = () => { const autre = plusRecenteAilleurs(); if (autre) { try { const s = JSON.parse(autre); const route = S.route, user = S.user; remplacer(migrer(s)); S.route = route; S.user = user && S.users.some(x => x.id === user && x.actif) ? user : null; R.closeModal(); R.toast('Données mises à jour depuis un autre onglet : votre dernière action n’a pas été enregistrée, vérifiez et recommencez', 'warn'); R.render(); return; } catch (e) {} }
+    try { S.enregistreLe = new Date().toISOString(); localStorage.setItem(KEY, JSON.stringify(S)); if (R.ui.saveError) { R.ui.saveError = false; R.bandeau(); } } catch (e) { R.ui.saveError = true; R.bandeau(); console.error('Sauvegarde impossible', e); } };
   R.touch = () => { S.dirty = true; S.modifieLe = new Date().toISOString(); R.save(); };
   R.bandeau = () => { let b = document.getElementById('bandeau'); if (!R.ui.saveError) { if (b) b.remove(); return; } if (!b) { b = document.createElement('div'); b.id = 'bandeau'; b.className = 'bandeau'; document.body.appendChild(b); } b.innerHTML = '<b>Sauvegarde impossible dans ce navigateur</b> (espace plein ou stockage bloqué). Vos dernières modifications ne sont pas conservées : exportez la base depuis Paramètres avant de fermer la page.'; };
-  window.addEventListener('storage', e => { if (e.key !== KEY || !e.newValue) return; try { const s = JSON.parse(e.newValue); if (s.modifieLe && s.modifieLe !== S.modifieLe) { const route = S.route, user = S.user; remplacer(migrer(s)); S.route = route; S.user = user && S.users.some(x => x.id === user && x.actif) ? user : null; R.render(); R.toast('Données mises à jour depuis un autre onglet', 'warn'); } } catch (x) {} });
-  R.reset = () => { try { localStorage.removeItem(KEY); } catch (e) {} const u = S.user; remplacer(Object.assign(R.seed(), { semaineSeed: R.semaineRef(), version: VERSION, user: u })); R.save(); R.go('dashboard'); R.toast('Données de démonstration réinitialisées', 'good'); };
-  R.vider = () => { try { localStorage.removeItem(KEY); } catch (e) {} const u = S.user; remplacer(Object.assign(R.seedVide(), { semaineSeed: R.semaineRef(), version: VERSION, user: u })); R.save(); R.go('dashboard'); R.toast('Base vide : ajoutez vos patients et rendez-vous', 'good'); };
+  window.addEventListener('storage', e => { if (e.key !== KEY || !e.newValue) return; try { const s = JSON.parse(e.newValue); if (s.modifieLe && s.modifieLe !== S.modifieLe) { const route = S.route, user = S.user; const fenetre = !!document.querySelector('#modal-root form'); remplacer(migrer(s)); S.route = route; S.user = user && S.users.some(x => x.id === user && x.actif) ? user : null; R.closeModal(); R.render(); R.toast(fenetre ? 'Données mises à jour depuis un autre onglet : la fenêtre ouverte a été fermée, rouvrez-la' : 'Données mises à jour depuis un autre onglet', 'warn'); } } catch (x) {} });
+  R.reset = () => { try { localStorage.removeItem(KEY); } catch (e) {} const u = S.user; remplacer(Object.assign(R.seed(), { semaineSeed: R.semaineRef(), version: VERSION, user: u, modifieLe: new Date().toISOString() })); R.save(); R.go('dashboard'); R.toast('Données de démonstration réinitialisées', 'good'); };
+  R.vider = () => { try { localStorage.removeItem(KEY); } catch (e) {} const u = S.user; remplacer(Object.assign(R.seedVide(), { semaineSeed: R.semaineRef(), version: VERSION, user: u, modifieLe: new Date().toISOString() })); R.save(); R.go('dashboard'); R.toast('Base vide : ajoutez vos patients et rendez-vous', 'good'); };
   R.journal = (txt) => { S.journal = S.journal || []; S.journal.unshift({ date: R.today(), heure: new Date().toTimeString().slice(0, 5), par: S.user, txt }); S.journal = S.journal.slice(0, 200); };
 
   /* ---------- Helpers ---------- */
@@ -160,9 +172,10 @@
     const cyc = p.cycleCourant || 1; const hist = (p.historiqueProtocoles || []).find(x => x.cycle === cyc) || {}; const pr = R.appliquerVariante(pr0, hist.variante || null); const curesCyc = p.cures.filter(c => (c.cycle || 1) === cyc && c.statut !== 'annulee');
     const derniere = curesCyc[curesCyc.length - 1]; if (!derniere) return 0;
     const ref = curesCyc.filter(c => c.phase === 'Entretien').slice(-1)[0] || derniere;
-    const inter = Math.max(7, +pr.entretien.intervalleJours || 56);
-    const fin = R.addDays(derniere.datePrevue, Math.round((mois || 12) * 30.4)); const j0 = R.j0(p, cyc); const nouvelles = [];
-    for (let d = R.addDays(derniere.datePrevue, inter); d <= fin; d = R.addDays(d, inter)) { const dd = R.jourOuvre(d); nouvelles.push({ n: 0, cycle: cyc, protocoleId: pr.id, phase: 'Entretien', label: R.libelleJour(R.diffDays(j0, dd)), jour: R.diffDays(j0, dd), datePrevue: dd, voie: ref.voie, dose: ref.dose, doseTexte: ref.doseTexte, flacons: ref.flacons, articleId: ref.articleId, statut: 'prevue' }); }
+    const inter = Math.max(7, +hist.intervalle || +pr.entretien.intervalleJours || 56); const t = R.today();
+    const base = derniere.datePrevue > t ? derniere.datePrevue : t; const fin = R.addDays(base, Math.round((mois || 12) * 30.4)); const j0 = R.j0(p, cyc); const nouvelles = [];
+    let debut = R.addDays(derniere.datePrevue, inter); if (debut <= t) debut = R.jourOuvre(R.addDays(t, 1)); /* un plan échu reprend demain, jamais dans le passé */
+    for (let d = debut; d <= fin; d = R.addDays(d, inter)) { const dd = R.jourOuvre(d); nouvelles.push({ n: 0, cycle: cyc, protocoleId: pr.id, phase: 'Entretien', label: R.libelleJour(R.diffDays(j0, dd)), jour: R.diffDays(j0, dd), datePrevue: dd, voie: ref.voie, dose: ref.dose, doseTexte: ref.doseTexte, flacons: ref.flacons, articleId: ref.articleId, statut: 'prevue' }); }
     R.reserverCures(nouvelles, ref.heure); p.cures.push(...nouvelles); p.cures.sort((a, b) => a.datePrevue.localeCompare(b.datePrevue)); p.cures.forEach((c, i) => c.n = i + 1);
     /* contrôles périodiques selon le plan de surveillance du dossier */
     const cfg = p.planSurveillance || R.cfgDepuisPatient(p); const cle = s => s.id + (s.nom ? '|' + s.nom : ''); const dernier = {};
@@ -174,7 +187,8 @@
   R.finPlanification = p => { const c = p.cures.filter(x => x.statut === 'prevue'); return c.length ? c[c.length - 1].datePrevue : null; };
   R.conflitsCapacite = () => {
     const out = [], t = R.today(), h = R.hdj();
-    for (let i = 0; i < 90; i++) { const d = R.addDays(t, i); const s = R.seances(d).filter(x => x.cure.statut === 'prevue'); if (!s.length) continue; if (!R.jourOuvert(d)) { out.push({ date: d, motif: `${s.length} séance(s) un jour de fermeture` }); continue; } if (s.length > h.maxParJour) { out.push({ date: d, motif: `${s.length} séances pour ${h.maxParJour} maximum` }); continue; } let max = 0; s.forEach(x => { const n = s.filter(y => y.deb < x.fin && x.deb < y.fin).length; if (n > max) max = n; }); if (max > h.fauteuils) out.push({ date: d, motif: `${max} séances simultanées pour ${h.fauteuils} fauteuils` }); }
+    const derniere = S.patients.reduce((m, p) => p.cures.reduce((m2, c) => c.statut === 'prevue' && c.datePrevue > m2 ? c.datePrevue : m2, m), t); const nJ = Math.min(400, Math.max(90, R.diffDays(t, derniere) + 1));
+    for (let i = 0; i < nJ; i++) { const d = R.addDays(t, i); const s = R.seances(d).filter(x => x.cure.statut === 'prevue'); if (!s.length) continue; if (!R.jourOuvert(d)) { out.push({ date: d, motif: `${s.length} séance(s) un jour de fermeture` }); continue; } if (s.length > h.maxParJour) { out.push({ date: d, motif: `${s.length} séances pour ${h.maxParJour} maximum` }); continue; } let max = 0; s.forEach(x => { const n = s.filter(y => y.deb < x.fin && x.deb < y.fin).length; if (n > max) max = n; }); if (max > h.fauteuils) out.push({ date: d, motif: `${max} séances simultanées pour ${h.fauteuils} fauteuils` }); }
     return out;
   };
 
@@ -249,7 +263,7 @@
       const b = document.createElement('button'); b.type = 'button'; b.className = 'plier'; b.dataset.action = 'plier'; b.dataset.key = key; b.setAttribute('aria-label', ferme ? 'Développer' : 'Réduire'); b.innerHTML = R.icon('chevD'); head.appendChild(b);
     });
   };
-  R.actions.plier = el => { const k = el.dataset.key; if (R.ui.plies[k]) delete R.ui.plies[k]; else R.ui.plies[k] = 1; try { localStorage.setItem('ryze-hdj-ui', JSON.stringify({ plies: R.ui.plies })); } catch (e) {} const card = el.closest('.card, .cycle-card'); if (card) { card.classList.toggle('plie', !!R.ui.plies[k]); card.querySelectorAll('.plier, .pli-titre').forEach(x => { x.title = R.ui.plies[k] ? 'Cliquer pour développer' : 'Cliquer pour réduire'; }); } };
+  R.actions.plier = el => { const k = el.dataset.key; if (R.ui.plies[k]) delete R.ui.plies[k]; else R.ui.plies[k] = 1; R.saveUi(); const card = el.closest('.card, .cycle-card'); if (card) { card.classList.toggle('plie', !!R.ui.plies[k]); card.querySelectorAll('.plier, .pli-titre').forEach(x => { x.title = R.ui.plies[k] ? 'Cliquer pour développer' : 'Cliquer pour réduire'; }); } };
   R.toast = (msg, type) => { const root = document.getElementById('toast-root'); const el = document.createElement('div'); el.className = 'toast ' + (type || ''); el.textContent = msg; root.appendChild(el); setTimeout(() => el.remove(), 4200); };
   R.confirmer = (titre, texte, action, params) => R.modal({ title: titre, body: `<p style="margin:0">${texte}</p>`, foot: `<button type="button" class="btn" data-action="closeModal">Annuler</button><button type="button" class="btn primary" data-action="${action}" data-params='${R.params(params)}'>Confirmer</button>` });
 
@@ -290,12 +304,13 @@
     { id: 'activite', label: 'Activité & rapports', icon: 'chart', mod: 'dashboard' },
     { id: 'equipe', label: 'Équipe & codes', icon: 'team', mod: 'equipe' }
   ];
-  R.go = (page, params) => { R.closeModal(); S.route = { page, params: params || {} }; R.save(); R.render(); window.scrollTo(0, 0); };
+  R.saveUi = () => { try { localStorage.setItem('ryze-hdj-ui', JSON.stringify({ plies: R.ui.plies || {}, route: S.route })); } catch (e) {} };
+  R.go = (page, params) => { R.closeModal(); S.route = { page, params: params || {} }; R.saveUi(); R.render(); window.scrollTo(0, 0); };
   R.render = () => {
     try { rendre(); R.pliables(); } catch (e) {
       console.error('Rendu impossible', e);
       /* on ne supprime jamais les données : on propose de revenir à l'accueil ou d'exporter la base */
-      document.getElementById('app').innerHTML = `<div class="login-wrap"><div class="card" style="max-width:520px;margin:40px auto"><div class="card-head"><h2>Erreur d’affichage</h2></div><div class="card-body"><p class="small">Cette page n’a pas pu être affichée. Vos données sont conservées.</p><pre class="small muted" style="white-space:pre-wrap">${R.esc(e && e.message || e)}</pre><div class="row" style="gap:8px;flex-wrap:wrap"><button type="button" class="btn primary" data-action="secoursAccueil">Revenir à l’accueil</button><button type="button" class="btn" data-action="exporterBase">Exporter la base</button><button type="button" class="btn ghost" data-action="secoursRecharger">Recharger la page</button></div></div></div></div>`;
+      document.getElementById('app').innerHTML = `<div class="login-wrap"><div class="card" style="max-width:520px;margin:40px auto"><div class="card-head"><h2>Erreur d’affichage</h2></div><div class="card-body"><p class="small">Cette page n’a pas pu être affichée. Vos données sont conservées.</p><pre class="small muted" style="white-space:pre-wrap">${R.esc(e && e.message || e)}</pre><div class="row" style="gap:8px;flex-wrap:wrap"><button type="button" class="btn primary" data-action="secoursAccueil">Revenir à l’accueil</button>${R.can('equipe', 'w') ? '<button type="button" class="btn" data-action="exporterBase">Exporter la base</button>' : ''}<button type="button" class="btn ghost" data-action="secoursRecharger">Recharger la page</button></div></div></div></div>`;
     }
   };
   function rendre() {
@@ -325,7 +340,7 @@
 
   function loginView() {
     const actifs = S.users.filter(u => u.actif);
-    return `<div class="login"><div class="login-box">
+    return `<div class="login"><div class="login-box">${R.ui.baseIllisible ? `<div class="callout crit mb16"><b>Vos données précédentes n’ont pas pu être chargées</b> — ${R.esc(R.ui.baseIllisible)}. Une copie intacte est conservée dans ce navigateur : <button type="button" class="btn sm" data-action="telechargerBak">Télécharger la copie</button>, puis importez-la depuis Paramètres une fois l’application mise à jour. Rien n’est perdu tant que vous ne videz pas les données du navigateur.</div>` : ''}
       <div class="login-left">
         <div class="brand" style="padding:0"><div class="brand-mark">Rz</div><div><b>Ryze</b><span>Suivi biothérapique</span></div></div>
         <h1>Gestion des biothérapies en hôpital de jour</h1>
@@ -481,9 +496,9 @@
 
   /* ---------- Actions globales ---------- */
   Object.assign(R.actions, {
-    loginCode(f, fd) { const code = String(fd.get('code') || '').trim().toUpperCase(); const u = S.users.find(x => x.actif && String(x.code).toUpperCase() === code); if (!u) { R.toast('Code inconnu ou désactivé', 'crit'); return; } u.derniere = R.today(); S.user = u.id; S.route = { page: 'dashboard', params: {} }; R.save(); R.render(); },
+    loginCode(f, fd) { const code = String(fd.get('code') || '').trim().toUpperCase(); const u = S.users.find(x => x.actif && String(x.code).toUpperCase() === code); if (!u) { R.toast('Code inconnu ou désactivé', 'crit'); return; } u.derniere = R.today(); S.user = u.id; S.route = { page: 'dashboard', params: {} }; R.ui.w = null; R.ui.cfgEdit = null; R.ui.synthOpen = {}; R.ui.filtres = {}; R.save(); R.render(); },
     loginFill(el) { const i = document.getElementById('login-code'); i.value = el.dataset.code; i.form.requestSubmit(); },
-    logout() { S.user = null; R.save(); R.render(); },
+    logout() { S.user = null; R.ui.w = null; R.ui.cfgEdit = null; R.ui.synthOpen = {}; R.ui.filtres = {}; R.save(); R.render(); },
     closeModal() { R.closeModal(); },
     toggleRail() { const r = document.getElementById('rail'); r.classList.toggle('open'); let b = document.getElementById('rail-backdrop'); if (r.classList.contains('open')) { if (!b) { b = document.createElement('div'); b.id = 'rail-backdrop'; b.className = 'rail-backdrop'; b.setAttribute('data-action', 'toggleRail'); document.body.appendChild(b); } } else if (b) b.remove(); },
     globalSearch(el) {
@@ -502,23 +517,27 @@
     },
     pickPatientChoisir(el) { const box = el.closest('.picker'); box.querySelector('input[type=hidden]').value = el.dataset.id; box.querySelector('.picker-input').value = el.dataset.label; box.querySelector('.picker-results').innerHTML = ''; },
     secoursAccueil() { S.route = { page: 'dashboard', params: {} }; R.save(); R.render(); }, secoursRecharger() { location.reload(); },
-    exporterBase() { if (S.user && !R.can('equipe', 'w')) { R.toast('Réservé à l’accès complet', 'crit'); return; } S.derniereSauvegarde = R.today(); R.save(); const txt = JSON.stringify(S); const nom = `ryze-sauvegarde-${R.today()}.json`; try { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'application/json' })); a.download = nom; document.body.appendChild(a); a.click(); a.remove(); } catch (e) {} R.modal({ title: 'Export de la base', body: `<p class="small" style="margin:0 0 8px">Le fichier <b>${nom}</b> a été proposé au téléchargement. Si rien ne s’est passé, copiez le contenu ci-dessous dans un fichier texte.</p><textarea id="export-txt" style="min-height:160px;font-family:'IBM Plex Mono',monospace;font-size:11px">${R.esc(txt)}</textarea>`, foot: `<button type="button" class="btn" data-action="copierExport">Copier</button><button type="button" class="btn primary" data-action="closeModal">Fermer</button>` }); R.render(); },
+    exporterBase() { if (!R.can('equipe', 'w')) { R.toast('Connectez-vous avec un accès complet pour exporter', 'crit'); return; } S.derniereSauvegarde = R.today(); R.save(); const txt = JSON.stringify(S); const nom = `ryze-sauvegarde-${R.today()}.json`; try { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'application/json' })); a.download = nom; document.body.appendChild(a); a.click(); a.remove(); } catch (e) {} R.modal({ title: 'Export de la base', body: `<p class="small" style="margin:0 0 8px">Le fichier <b>${nom}</b> a été proposé au téléchargement. Si rien ne s’est passé, copiez le contenu ci-dessous dans un fichier texte.</p><textarea id="export-txt" style="min-height:160px;font-family:'IBM Plex Mono',monospace;font-size:11px">${R.esc(txt)}</textarea>`, foot: `<button type="button" class="btn" data-action="copierExport">Copier</button><button type="button" class="btn primary" data-action="closeModal">Fermer</button>` }); R.render(); },
     copierExport() { const t = document.getElementById('export-txt'); t.select(); try { document.execCommand('copy'); R.toast('Copié dans le presse-papiers', 'good'); } catch (e) { R.toast('Sélectionnez le texte et copiez-le manuellement', 'warn'); } },
     importerBase() { if (!R.can('equipe', 'w')) { R.toast('Réservé à l’accès complet', 'crit'); return; } R.modal({ title: 'Importer une sauvegarde', body: `<p class="small" style="margin:0">Choisissez un fichier exporté par Ryze. <b>Les données actuelles seront remplacées.</b></p><input type="file" id="import-file" accept="application/json,.json">`, foot: `<button type="button" class="btn" data-action="closeModal">Annuler</button><button type="button" class="btn danger" data-action="importerBaseOk">Remplacer par ce fichier</button>` }); },
-    importerBaseOk() { if (!R.can('equipe', 'w')) return; const f = document.getElementById('import-file').files[0]; if (!f) { R.toast('Choisissez un fichier', 'crit'); return; } const rd = new FileReader(); rd.onload = () => { try { const s = JSON.parse(rd.result); if (!s || !s.patients || !s.users || !s.settings) throw new Error('format'); remplacer(migrer(s)); S.user = null; S.dirty = true; R.save(); R.closeModal(); R.render(); R.toast('Base importée : reconnectez-vous', 'good'); } catch (e) { R.toast('Fichier invalide', 'crit'); } }; rd.readAsText(f); },
-    resetDemo() { if (S.user && !R.can('equipe', 'w')) return; R.reset(); }, viderDemo() { if (S.user && !R.can('equipe', 'w')) return; R.vider(); },
-    viderDemoConfirm() { if (S.user && !R.can('equipe', 'w')) { R.toast('Réservé à l’accès complet', 'crit'); return; } R.confirmer('Démarrer avec une base vide ?', 'Les patients et rendez-vous de démonstration seront supprimés. Les protocoles et les codes d’accès sont conservés.', 'viderDemo'); }
+    importerBaseOk() { if (!R.can('equipe', 'w')) return; const f = document.getElementById('import-file').files[0]; if (!f) { R.toast('Choisissez un fichier', 'crit'); return; } const rd = new FileReader(); rd.onload = () => { try { const s = JSON.parse(rd.result); if (!s || !s.patients || !s.users || !s.settings) throw new Error('format'); if (+s.version > VERSION) { R.toast('Ce fichier vient d’une version plus récente de Ryze : mettez à jour l’application avant de l’importer', 'crit'); return; } remplacer(migrer(s)); S.user = null; S.dirty = true; S.modifieLe = new Date().toISOString(); R.save(); R.closeModal(); R.render(); R.toast('Base importée : reconnectez-vous', 'good'); } catch (e) { R.toast('Fichier invalide', 'crit'); } }; rd.readAsText(f); },
+    resetDemo() { if (S.dirty && !R.can('equipe', 'w')) return; R.reset(); }, viderDemo() { if (S.dirty && !R.can('equipe', 'w')) return; R.vider(); },
+    telechargerBak() { let raw = null; try { raw = localStorage.getItem(KEY + '.bak'); } catch (e) {} if (!raw) { R.toast('Aucune copie trouvée', 'crit'); return; } try { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([raw], { type: 'application/json' })); a.download = `ryze-copie-${R.today()}.json`; document.body.appendChild(a); a.click(); a.remove(); R.toast('Copie téléchargée', 'good'); } catch (e) { R.toast('Téléchargement impossible', 'crit'); } },
+    viderDemoConfirm() { if (S.dirty && !R.can('equipe', 'w')) { R.toast('Réservé à l’accès complet', 'crit'); return; } R.confirmer('Démarrer avec une base vide ?', 'Les patients et rendez-vous de démonstration seront supprimés. Les protocoles et les codes d’accès sont conservés.', 'viderDemo'); }
   });
 
   /* ---------- Délégation d'événements ---------- */
+  /* actions réservées : vérifiées ici quel que soit le bouton qui les déclenche */
+  const DROITS = { userSave: ['equipe', 'w'], userRole: ['equipe', 'w'], userToggle: ['equipe', 'w'], userCode: ['equipe', 'w'], settingsSave: ['equipe', 'w'], protoEditer: ['protocoles', 'w'], protoSave: ['protocoles', 'w'], protoAddStep: ['protocoles', 'w'], protoDelStep: ['protocoles', 'w'], protoAddVariante: ['protocoles', 'w'], protoSupprimer: ['protocoles', 'w'], patientModifier: ['dossier', 'w'], patientSave: ['dossier', 'w'], protoChanger: ['dossier', 'w'], protoChangerSave: ['dossier', 'w'], posologieModifier: ['dossier', 'w'], posologieSave: ['dossier', 'w'], patientTerminer: ['dossier', 'w'], patientTerminerSave: ['dossier', 'w'], patientRouvrir: ['dossier', 'w'], cycleEditer: ['dossier', 'w'], cycleSave: ['dossier', 'w'], planModifier: ['dossier', 'w'], planSave: ['dossier', 'w'], wCreate: ['dossier', 'w'], wCreatePrint: ['dossier', 'w'] };
+  R.autorise = nom => { const d = DROITS[nom]; if (!d || R.can(d[0], d[1])) return true; R.toast('Action réservée à l’accès complet', 'crit'); return false; };
   document.addEventListener('click', e => {
     const t = e.target.closest('[data-go],[data-action]');
     if (!t) { if (e.target.classList.contains('modal-overlay')) R.closeModal(); return; }
     if (t.dataset.go) { let p = {}; try { p = t.dataset.params ? JSON.parse(t.dataset.params) : {}; } catch (err) {} R.go(t.dataset.go, p); return; }
-    const fn = R.actions[t.dataset.action]; if (fn) fn(t, e);
+    const fn = R.actions[t.dataset.action]; if (fn && R.autorise(t.dataset.action)) fn(t, e);
   });
-  document.addEventListener('submit', e => { const f = e.target.closest('form[data-form]'); if (!f) return; e.preventDefault(); const fn = R.actions[f.dataset.form]; if (fn) fn(f, new FormData(f)); });
-  document.addEventListener('change', e => { const t = e.target.closest('[data-change]'); if (t) { const fn = R.actions[t.dataset.change]; if (fn) fn(t, e); } });
+  document.addEventListener('submit', e => { const f = e.target.closest('form[data-form]'); if (!f) return; e.preventDefault(); const fn = R.actions[f.dataset.form]; if (fn && R.autorise(f.dataset.form)) fn(f, new FormData(f)); });
+  document.addEventListener('change', e => { const t = e.target.closest('[data-change]'); if (t) { const fn = R.actions[t.dataset.change]; if (fn && R.autorise(t.dataset.change)) fn(t, e); } });
   document.addEventListener('input', e => { const t = e.target.closest('[data-input]'); if (t) { const fn = R.actions[t.dataset.input]; if (fn) fn(t, e); } });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') R.closeModal(); });
   document.addEventListener('mousemove', e => { const tip = document.getElementById('tooltip'); const t = e.target.closest && e.target.closest('[data-tip]'); if (!t) { tip.hidden = true; return; } tip.textContent = t.dataset.tip; tip.hidden = false; const x = Math.min(e.clientX + 14, window.innerWidth - tip.offsetWidth - 8); tip.style.left = x + 'px'; tip.style.top = (e.clientY + 14) + 'px'; });

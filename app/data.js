@@ -21,7 +21,7 @@ window.RYZE = window.RYZE || {};
   R.fmtDateLong = s => s ? R.parse(s).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : '—';
   R.fmtMois = s => R.parse(s).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
   R.age = ddn => { const d = R.parse(ddn), t = new Date(); let a = t.getFullYear() - d.getFullYear(); const m = t.getMonth() - d.getMonth(); if (m < 0 || (m === 0 && t.getDate() < d.getDate())) a--; return a; };
-  R.libelleJour = j => j === 0 ? 'S0' : (j % 7 === 0 ? `S${j / 7}` : `S${Math.floor(j / 7)}+${j % 7}j`);
+  R.libelleJour = j => j === 0 ? 'S0' : j < 0 ? `J${j}` : (j % 7 === 0 ? `S${j / 7}` : `S${Math.floor(j / 7)}+${j % 7}j`);
   /* Libellé d'un contrôle : J14, M1, M3, M6, M12… (mois arrondis), semaines sinon */
   R.libelleControle = j => { if (!j) return 'J0'; if (j < 28) return `J${j}`; const m = j / 30.4; return Math.abs(m - Math.round(m)) < 0.12 ? `M${Math.round(m)}` : R.libelleJour(j); };
   /* Décale une date tombant un week-end au lundi suivant (l'HDJ fonctionne du lundi au vendredi) */
@@ -85,7 +85,7 @@ window.RYZE = window.RYZE || {};
   };
   /* sélecteur structuré : mode 'w' (assistant, data-change) ou 'f' (formulaire, name=) */
   R.formParis = (c, patho, mode, autoA) => {
-    c = c || {}; if (patho !== 'RCH' && !c.A && autoA) c.A = autoA;
+    c = Object.assign({}, c || {}); if (patho !== 'RCH' && !c.A && autoA) c.A = autoA;
     const at = k => mode === 'w' ? `data-change="wParis" data-k="${k}"` : `name="paris_${k}"`; const e = s => R.esc(s);
     const sel = (k, opts, label, hint) => `<div class="field"><label>${label}</label><select ${at(k)}><option value="">— non précisé —</option>${opts.map(o => `<option value="${o[0]}"${c[k] === o[0] ? ' selected' : ''}>${e(o[1])}</option>`).join('')}</select>${hint ? `<span class="hint">${e(hint)}</span>` : ''}</div>`;
     const chk = (k, label) => `<label class="check" style="padding:6px 10px"><input type="checkbox" ${at(k)} value="1"${c[k] ? ' checked' : ''}> ${e(label)}</label>`;
