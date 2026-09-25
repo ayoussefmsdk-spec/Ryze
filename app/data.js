@@ -316,9 +316,10 @@ window.RYZE = window.RYZE || {};
       return { dose: p.dose, flacons: p.flacons, articleId: p.articleId, texte: `${p.dose} mg (${p.flacons} ${p.lib || 'flacons'})` };
     }
     const art = R.article(phase === 'entretien' && proto.articleEntretienId ? proto.articleEntretienId : proto.articleId);
+    if (etape.dose == null || etape.dose === '' || isNaN(etape.dose)) return { dose: null, flacons: 0, texte: 'dose à préciser' };
     let dose = dt === 'mgkg' ? Math.round(etape.dose * poids) : etape.dose;
     const flacons = art ? Math.ceil(dose / art.unite) : 0;
-    return { dose, flacons, texte: dt === 'mgkg' ? `${etape.dose} mg/kg → ${dose} mg` : `${dose} mg` };
+    return { dose, flacons, texte: dt === 'mgkg' ? `${String(etape.dose).replace('.', ',')} mg/kg → ${dose} mg` : `${dose} mg` };
   };
 
   R.genererCures = function (proto, dateDebut, poids, horizonJours) {
