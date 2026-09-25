@@ -4,7 +4,7 @@
    ===================================================================== */
 'use strict';
 (function (R) {
-  const KEY = 'ryze-hdj-v1', VERSION = 5;
+  const KEY = 'ryze-hdj-v1', VERSION = 6;
   const S = {};
   R.S = S; R.ui = { filtres: {}, semaineOffset: 0, cal: {}, plies: {} };
   try { R.ui.plies = JSON.parse(localStorage.getItem('ryze-hdj-ui') || '{}').plies || {}; } catch (e) {}
@@ -26,6 +26,7 @@
     }
     if (s.version === 3) { s.version = 4; }
     if (s.version === 4) { try { R.purgerAncienCatalogue(s); } catch (e) { console.error('Purge des anciens contrôles', e); } s.version = 5; }
+    if (s.version === 5) { (s.patients || []).forEach(p => { if (!p.paris) p.paris = R.parisDepuisTexte(p.montreal || '', p.pathologie, p.ddn, p.dateDiag, true); delete p.montreal; }); s.version = 6; }
     if (s.brouillon) { s.brouillons = s.brouillons || {}; if (s.user && s.brouillon.d) s.brouillons[s.user] = s.brouillon; delete s.brouillon; }
     if (!s.rdv) s.rdv = []; if (!s.journal) s.journal = []; (s.patients || []).forEach(p => { p.notes = p.notes || []; p.surveillance = p.surveillance || []; p.bilan = p.bilan || []; p.cures = p.cures || []; });
     if (s.user && !(s.users || []).some(u => u.id === s.user)) s.user = null;

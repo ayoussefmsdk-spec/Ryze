@@ -54,6 +54,46 @@ window.RYZE = window.RYZE || {};
     MC:  { label: 'Maladie de Crohn', court: 'MC' },
     RCH: { label: 'Rectocolite hémorragique', court: 'RCH' }
   };
+  /* ---------- Classification de Paris (MICI pédiatriques, 2011) ---------- */
+  R.PARIS = {
+    MC: {
+      A: [['A1a', 'A1a — moins de 10 ans'], ['A1b', 'A1b — 10 à 16 ans'], ['A2', 'A2 — 17 à 40 ans'], ['A3', 'A3 — plus de 40 ans']],
+      L: [['L1', 'L1 — tiers distal de l’iléon ± cæcum'], ['L2', 'L2 — colique'], ['L3', 'L3 — iléo-colique']],
+      B: [['B1', 'B1 — inflammatoire (ni sténosante ni pénétrante)'], ['B2', 'B2 — sténosante'], ['B3', 'B3 — pénétrante'], ['B2B3', 'B2B3 — sténosante et pénétrante']],
+      G: [['G0', 'G0 — pas de retard de croissance'], ['G1', 'G1 — retard de croissance']]
+    },
+    RCH: {
+      E: [['E1', 'E1 — rectite'], ['E2', 'E2 — colite gauche (en aval de l’angle splénique)'], ['E3', 'E3 — colite étendue (en aval de l’angle hépatique)'], ['E4', 'E4 — pancolite (en amont de l’angle hépatique)']],
+      S: [['S0', 'S0 — jamais de poussée sévère'], ['S1', 'S1 — au moins une poussée sévère (PUCAI ≥ 65)']]
+    }
+  };
+  R.ageAuDiag = (ddn, dateDiag) => { if (!ddn || !dateDiag) return null; const a = R.parse(ddn), b = R.parse(String(dateDiag).length === 7 ? dateDiag + '-01' : dateDiag); if (isNaN(a) || isNaN(b)) return null; let n = b.getFullYear() - a.getFullYear(); if (b.getMonth() < a.getMonth() || (b.getMonth() === a.getMonth() && b.getDate() < a.getDate())) n--; return n >= 0 ? n : null; };
+  R.parisAuto = (ddn, dateDiag) => { const n = R.ageAuDiag(ddn, dateDiag); if (n == null) return null; return n < 10 ? 'A1a' : n < 17 ? 'A1b' : n <= 40 ? 'A2' : 'A3'; };
+  R.parisCode = (c, patho) => { if (!c) return ''; if (patho === 'RCH') return [c.E, c.S].filter(Boolean).join(' '); return [c.A, c.L, c.L4a ? 'L4a' : '', c.L4b ? 'L4b' : '', (c.B || '') + (c.p ? 'p' : ''), c.G].filter(Boolean).join(' '); };
+  /* lit un code écrit en texte (Paris, ou Montréal si montreal = true pour les anciens dossiers) */
+  R.parisDepuisTexte = (txt, patho, ddn, dateDiag, montreal) => {
+    const t = ' ' + String(txt || '').toUpperCase().replace(/\s+/g, ' ').trim() + ' '; const c = {};
+    if (patho === 'RCH') { const e = t.match(/E[1-4]/); if (e) c.E = e[0]; const s = t.match(/S[0-3]/); if (s) c.S = montreal ? (s[0] === 'S3' ? 'S1' : 'S0') : (s[0] === 'S1' ? 'S1' : 'S0'); return c; }
+    const a = t.match(/A1A|A1B|A1|A2|A3/); const auto = R.parisAuto(ddn, dateDiag);
+    if (a) c.A = a[0] === 'A1A' ? 'A1a' : a[0] === 'A1B' ? 'A1b' : a[0] === 'A1' ? (auto && /^A1/.test(auto) ? auto : 'A1b') : a[0]; else if (auto) c.A = auto;
+    const l = t.match(/L[1-3]/); if (l) c.L = l[0];
+    if (/L4A/.test(t)) c.L4a = true; if (/L4B/.test(t)) c.L4b = true; if (/L4(?![AB])/.test(t)) c.L4a = true;
+    const b = t.match(/B2B3|B[1-3]/); if (b) c.B = b[0];
+    if (/B(?:2B3|[1-3])P/.test(t) || / P /.test(t)) c.p = true;
+    const g = t.match(/G[01]/); if (g) c.G = g[0];
+    return c;
+  };
+  /* sélecteur structuré : mode 'w' (assistant, data-change) ou 'f' (formulaire, name=) */
+  R.formParis = (c, patho, mode, autoA) => {
+    c = c || {}; if (patho !== 'RCH' && !c.A && autoA) c.A = autoA;
+    const at = k => mode === 'w' ? `data-change="wParis" data-k="${k}"` : `name="paris_${k}"`; const e = s => R.esc(s);
+    const sel = (k, opts, label, hint) => `<div class="field"><label>${label}</label><select ${at(k)}><option value="">— non précisé —</option>${opts.map(o => `<option value="${o[0]}"${c[k] === o[0] ? ' selected' : ''}>${e(o[1])}</option>`).join('')}</select>${hint ? `<span class="hint">${e(hint)}</span>` : ''}</div>`;
+    const chk = (k, label) => `<label class="check" style="padding:6px 10px"><input type="checkbox" ${at(k)} value="1"${c[k] ? ' checked' : ''}> ${e(label)}</label>`;
+    const P = R.PARIS;
+    if (patho === 'RCH') return `<div class="form-grid">${sel('E', P.RCH.E, 'Étendue (E)')}${sel('S', P.RCH.S, 'Sévérité (S)', 'S1 dès qu’une poussée a atteint un PUCAI ≥ 65')}</div>`;
+    return `<div class="form-grid">${sel('A', P.MC.A, 'Âge au diagnostic (A)', autoA ? 'proposé d’après la date de naissance et la date du diagnostic' : 'renseignez la date du diagnostic pour une proposition automatique')}${sel('L', P.MC.L, 'Localisation (L)')}<div class="field"><label>Atteinte haute (L4, en plus de L1 à L3)</label><div class="row" style="gap:6px">${chk('L4a', 'L4a — en amont de l’angle de Treitz')}${chk('L4b', 'L4b — en aval de Treitz, en amont du tiers distal de l’iléon')}</div></div>${sel('B', P.MC.B, 'Phénotype (B)')}<div class="field"><label>Périnée (p)</label>${chk('p', 'p — atteinte périnéale')}</div>${sel('G', P.MC.G, 'Croissance (G)')}</div>`;
+  };
+  R.lireParis = (fd, patho) => { const g = k => fd.get('paris_' + k) || undefined; if (patho === 'RCH') return { E: g('E'), S: g('S') }; return { A: g('A'), L: g('L'), L4a: !!fd.get('paris_L4a'), L4b: !!fd.get('paris_L4b'), B: g('B'), p: !!fd.get('paris_p'), G: g('G') }; };
 
   /* ---------- Catalogue des molécules / articles de stock ---------- */
   R.ARTICLES = [
@@ -394,20 +434,20 @@ window.RYZE = window.RYZE || {};
 
     /* ancre : la cure d'indice `idx` tombe à `jourSemaine` jours du lundi de la semaine courante */
     const specs = [
-      { ipp: '2024-01187', nom: 'BENALI', prenom: 'Karim', ddn: '1988-03-12', sexe: 'M', poids: 74, taille: 176, patho: 'MC', montreal: 'A2 L3 B1', diag: '2019-06', medecin: 'u-med1', proto: 'ifx-iv', ancre: { idx: 7, js: 1 }, heure: '08:30', fauteuil: 1, tt: 'Azathioprine 150 mg/j', allergies: '—' },
-      { ipp: '2025-00412', nom: 'EL IDRISSI', prenom: 'Salma', ddn: '1995-11-02', sexe: 'F', poids: 58, taille: 164, patho: 'RCH', montreal: 'E3 S2', diag: '2023-02', medecin: 'u-med2', proto: 'vdz-iv', ancre: { idx: 5, js: 2 }, heure: '09:00', fauteuil: 2, tt: 'Mésalazine 4 g/j', allergies: '—' },
-      { ipp: '2026-02231', nom: 'TAZI', prenom: 'Omar', ddn: '1979-07-25', sexe: 'M', poids: 92, taille: 181, patho: 'MC', montreal: 'A2 L1 B2', diag: '2016-10', medecin: 'u-chef', proto: 'ust', ancre: { idx: 0, js: 0 }, heure: '08:30', fauteuil: 3, tt: '—', allergies: 'Pénicilline (urticaire)', prev: 'Infliximab 2016–2024 (perte de réponse, ADA+)' },
-      { ipp: '2026-01905', nom: 'MOUSSAOUI', prenom: 'Nadia', ddn: '2001-01-18', sexe: 'F', poids: 51, taille: 160, patho: 'MC', montreal: 'A2 L2 B1p', diag: '2024-09', medecin: 'u-med1', proto: 'rzb-mc', ancre: { idx: 1, js: 3 }, heure: '10:00', fauteuil: 1, tt: '—', allergies: '—' },
-      { ipp: '2026-02410', nom: 'BOUAZZA', prenom: 'Yassine', ddn: '1990-05-30', sexe: 'M', poids: 80, taille: 178, patho: 'MC', montreal: 'A2 L3 B1', diag: '2026-05', medecin: 'u-med2', proto: 'ifx-iv', ancre: { idx: 1, js: 4 }, heure: '08:30', fauteuil: 2, tt: 'Azathioprine 150 mg/j', allergies: '—' },
-      { ipp: '2019-07744', nom: 'CHRAIBI', prenom: 'Leila', ddn: '1972-09-08', sexe: 'F', poids: 66, taille: 162, patho: 'RCH', montreal: 'E2', diag: '2015-03', medecin: 'u-chef', proto: 'ifx-iv', ancre: { idx: 9, js: 1 }, heure: '10:30', fauteuil: 3, tt: 'Mésalazine 3 g/j', allergies: '—', reaction: 2, premed: true },
-      { ipp: '2025-03310', nom: 'AMRANI', prenom: 'Hamza', ddn: '1985-12-14', sexe: 'M', poids: 70, taille: 174, patho: 'RCH', montreal: 'E3', diag: '2021-08', medecin: 'u-med1', proto: 'vdz-iv', ancre: { idx: 4, js: 0 }, heure: '11:00', fauteuil: 1, tt: '—', allergies: '—', retard: 'calpro' },
-      { ipp: '2025-01098', nom: 'SEBTI', prenom: 'Imane', ddn: '1998-04-03', sexe: 'F', poids: 55, taille: 161, patho: 'MC', montreal: 'A2 L3 B3p', diag: '2022-11', medecin: 'u-med2', proto: 'ifx-iv', ancre: { idx: 4, js: 2 }, heure: '13:30', fauteuil: 1, tt: 'Méthotrexate 15 mg/sem SC', allergies: '—', optimisation: 10 },
-      { ipp: '2026-01560', nom: 'LAHLOU', prenom: 'Mehdi', ddn: '1968-02-21', sexe: 'M', poids: 88, taille: 175, patho: 'RCH', montreal: 'E3', diag: '2018-06', medecin: 'u-chef', proto: 'mir-rch', ancre: { idx: 2, js: 8 }, heure: '09:30', fauteuil: 2, tt: '—', allergies: '—', prev: 'Infliximab 2019–2021 (réaction à la perfusion)', bascule: { de: 'vdz-iv', joursAvant: 238, motif: 'Perte de réponse secondaire : calprotectine 820 µg/g, Mayo endoscopique 3 malgré intervalle 4 semaines' } },
-      { ipp: '2025-02207', nom: 'RAMI', prenom: 'Sofia', ddn: '1993-08-11', sexe: 'F', poids: 62, taille: 168, patho: 'MC', montreal: 'A2 L1 B1', diag: '2020-01', medecin: 'u-med1', proto: 'ust', ancre: { idx: 3, js: 4 }, heure: '14:00', fauteuil: 4, tt: '—', allergies: '—' },
-      { ipp: '2025-00871', nom: 'KETTANI', prenom: 'Adam', ddn: '1983-10-05', sexe: 'M', poids: 77, taille: 179, patho: 'MC', montreal: 'A2 L1 B1', diag: '2024-12', medecin: 'u-med2', proto: 'ada', ancre: { idx: 12, js: 3 }, heure: '', fauteuil: 0, tt: '—', allergies: '—' },
-      { ipp: '2020-04419', nom: 'FASSI', prenom: 'Rania', ddn: '1976-06-17', sexe: 'F', poids: 69, taille: 165, patho: 'RCH', montreal: 'E2', diag: '2017-09', medecin: 'u-med1', proto: 'ifx-iv', ancre: { idx: 6, js: 3 }, heure: '10:00', fauteuil: 2, tt: 'Mésalazine 4 g/j', allergies: '—', suspendu: 'Infection ORL en cours (antibiothérapie) — cure reportée après guérison' },
-      { ipp: '2026-02088', nom: 'ZIANI', prenom: 'Nabil', ddn: '1989-03-27', sexe: 'M', poids: 84, taille: 180, patho: 'RCH', montreal: 'E3', diag: '2025-04', medecin: 'u-med2', proto: 'ust', ancre: { idx: 1, js: 14 }, heure: '', fauteuil: 0, tt: 'Mésalazine 4 g/j', allergies: '—' },
-      { ipp: '2026-02515', nom: 'BERRADA', prenom: 'Yousra', ddn: '2003-12-09', sexe: 'F', poids: 49, taille: 158, patho: 'MC', montreal: 'A1 L3 B1', diag: '2026-06', medecin: 'u-chef', proto: 'vdz-iv', ancre: { idx: 2, js: 3 }, heure: '09:00', fauteuil: 2, tt: '—', allergies: '—' }
+      { ipp: '2024-01187', nom: 'BENALI', prenom: 'Karim', ddn: '1988-03-12', sexe: 'M', poids: 74, taille: 176, patho: 'MC', paris: 'A2 L3 B1', diag: '2019-06', medecin: 'u-med1', proto: 'ifx-iv', ancre: { idx: 7, js: 1 }, heure: '08:30', fauteuil: 1, tt: 'Azathioprine 150 mg/j', allergies: '—' },
+      { ipp: '2025-00412', nom: 'EL IDRISSI', prenom: 'Salma', ddn: '1995-11-02', sexe: 'F', poids: 58, taille: 164, patho: 'RCH', paris: 'E3 S0', diag: '2023-02', medecin: 'u-med2', proto: 'vdz-iv', ancre: { idx: 5, js: 2 }, heure: '09:00', fauteuil: 2, tt: 'Mésalazine 4 g/j', allergies: '—' },
+      { ipp: '2026-02231', nom: 'TAZI', prenom: 'Omar', ddn: '1979-07-25', sexe: 'M', poids: 92, taille: 181, patho: 'MC', paris: 'A2 L1 B2', diag: '2016-10', medecin: 'u-chef', proto: 'ust', ancre: { idx: 0, js: 0 }, heure: '08:30', fauteuil: 3, tt: '—', allergies: 'Pénicilline (urticaire)', prev: 'Infliximab 2016–2024 (perte de réponse, ADA+)' },
+      { ipp: '2026-01905', nom: 'MOUSSAOUI', prenom: 'Nadia', ddn: '2001-01-18', sexe: 'F', poids: 51, taille: 160, patho: 'MC', paris: 'A2 L2 B1p', diag: '2024-09', medecin: 'u-med1', proto: 'rzb-mc', ancre: { idx: 1, js: 3 }, heure: '10:00', fauteuil: 1, tt: '—', allergies: '—' },
+      { ipp: '2026-02410', nom: 'BOUAZZA', prenom: 'Yassine', ddn: '1990-05-30', sexe: 'M', poids: 80, taille: 178, patho: 'MC', paris: 'A2 L3 B1', diag: '2026-05', medecin: 'u-med2', proto: 'ifx-iv', ancre: { idx: 1, js: 4 }, heure: '08:30', fauteuil: 2, tt: 'Azathioprine 150 mg/j', allergies: '—' },
+      { ipp: '2019-07744', nom: 'CHRAIBI', prenom: 'Leila', ddn: '1972-09-08', sexe: 'F', poids: 66, taille: 162, patho: 'RCH', paris: 'E2 S0', diag: '2015-03', medecin: 'u-chef', proto: 'ifx-iv', ancre: { idx: 9, js: 1 }, heure: '10:30', fauteuil: 3, tt: 'Mésalazine 3 g/j', allergies: '—', reaction: 2, premed: true },
+      { ipp: '2025-03310', nom: 'AMRANI', prenom: 'Hamza', ddn: '1985-12-14', sexe: 'M', poids: 70, taille: 174, patho: 'RCH', paris: 'E4 S1', diag: '2021-08', medecin: 'u-med1', proto: 'vdz-iv', ancre: { idx: 4, js: 0 }, heure: '11:00', fauteuil: 1, tt: '—', allergies: '—', retard: 'calpro' },
+      { ipp: '2025-01098', nom: 'SEBTI', prenom: 'Imane', ddn: '1998-04-03', sexe: 'F', poids: 55, taille: 161, patho: 'MC', paris: 'A2 L3 B3p', diag: '2022-11', medecin: 'u-med2', proto: 'ifx-iv', ancre: { idx: 4, js: 2 }, heure: '13:30', fauteuil: 1, tt: 'Méthotrexate 15 mg/sem SC', allergies: '—', optimisation: 10 },
+      { ipp: '2026-01560', nom: 'LAHLOU', prenom: 'Mehdi', ddn: '1968-02-21', sexe: 'M', poids: 88, taille: 175, patho: 'RCH', paris: 'E4 S0', diag: '2018-06', medecin: 'u-chef', proto: 'mir-rch', ancre: { idx: 2, js: 8 }, heure: '09:30', fauteuil: 2, tt: '—', allergies: '—', prev: 'Infliximab 2019–2021 (réaction à la perfusion)', bascule: { de: 'vdz-iv', joursAvant: 238, motif: 'Perte de réponse secondaire : calprotectine 820 µg/g, Mayo endoscopique 3 malgré intervalle 4 semaines' } },
+      { ipp: '2025-02207', nom: 'RAMI', prenom: 'Sofia', ddn: '1993-08-11', sexe: 'F', poids: 62, taille: 168, patho: 'MC', paris: 'A2 L1 B1', diag: '2020-01', medecin: 'u-med1', proto: 'ust', ancre: { idx: 3, js: 4 }, heure: '14:00', fauteuil: 4, tt: '—', allergies: '—' },
+      { ipp: '2025-00871', nom: 'KETTANI', prenom: 'Adam', ddn: '1983-10-05', sexe: 'M', poids: 77, taille: 179, patho: 'MC', paris: 'A3 L1 B1', diag: '2024-12', medecin: 'u-med2', proto: 'ada', ancre: { idx: 12, js: 3 }, heure: '', fauteuil: 0, tt: '—', allergies: '—' },
+      { ipp: '2020-04419', nom: 'FASSI', prenom: 'Rania', ddn: '1976-06-17', sexe: 'F', poids: 69, taille: 165, patho: 'RCH', paris: 'E2 S0', diag: '2017-09', medecin: 'u-med1', proto: 'ifx-iv', ancre: { idx: 6, js: 3 }, heure: '10:00', fauteuil: 2, tt: 'Mésalazine 4 g/j', allergies: '—', suspendu: 'Infection ORL en cours (antibiothérapie) — cure reportée après guérison' },
+      { ipp: '2026-02088', nom: 'ZIANI', prenom: 'Nabil', ddn: '1989-03-27', sexe: 'M', poids: 84, taille: 180, patho: 'RCH', paris: 'E3 S1', diag: '2025-04', medecin: 'u-med2', proto: 'ust', ancre: { idx: 1, js: 14 }, heure: '', fauteuil: 0, tt: 'Mésalazine 4 g/j', allergies: '—' },
+      { ipp: '2026-02515', nom: 'BERRADA', prenom: 'Yousra', ddn: '2003-12-09', sexe: 'F', poids: 49, taille: 158, patho: 'MC', paris: 'A2 L3 L4a B1', diag: '2026-06', medecin: 'u-chef', proto: 'vdz-iv', ancre: { idx: 2, js: 3 }, heure: '09:00', fauteuil: 2, tt: '—', allergies: '—' }
     ];
 
     const patients = specs.map((s, i) => {
@@ -465,7 +505,7 @@ window.RYZE = window.RYZE || {};
       const derniere = cures.filter(c => c.statut === 'realisee').slice(-1)[0];
       return {
         id: 'p' + (i + 1), ipp: s.ipp, nom: s.nom, prenom: s.prenom, ddn: s.ddn, sexe: s.sexe, poids: s.poids, taille: s.taille, tel: `06 ${String(10 + Math.floor(rand() * 89))} ${String(10 + Math.floor(rand() * 89))} ${String(10 + Math.floor(rand() * 89))} ${String(10 + Math.floor(rand() * 89))}`,
-        pathologie: s.patho, montreal: s.montreal, dateDiag: s.diag + '-01', medecinId: s.medecin, protocoleId: s.proto, dateDebut: dateDebutDossier, cycleCourant, historiqueProtocoles: historique, carnetMixte: i % 2 === 0, planSurveillance: cfgDemo,
+        pathologie: s.patho, paris: R.parisDepuisTexte(s.paris, s.patho, s.ddn, s.diag + '-01'), dateDiag: s.diag + '-01', medecinId: s.medecin, protocoleId: s.proto, dateDebut: dateDebutDossier, cycleCourant, historiqueProtocoles: historique, carnetMixte: i % 2 === 0, planSurveillance: cfgDemo,
         traitementsAssocies: s.tt, allergies: s.allergies, antecedentsBio: s.prev || 'Aucune biothérapie antérieure',
         statut: s.suspendu ? 'suspendu' : (cures.some(c => c.phase === 'Induction' && c.statut === 'prevue') ? 'induction' : 'entretien'),
         motifSuspension: s.suspendu || '', cures, surveillance, bilan, notes: s.bascule ? [{ date: debut, par: s.medecin, txt: `Changement de protocole (cycle 2) : ${proto.dci} à partir du ${R.fmtDate(debut)} — ${s.bascule.motif}` }] : [], creeLe: R.addDays(dateDebutDossier, -21), creePar: s.medecin, derniereCure: derniere ? derniere.dateReelle : null
