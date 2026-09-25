@@ -336,7 +336,7 @@
     app.innerHTML = `<div class="shell">
       <aside class="rail" id="rail">
         <div class="brand"><div class="brand-mark">Rz</div><div><b>Ryze</b><span>Biothérapies · Hôpital de jour</span></div></div>
-        <nav class="nav"><div style="height:8px"></div>${NAV.filter(i => R.can(i.mod, i.w ? 'w' : 'r')).map(i => `<button class="nav-item${(page === i.id || (i.id === 'patients' && (page === 'patient' || page === 'carnet'))) ? ' active' : ''}" data-go="${i.id}">${R.icon(i.icon)}<span>${i.label}</span>${i.id === 'dashboard' && nCrit ? `<span class="count">${nCrit}</span>` : ''}</button>`).join('')}</nav>
+        <nav class="nav"><div style="height:8px"></div>${NAV.filter(i => R.can(i.mod, i.w ? 'w' : 'r')).map(i => `<button class="nav-item${(page === i.id || (i.id === 'patients' && (page === 'patient' || page === 'carnet' || page === 'compteRendu'))) ? ' active' : ''}" data-go="${i.id}">${R.icon(i.icon)}<span>${i.label}</span>${i.id === 'dashboard' && nCrit ? `<span class="count">${nCrit}</span>` : ''}</button>`).join('')}</nav>
         <div class="rail-foot">${R.esc(S.settings.service)}<br>${R.esc(S.settings.unite)}</div>
       </aside>
       <div class="main">

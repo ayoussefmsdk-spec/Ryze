@@ -142,7 +142,7 @@
   R.pages.carnet = {
     render(params) {
       const p = R.patient(params.id); if (!p) return '<div class="empty">Dossier introuvable.</div>';
-      return `<div class="row between no-print mb16"><button class="btn" data-go="patient" data-params='${R.params({ id: p.id })}'>${R.icon('back')}Retour au dossier</button><div class="row"><span class="small muted">Format A4 · 4 pages</span><button class="btn primary" data-action="imprimer">${R.icon('print')}Imprimer / PDF</button></div></div>${R.carnetHTML(p)}`;
+      return `<div class="row between no-print mb16"><button class="btn" data-go="patient" data-params='${R.params({ id: p.id })}'>${R.icon('back')}Retour au dossier</button><div class="row"><span class="small muted">Format A4</span><button class="btn primary" data-action="imprimer">${R.icon('print')}Imprimer / PDF</button></div></div>${R.carnetHTML(p)}`;
     }
   };
   R.carnetHTML = function (p) {
@@ -205,6 +205,7 @@
         <table class="doc-table"><thead><tr><th>Date</th><th>Symptômes (selles/jour, sang, douleurs, fièvre)</th><th>Poids</th><th>Événement (infection, voyage, autre traitement…)</th></tr></thead><tbody>${Array.from({ length: 6 }, () => '<tr><td class="m">&nbsp;</td><td></td><td></td><td></td></tr>').join('')}</tbody></table>
         ${foot(3)}</div>`}
 
+      ${(() => { const depuis = R.addDays(t, -548); const cb = R.courbesDoc(p, { depuis, max: 9, cols: 3 }); return cb ? `<div class="carnet-page">${band}<div class="doc-h2" style="margin-top:0">Évolution clinique et biologique (18 derniers mois)</div>${cb}<div class="doc-h2">Dernières valeurs</div>${R.tableDernieres(p, depuis)}${foot(4)}</div>` : ''; })()}
       <div class="carnet-page">${band}
         <div class="doc-h2" style="margin-top:0">Conduite à tenir — informations pour le patient</div>
         <div class="doc-cols ui" style="font-size:9.5pt">
@@ -226,4 +227,63 @@
       const total = (html.match(/class="carnet-page"/g) || []).length; let num = 0;
       return html.replace(/Page \d+ \/ 4<\/span>/g, () => `Page ${++num} / ${total}</span>`);
   };
+
+  /* ---------- Compte rendu de suivi pour le médecin traitant ---------- */
+  R.pages.compteRendu = {
+    render(params) {
+      const p = R.patient(params.id); if (!p) return '<div class="empty">Dossier introuvable.</div>';
+      const mois = params.mois == null ? 12 : +params.mois; const depuis = mois ? R.addDays(R.today(), -Math.round(mois * 30.44)) : null;
+      const opts = [[6, '6 mois'], [12, '12 mois'], [24, '24 mois'], [0, 'Tout le suivi']];
+      return `<div class="row between no-print mb16" style="flex-wrap:wrap;gap:8px"><button class="btn" data-go="patient" data-params='${R.params({ id: p.id })}'>${R.icon('back')}Retour au dossier</button><div class="row" style="gap:6px;flex-wrap:wrap"><span class="small muted">Période</span>${opts.map(o => `<button type="button" class="btn sm${mois === o[0] ? ' primary' : ''}" data-go="compteRendu" data-params='${R.params({ id: p.id, mois: o[0] })}'>${o[1]}</button>`).join('')}<span class="small muted" style="margin-left:8px">Les zones en pointillé se modifient avant impression</span><button class="btn primary" data-action="imprimer">${R.icon('print')}Imprimer / PDF</button></div></div>${R.compteRenduHTML(p, depuis, mois)}`;
+    }
+  };
+  R.compteRenduHTML = function (p, depuis, mois) {
+    const s = S.settings, t = R.today(), pr = R.proto(p.protocoleId) || {}; const cr = p.cr || {};
+    const e = (k, def, tag) => `<${tag || 'span'} class="cr-edit" contenteditable="true" data-input="crChamp" data-pid="${p.id}" data-k="${k}" spellcheck="true">${esc(cr[k] != null ? cr[k] : def)}</${tag || 'span'}>`;
+    const age = R.age(p.ddn); const fem = p.sexe === 'F'; const paris = R.parisCode(p.paris, p.pathologie);
+    const cyc = (p.historiqueProtocoles || []).find(h => h.statut === 'en cours') || (p.historiqueProtocoles || []).slice(-1)[0] || {};
+    const cc = R.prochaineCure(p) || R.derniereCure(p); const next = p.cures.find(c => c.statut === 'prevue' && c.datePrevue >= t);
+    const periode = mois ? `sur les ${mois} derniers mois` : 'depuis le début du suivi';
+    const faits = R.faitsMarquants(p).filter(x => !depuis || x.date >= depuis || /Début du traitement/.test(x.titre)).slice(0, 8);
+    const examens = p.surveillance.filter(x => x.statut === 'faite' && x.mode === 'echeance' && !R.estBio(x) && !R.estClin(x) && (!depuis || x.dateFaite >= depuis)).sort((a, b) => b.dateFaite.localeCompare(a.dateFaite)).slice(0, 6);
+    const tdm = p.surveillance.filter(x => x.id === 'tdm' && x.statut === 'faite').sort((a, b) => b.dateFaite.localeCompare(a.dateFaite))[0];
+    const tdmI = tdm ? R.interpTdm(R.tdmDe(tdm, p)) : null;
+    const realisees = p.cures.filter(c => c.statut === 'realisee' && (!depuis || c.dateReelle >= depuis)).length;
+    const manquees = p.cures.reduce((n, c) => n + (c.absences || []).filter(a => !depuis || a.date >= depuis).length, 0);
+    const reactions = p.cures.filter(c => c.statut === 'realisee' && /Réaction/.test(c.tolerance || '') && (!depuis || c.dateReelle >= depuis));
+    const aVenir = R.planPatient(p, 'tout').filter(x => x.date >= t && ((x.c && x.c.statut === 'prevue') || (x.s && x.s.statut === 'prevue'))).slice(0, 6);
+    const epingles = p.notes.filter(n => n.epingle).slice(0, 4);
+    const conclDef = [tdmI && tdmI.texte ? `Dernier dosage (${R.fmtDate(tdm.dateFaite)}) : ${tdm.resultat}. ${tdmI.texte}` : '', `Poursuite de ${pr.dci || 'la biothérapie'} ${cc ? '(' + (cc.doseTexte || '') + ')' : ''} selon le calendrier ci-dessous.`].filter(Boolean).join(' ');
+    const band = `<div class="doc-band"><div><b>${esc(s.etablissement)}</b>${esc(s.service)}<br>${esc(s.unite)} · Tél. ${esc(s.telHDJ || '')}</div><div class="r"><b>Compte rendu de suivi</b>${esc(R.nomComplet(p))} · IPP ${esc(p.ipp)}<br>${R.fmtDateLong(t)}</div></div>`;
+    const foot = `<div class="doc-foot"><span>Compte rendu de suivi — ${esc(R.nomComplet(p))} — document médical confidentiel</span><span></span></div>`;
+    const courbes = R.courbesDoc(p, { depuis, max: 6, cols: 3 });
+    return `<div class="carnet-wrap cr">
+      <div class="carnet-page">${band}
+        <div class="cr-dest">À l’attention du ${e('destinataire', p.medecinTraitant ? p.medecinTraitant : 'Dr …, médecin traitant')}</div>
+        <p class="cr-p">Cher confrère,</p>
+        <p class="cr-p">Je vous adresse des nouvelles de ${fem ? 'votre patiente' : 'votre patient'} <b>${esc(p.prenom)} ${esc(p.nom)}</b>, ${fem ? 'née' : 'né'} le ${R.fmtDate(p.ddn)} (${age} ans), ${fem ? 'suivie' : 'suivi'} dans notre hôpital de jour pour une <b>${esc((R.PATHOS[p.pathologie] || {}).label || p.pathologie || '')}</b>${paris ? ` (classification de Paris ${esc(paris)})` : ''}${p.dateDiag ? `, diagnostiquée en ${R.fmtDate(p.dateDiag, { month: 'long', year: 'numeric' })}` : ''}. Ce compte rendu couvre la période ${periode}.</p>
+        <div class="doc-h2">Traitement</div>
+        <dl class="doc-kv"><div><dt>Biothérapie</dt><dd>${esc(pr.dci || '')} <span class="ui" style="font-weight:400">(${esc(pr.specialites || '')})</span></dd></div><div><dt>Posologie</dt><dd>${esc(cc ? cc.doseTexte || '' : '')} · ${esc(pr.voie || '')} · ${esc((pr.entretien || {}).label || '')}</dd></div><div><dt>Depuis le</dt><dd>${R.fmtDate(cyc.dateDebut || p.dateDebut)}${(p.cycleCourant || 1) > 1 ? ` · cycle ${p.cycleCourant}` : ''}</dd></div><div><dt>Traitements associés</dt><dd>${esc(p.traitementsAssocies || '—')}</dd></div><div><dt>Biothérapies antérieures</dt><dd>${esc(p.antecedentsBio || '—')}</dd></div><div><dt>Allergies · comorbidités</dt><dd>${esc(p.allergies || '—')} · ${esc(p.comorbidites || '—')}</dd></div></dl>
+        ${faits.length ? `<div class="doc-h2">Faits marquants</div><table class="doc-table"><tbody>${faits.map(f => `<tr><td class="m" style="width:24mm">${R.fmtDate(f.date)}</td><td>${esc(f.titre)}</td></tr>`).join('')}</tbody></table>` : ''}
+        <div class="doc-h2">Déroulement ${periode}</div>
+        <p class="cr-p">${realisees} séance(s) réalisée(s)${manquees ? `, ${manquees} séance(s) manquée(s)` : ''}${reactions.length ? `, ${reactions.length} réaction(s) à la perfusion (${reactions.map(c => R.fmtDate(c.dateReelle)).join(', ')})` : ', aucune réaction à la perfusion'}.${p.statut === 'suspendu' ? ` <b>Traitement actuellement suspendu</b> : ${esc(p.motifSuspension || '')}.` : ''}</p>
+        <div class="doc-h2">Résultats</div>
+        ${R.tableDernieres(p, depuis)}
+        ${tdm ? `<div class="doc-box" style="margin-top:8px"><b>Dosage pharmacologique du ${R.fmtDate(tdm.dateFaite)}</b> — ${esc(tdm.resultat || '')}${tdmI && tdmI.texte ? `<br><span style="font-size:9.5pt">${esc(tdmI.texte)}${tdmI.cible ? ` Cible indicative : ${esc(tdmI.cible)}.` : ''}</span>` : ''}</div>` : ''}
+        ${foot}</div>
+      <div class="carnet-page">${band}
+        ${courbes ? `<div class="doc-h2" style="margin-top:0">Évolution ${periode}</div>${courbes}` : ''}
+        ${examens.length ? `<div class="doc-h2">Endoscopies et imagerie</div><table class="doc-table"><tbody>${examens.map(x => `<tr><td class="m" style="width:24mm">${R.fmtDate(x.dateFaite)}</td><td><b>${esc(x.label)}</b>${x.resultat ? ' — ' + esc(x.resultat) : ''}${x.note ? `<br><span style="font-size:9pt;color:#4E5E59">${esc(x.note)}</span>` : ''}</td></tr>`).join('')}</tbody></table>` : ''}
+        ${epingles.length ? `<div class="doc-h2">Points à retenir</div><ul class="doc-list">${epingles.map(n => `<li><b>${esc(R.titreNote ? R.titreNote(n) : n.txt)}</b>${n.titre ? ' — ' + esc(n.txt) : ''} <span style="color:#7E8C88">(${R.fmtDate(n.date)})</span></li>`).join('')}</ul>` : ''}
+        <div class="doc-h2">Suite de la prise en charge</div>
+        ${aVenir.length ? `<table class="doc-table"><tbody>${aVenir.map(x => `<tr><td class="m" style="width:24mm">${R.fmtDate(x.date)}</td><td>${x.c ? `Séance ${esc(x.c.label)} — ${esc((R.protoDeCure(p, x.c) || {}).dci || '')} ${esc(x.c.doseTexte || '')}` : `Contrôle — ${esc(x.s.label)}${x.s.avantSeance ? ' (avant la perfusion)' : ''}`}</td></tr>`).join('')}</tbody></table>` : '<p class="cr-p">Aucune échéance programmée.</p>'}
+        <div class="doc-h2">Conclusion</div>
+        ${e('conclusion', conclDef, 'div')}
+        <div class="doc-box" style="font-size:9pt;margin-top:10px"><b>Surveillance entre deux séances</b> : toute fièvre, infection ou symptôme inhabituel doit faire contacter l’hôpital de jour (${esc(s.telHDJ || '')}) avant la séance suivante. Pas de vaccin vivant atténué sous biothérapie ; vaccins inactivés recommandés (grippe, pneumocoque, zona recombinant). Merci de nous signaler tout nouveau traitement.</div>
+        <p class="cr-p" style="margin-top:10px">Je reste à votre disposition. Bien confraternellement,</p>
+        <div class="doc-sign" style="grid-template-columns:1fr 1fr"><div>${e('signataire', R.userName(p.medecinId) + ' — ' + ((R.userById(p.medecinId) || {}).fonction || 'Gastro-entérologue'))}<br><span style="color:#7E8C88">Signature</span></div><div>Copie : dossier patient</div></div>
+        ${foot}</div>
+    </div>`;
+  };
+  R.actions.crChamp = el => { const p = R.patient(el.dataset.pid); if (!p) return; p.cr = p.cr || {}; p.cr[el.dataset.k] = el.innerText.trim(); if (el.dataset.k === 'destinataire' && p.cr.destinataire && !/…/.test(p.cr.destinataire)) p.medecinTraitant = p.cr.destinataire; clearTimeout(R.ui.crTimer); R.ui.crTimer = setTimeout(() => R.touch(), 500); };
 })(window.RYZE);

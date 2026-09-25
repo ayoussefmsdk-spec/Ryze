@@ -533,6 +533,7 @@ window.RYZE = window.RYZE || {};
       { date: R.addDays(lundi, 4), heure: '11:30', patientId: 'p12', type: 'Consultation', objet: 'Réévaluation avant reprise (infection ORL)', avec: 'u-med1' },
       { date: R.addDays(lundi, 8), heure: '08:00', patientId: 'p1', type: 'Endoscopie', objet: 'Coloscopie et fibroscopie haute de contrôle (M12)', avec: 'u-chef' }
     ];
+    if (R.alignerTdm) patients.forEach(p => R.alignerTdm(p)); /* dosages résiduels le jour de la perfusion */
 
     return {
       version: 3, user: null, route: { page: 'dashboard', params: {} },

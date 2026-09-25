@@ -439,6 +439,20 @@ input[readonly]{background:var(--surface-2);color:var(--ink-2)}
 .doc-sign{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:18px;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:9pt}
 .doc-sign div{border-top:1px solid var(--doc-ink);padding-top:6px;min-height:52px}
 .doc-foot{position:absolute;left:16mm;right:16mm;bottom:8mm;display:flex;justify-content:space-between;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:8pt;color:#7E8C88;border-top:1px solid var(--doc-line);padding-top:4px}
+.doc-courbes{display:grid;gap:8px;margin-top:4px}
+.doc-courbe{border:1px solid var(--doc-line);border-radius:4px;padding:6px 7px 4px;break-inside:avoid;background:#fff}
+.doc-courbe .dc-t{display:flex;justify-content:space-between;align-items:baseline;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:9pt} .doc-courbe .dc-t span{color:#7E8C88;font-size:8pt}
+.doc-courbe .dc-v{font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:8pt;color:#4E5E59;margin:1px 0 2px}
+.doc-courbe .dc-leg{display:flex;gap:10px;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:8pt;color:#4E5E59}
+.doc-courbes .courbe text{fill:#4E5E59;font-size:14px} .doc-courbes .courbe .fin{font-size:14px} .doc-courbes .courbe .grid-line{stroke:#E3E8E6} .doc-courbes .courbe .axis{stroke:#B8C2BE}
+.doc-courbes .courbe .ref{fill:#1E7B46;opacity:.09} .doc-courbes .courbe .pt{stroke:#fff}
+.doc-courbes .courbe .ligne.s1,.doc-courbe .lk.s1{stroke:#1B8F6A;background:#1B8F6A} .doc-courbes .courbe .pt.s1{fill:#1B8F6A}
+.doc-courbes .courbe .ligne.s2,.doc-courbe .lk.s2{stroke:#2A6FC4;background:#2A6FC4} .doc-courbes .courbe .pt.s2{fill:#2A6FC4}
+.doc-courbes .courbe .fin{fill:#1E2927} .doc-courbes .courbe-legend{font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:8pt;color:#4E5E59;margin-top:2px;gap:10px}
+.cr-dest{font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:10pt;margin:2px 0 10px;text-align:right}
+.cr-p{margin:0 0 8px;font-size:10.5pt;line-height:1.45}
+.cr-edit{outline:1px dashed #9FB3AD;outline-offset:2px;border-radius:2px;min-width:40px;display:inline-block} .cr-edit:focus{outline:2px solid var(--accent);background:#F4FAF8}
+div.cr-edit{display:block;min-height:60px;padding:6px 8px;font-size:10.5pt;line-height:1.45}
 .doc-stamp{display:inline-block;padding:2px 8px;border:1.5px solid var(--doc-ink);border-radius:3px;font-family:'IBM Plex Mono',monospace;font-size:9pt;font-weight:600}
 
 /* ---------- Responsive ---------- */
@@ -471,6 +485,7 @@ input[readonly]{background:var(--surface-2);color:var(--ink-2)}
   .content{padding:0;max-width:none}
   .carnet-wrap{background:#fff;padding:0}
   .carnet-page{box-shadow:none;margin:0;width:auto;min-height:auto;padding:0 14mm;page-break-after:always;color:#000}
+  .cr-edit{outline:0!important;background:none!important}
   .carnet-page .doc-foot{position:static;margin-top:8mm} .carnet-page .doc-foot span:last-child{display:none}
   .carnet-page thead{display:table-header-group} .carnet-page tr,.carnet-page .doc-box{break-inside:avoid}
   .carnet-page:last-child{page-break-after:auto}

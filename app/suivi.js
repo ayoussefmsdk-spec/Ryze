@@ -148,8 +148,9 @@
   R.alerteClinique = d => !!d && (d.fievre || (d.perineal && d.perineal.includes('abces')) || (d.perineal && d.perineal.includes('fistule')));
 
   /* ---------- Saisie d'un contrôle selon son type ---------- */
-  R.formSaisieControle = s => {
+  R.formSaisieControle = (s, p) => {
     const it = R.itemBilan(s.id) || {};
+    if (s.id === 'tdm') return R.formTdm(s, p);
     if (s.type === 'clinique' || it.type === 'clinique') return R.formClinique(s.clinique, { avecPoids: true, sous: Array.isArray(s.sous) ? s.sous : null });
     if (s.type === 'composite' || it.type === 'composite') { const sous = (s.sous && s.sous.length ? s.sous : (it.sous || []).map(x => x.id)); return `<div class="form-grid">${sous.map(sid => { const d = (it.sous || []).find(x => x.id === sid) || { id: sid, label: sid, unite: '' }; return `<div class="field"><label>${esc(d.label)}${d.unite ? ` <span class="muted">(${esc(d.unite)})</span>` : ''}</label><input type="text" name="val_${sid}" value="${esc((s.valeurs || {})[sid] || '')}" placeholder="${d.unite ? 'valeur' : 'résultat'}"></div>`; }).join('')}</div>
       <div class="field"><label>Remarques (interprétation, conduite à tenir)</label><textarea name="note" placeholder="ex. anémie ferriprive → supplémentation ; CRP normale">${esc(s.note || '')}</textarea></div>`; }
@@ -157,6 +158,7 @@
   };
   R.lireSaisieControle = (s, fd) => {
     const it = R.itemBilan(s.id) || {};
+    if (s.id === 'tdm' && fd.has('tdm_taux')) { const taux = fd.get('tdm_taux') === '' ? null : +fd.get('tdm_taux'); s.tdm = { molecule: fd.get('tdm_mol'), taux, ac: fd.get('tdm_ac') || 'nd', titre: (fd.get('tdm_titre') || '').trim() }; const i = R.interpTdm(s.tdm); s.interpretation = i.texte; s.resultat = `${s.tdm.molecule} : résiduel ${taux == null ? '—' : R.fmtV(taux) + ' µg/mL'} — ${R.AC_LIB[s.tdm.ac]}${s.tdm.ac === 'pos' && s.tdm.titre ? ' (titre ' + s.tdm.titre + ')' : ''}`; s.note = (fd.get('note') || '').trim(); return; }
     if (s.type === 'clinique' || it.type === 'clinique') { s.clinique = R.lireClinique(fd); s.resultat = R.resumeClinique(s.clinique); s.note = s.clinique.remarques || ''; return; }
     if (s.type === 'composite' || it.type === 'composite') { const sous = (s.sous && s.sous.length ? s.sous : (it.sous || []).map(x => x.id)); s.valeurs = {}; sous.forEach(sid => { const v = (fd.get('val_' + sid) || '').trim(); if (v) s.valeurs[sid] = v; }); s.resultat = sous.filter(sid => s.valeurs[sid]).map(sid => { const d = (it.sous || []).find(x => x.id === sid) || { label: sid, unite: '' }; return `${d.label} ${s.valeurs[sid]}${d.unite ? ' ' + d.unite : ''}`; }).join(' · ') || 'fait'; s.note = (fd.get('note') || '').trim(); return; }
     s.resultat = (fd.get('resultat') || '').trim(); s.note = (fd.get('note') || '').trim();
@@ -184,6 +186,44 @@
     return `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Date</th>${cols.map(c => `<th>${esc(c.l)}</th>`).join('')}<th>Remarques</th></tr></thead><tbody>${dates.map(d => { const ss = faits.filter(s => s.dateFaite === d); return `<tr><td class="nowrap">${R.fmtDate(d)}</td>${cols.map(c => { let v = ''; ss.forEach(s => { if (s.valeurs && s.valeurs[c.k]) v = s.valeurs[c.k]; else if (!s.valeurs && c.k === s.id + (s.nom ? ':' + s.nom : '')) v = s.resultat; }); return `<td class="num small">${esc(v || '')}</td>`; }).join('')}<td class="small">${esc(ss.map(s => s.note).filter(Boolean).join(' · '))}</td></tr>`; }).join('')}</tbody></table></div>`;
   };
 
+
+  /* ---------- Dosage pharmacologique : molécule, taux résiduel, anticorps, interprétation ---------- */
+  R.TDM_MOLECULES = ['Infliximab', 'Adalimumab', 'Golimumab', 'Vedolizumab', 'Ustekinumab', 'Autre'];
+  /* cibles de taux résiduel en entretien, indicatives (ECCO / AGA) : [minimum, maximum ou null] */
+  R.TDM_CIBLES = { infliximab: [3, 7], adalimumab: [7.5, 12], golimumab: [1, null], vedolizumab: [12, null], ustekinumab: [1, null] };
+  R.moleculeCycle = (p, cycle) => { const h = ((p && p.historiqueProtocoles) || []).find(x => x.cycle === (cycle || (p && p.cycleCourant) || 1)); const dci = ((R.proto((h && h.protocoleId) || (p && p.protocoleId)) || {}).dci || ''); const m = R.TDM_MOLECULES.find(x => new RegExp(x, 'i').test(dci)); return m || 'Autre'; };
+  /* lit un dosage structuré, ou déduit la structure d'un ancien résultat en texte libre */
+  R.tdmDe = (s, p) => {
+    if (s.tdm) return s.tdm; const txt = String(s.resultat || ''); if (!txt) return null;
+    const m = txt.replace(/,/g, '.').match(/(?:r[ée]siduel|taux)?\D*?(\d+(?:\.\d+)?)/i);
+    const ac = /(ADA|anticorps|AAM)[^.;]*?(n[ée]gati|absen|ind[ée]tect)/i.test(txt) ? 'neg' : /(ADA|anticorps|AAM)[^.;]*?(positi|pr[ée]sen|d[ée]tect)/i.test(txt) ? 'pos' : 'nd';
+    const titre = (txt.match(/titre\s*[:=]?\s*([\d.,]+\s*\S*)/i) || [])[1] || '';
+    return { molecule: R.moleculeCycle(p, s.cycle), taux: m ? +m[1] : null, ac, titre };
+  };
+  R.AC_LIB = { neg: 'anticorps négatifs', pos: 'anticorps positifs', nd: 'anticorps non dosés' };
+  R.interpTdm = t => {
+    if (!t || t.taux == null || isNaN(t.taux)) return { niveau: '', texte: '' };
+    const cible = R.TDM_CIBLES[String(t.molecule || '').toLowerCase()];
+    if (!cible) return { niveau: '?', texte: 'Pas de cible de référence enregistrée pour cette molécule : interprétation au cas par cas.' };
+    const [lo, hi] = cible; const cibleTxt = hi ? `${lo} à ${hi} µg/mL` : `au moins ${lo} µg/mL`;
+    let niveau, texte;
+    if (t.taux < lo) { niveau = 'bas'; texte = t.ac === 'pos' ? 'Taux bas avec anticorps anti-médicament : immunisation. Discuter un changement de molécule ; si les anticorps sont faibles, une optimisation associée à un immunomodulateur peut se discuter.' : `Taux sous la cible${t.ac === 'neg' ? ' sans anticorps' : ''} : sous-exposition. Discuter une optimisation (dose plus élevée ou intervalle raccourci), puis contrôler le taux.${t.ac === 'nd' ? ' Doser les anticorps pour conclure.' : ''}`; }
+    else if (hi && t.taux > hi) { niveau = 'haut'; texte = 'Taux au-dessus de la cible. En rémission prolongée, une désescalade peut se discuter ; si la maladie reste active, discuter un changement de classe.'; }
+    else { niveau = 'cible'; texte = t.ac === 'pos' ? 'Taux dans la cible malgré des anticorps : contrôler le taux et les anticorps à la prochaine perfusion.' : 'Taux dans la cible. En rémission : poursuivre. Si la maladie reste active : échec probable du mécanisme d’action, discuter un changement de classe.'; }
+    return { niveau, cible: cibleTxt, texte };
+  };
+  R.formTdm = (s, p) => {
+    const t = R.tdmDe(s, p) || { molecule: R.moleculeCycle(p, s.cycle), taux: null, ac: 'nd', titre: '' }; const i = R.interpTdm(t);
+    return `<div class="form-grid"><div class="field"><label>Molécule dosée</label><select name="tdm_mol" data-change="tdmInterp">${R.TDM_MOLECULES.map(m => `<option${m === t.molecule ? ' selected' : ''}>${m}</option>`).join('')}</select></div>
+      <div class="field"><label>Taux résiduel (µg/mL)</label><input type="number" step="0.1" min="0" name="tdm_taux" value="${t.taux ?? ''}" data-input="tdmInterp" required></div>
+      <div class="field"><label>Anticorps anti-médicament</label><select name="tdm_ac" data-change="tdmInterp"><option value="nd"${t.ac === 'nd' ? ' selected' : ''}>non dosés</option><option value="neg"${t.ac === 'neg' ? ' selected' : ''}>négatifs</option><option value="pos"${t.ac === 'pos' ? ' selected' : ''}>positifs</option></select></div>
+      <div class="field"><label>Titre des anticorps</label><input type="text" name="tdm_titre" value="${esc(t.titre || '')}" placeholder="si positifs, ex. 45 ng/mL"></div></div>
+      <div id="tdm-interp">${R.interpTdmHTML(i)}</div>
+      <p class="small muted" style="margin:0">Prélèvement à faire juste avant la perfusion ou l’injection. Lecture indicative, à confronter à la clinique et aux normes du laboratoire.</p>
+      <div class="field"><label>Remarques (conduite à tenir)</label><textarea name="note" placeholder="ex. optimisation à 10 mg/kg décidée en staff">${esc(s.note || '')}</textarea></div>`;
+  };
+  R.interpTdmHTML = i => !i.texte ? '<div class="callout">Saisissez le taux pour obtenir une lecture.</div>' : `<div class="callout ${i.niveau === 'bas' ? 'crit' : i.niveau === 'haut' ? 'warn' : i.niveau === 'cible' ? 'good' : ''}"><b>${i.niveau === 'bas' ? 'Sous la cible' : i.niveau === 'haut' ? 'Au-dessus de la cible' : i.niveau === 'cible' ? 'Dans la cible' : 'Lecture'}</b>${i.cible ? ` (cible ${esc(i.cible)})` : ''} — ${esc(i.texte)}</div>`;
+  R.actions.tdmInterp = el => { const f = el.closest('form'); if (!f) return; const g = n => (f.querySelector(`[name="${n}"]`) || {}).value; const t = { molecule: g('tdm_mol'), taux: g('tdm_taux') === '' ? null : +g('tdm_taux'), ac: g('tdm_ac'), titre: g('tdm_titre') }; const d = document.getElementById('tdm-interp'); if (d) d.innerHTML = R.interpTdmHTML(R.interpTdm(t)); };
   /* ---------- Courbes : séries biologiques et cliniques ---------- */
   R.nums = s => { const t = String(s ?? '').replace(/[\u00a0\u202f]/g, ' ').replace(/(\d) (?=\d{3}(?!\d))/g, '$1').replace(/,/g, '.').replace(/(\d)\s*[-–]\s*(?=\d)/g, '$1 '); return (t.match(/-?\d+(?:\.\d+)?/g) || []).map(Number); };
   R.num = s => { const n = R.nums(s); return n.length ? n[0] : null; };
@@ -207,13 +247,13 @@
         });
         return;
       }
-      const n = R.nums(s.resultat); if (!n.length) return; const it = R.itemBilan(s.id) || {};
+      const td = s.id === 'tdm' ? R.tdmDe(s, p) : null; const n = td && td.taux != null ? [td.taux] : R.nums(s.resultat); if (!n.length) return; const it = R.itemBilan(s.id) || {};
       const key = s.id + (s.nom ? ':' + s.nom : ''); const titre = s.nom ? `${s.nom}` : (s.id === 'tdm' ? 'Taux résiduel anti-TNF' : (it.label || s.label));
       const dciCycle = (R.proto(((p.historiqueProtocoles || []).find(h => h.cycle === (s.cycle || 1)) || {}).protocoleId || p.protocoleId) || {}).dci || '';
       const refTdm = /infliximab/i.test(dciCycle) ? [3, 7] : /adalimumab/i.test(dciCycle) ? [7.5, 12] : null;
       const ref = s.id === 'calpro' ? R.REFS.calpro : s.id === 'tdm' ? refTdm : null;
       const ch = charts[key] || (charts[key] = nouvChart(key, titre, it.unite || s.unite || R.uniteDe(s.resultat), ref)); if (s.id === 'tdm') { if (ch.dci === undefined) ch.dci = dciCycle; else if (ch.dci !== dciCycle) ch.ref = null; /* molécules différentes : pas de zone commune */ }
-      ajouterPt(ch, titre, { date: s.dateFaite, v: n[0], brut: s.resultat, note });
+      ajouterPt(ch, titre, { date: s.dateFaite, v: n[0], brut: s.resultat, note: td ? [R.AC_LIB[td.ac] + (td.titre ? ' (titre ' + td.titre + ')' : ''), note].filter(Boolean).join(' · ') : note });
     });
     return finaliser(charts);
   };
@@ -244,7 +284,7 @@
   const fmtV = v => (Math.abs(v) >= 100 ? Math.round(v) : Math.round(v * 10) / 10).toLocaleString('fr-FR');
   const niceStep = span => { const raw = span / 4 || 1; const p = Math.pow(10, Math.floor(Math.log10(raw))); const m = raw / p; return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 2.5 ? 2.5 : m <= 5 ? 5 : 10) * p; };
   R.courbe = (ch, o) => {
-    o = o || {}; const W = 520, H = o.h || 176, padL = 44, padR = 74, padT = 12, padB = 26; const plotW = W - padL - padR, plotH = H - padT - padB;
+    o = o || {}; const W = o.w || 520, H = o.h || 176, padL = o.compact ? 40 : 44, padR = o.compact ? 34 : 74, padT = 12, padB = o.compact ? 30 : 26; const plotW = W - padL - padR, plotH = H - padT - padB;
     const dates = [...new Set(ch.lignes.flatMap(l => l.pts.map(p => p.date)))].sort(); const t0 = R.parse(dates[0]).getTime(), t1 = R.parse(dates[dates.length - 1]).getTime();
     const span = Math.max(t1 - t0, 1); const x = d => dates.length === 1 ? padL + plotW / 2 : padL + (R.parse(d).getTime() - t0) / span * plotW;
     const vals = ch.lignes.flatMap(l => l.pts.map(p => p.v)); let lo = Math.min(...vals), hi = Math.max(...vals);
@@ -255,9 +295,9 @@
     /* graduations de l'axe des dates : au plus 5, sur des débuts de mois */
     let xt = ''; if (dates.length > 1) { const d0 = R.parse(dates[0]), d1 = R.parse(dates[dates.length - 1]); const nbMois = (d1.getFullYear() - d0.getFullYear()) * 12 + d1.getMonth() - d0.getMonth() + 1; const pas = Math.max(1, Math.ceil(nbMois / 5)); let d = new Date(d0.getFullYear(), d0.getMonth() + 1, 1); if (nbMois <= 2) d = new Date(d0.getFullYear(), d0.getMonth(), 1); for (let i = 0; d <= d1 && i < 12; d = new Date(d.getFullYear(), d.getMonth() + pas, 1), i++) { if (d < d0) continue; const px = x(R.iso(d)); xt += `<text x="${px.toFixed(1)}" y="${H - 8}" text-anchor="middle">${MOIS[d.getMonth()]} ${String(d.getFullYear()).slice(2)}</text>`; } } else xt += `<text x="${x(dates[0]).toFixed(1)}" y="${H - 8}" text-anchor="middle">${R.fmtDate(dates[0])}</text>`;
     if (dates.length > 1 && !xt) xt = [dates[0], dates[dates.length - 1]].map(d => `<text x="${x(d).toFixed(1)}" y="${H - 8}" text-anchor="middle">${R.fmtDate(d, { day: '2-digit', month: '2-digit' })}</text>`).join('');
-    const ref = ch.ref ? `<rect class="ref" x="${padL}" y="${y(ch.ref[1]).toFixed(1)}" width="${plotW}" height="${Math.max(1, y(ch.ref[0]) - y(ch.ref[1])).toFixed(1)}"/><text class="ref-lbl" x="${W - padR + 4}" y="${((y(ch.ref[0]) + y(ch.ref[1])) / 2 + 3.5).toFixed(1)}">réf. ${fmtV(ch.ref[0])}–${fmtV(ch.ref[1])}</text>` : '';
+    const ref = ch.ref ? `<rect class="ref" x="${padL}" y="${y(ch.ref[1]).toFixed(1)}" width="${plotW}" height="${Math.max(1, y(ch.ref[0]) - y(ch.ref[1])).toFixed(1)}"/>${o.compact ? '' : `<text class="ref-lbl" x="${W - padR + 4}" y="${((y(ch.ref[0]) + y(ch.ref[1])) / 2 + 3.5).toFixed(1)}">réf. ${fmtV(ch.ref[0])}–${fmtV(ch.ref[1])}</text>`}` : '';
     const lignes = ch.lignes.map((l, i) => { const cls = 's' + (i + 1); const d = l.pts.map((p, k) => `${k ? 'L' : 'M'}${x(p.date).toFixed(1)} ${y(p.v).toFixed(1)}`).join(' '); const last = l.pts[l.pts.length - 1]; const lab = ch.lignes.length === 1 || i === 0 ? `<text class="fin" x="${(x(last.date) + 8).toFixed(1)}" y="${(y(last.v) + 3.5).toFixed(1)}">${fmtV(last.v)}</text>` : ''; return `<path class="ligne ${cls}" d="${d}"/>${l.pts.map(p => `<circle class="pt ${cls}" cx="${x(p.date).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="4"/>`).join('')}${ch.ref ? '' : lab}`; }).join('');
-    const data = { dates, unite: ch.unite, lignes: ch.lignes.map(l => ({ nom: l.nom, v: dates.map(d => { const p = l.pts.find(q => q.date === d); return p ? { v: p.v, brut: p.brut, note: p.note, sym: p.sym } : null; }) })), xs: dates.map(d => +x(d).toFixed(1)), ys: ch.lignes.map(l => dates.map(d => { const p = l.pts.find(q => q.date === d); return p ? +y(p.v).toFixed(1) : null; })) };
+    const data = { W, dates, unite: ch.unite, lignes: ch.lignes.map(l => ({ nom: l.nom, v: dates.map(d => { const p = l.pts.find(q => q.date === d); return p ? { v: p.v, brut: p.brut, note: p.note, sym: p.sym } : null; }) })), xs: dates.map(d => +x(d).toFixed(1)), ys: ch.lignes.map(l => dates.map(d => { const p = l.pts.find(q => q.date === d); return p ? +y(p.v).toFixed(1) : null; })) };
     return `<div class="courbe" data-courbe="${esc(JSON.stringify(data))}"><svg viewBox="0 0 ${W} ${H}" role="img" tabindex="0" aria-label="${esc(ch.titre)}${ch.unite ? ' en ' + esc(ch.unite) : ''}, ${dates.length} valeur(s)">${g}${ref}${xt}<line class="axis" x1="${padL}" x2="${W - padR}" y1="${(padT + plotH).toFixed(1)}" y2="${(padT + plotH).toFixed(1)}"/>${lignes}<line class="cross" x1="0" x2="0" y1="${padT}" y2="${padT + plotH}"/><circle class="focus" r="6" cx="-20" cy="-20"/></svg>${ch.lignes.length > 1 ? `<div class="legend courbe-legend">${ch.lignes.map((l, i) => `<span><i class="lk s${i + 1}"></i>${esc(l.nom)}</span>`).join('')}</div>` : ''}</div>`;
   };
 
@@ -281,11 +321,11 @@
     const firstY = data.ys.map(a => a[idx]).find(v => v != null); if (firstY != null) { foc.setAttribute('cx', px); foc.setAttribute('cy', firstY); }
     const t = getTip(); t.textContent = ''; const h = document.createElement('div'); h.className = 'tip-date'; h.textContent = R.fmtDateLong(data.dates[idx]); t.appendChild(h);
     data.lignes.forEach((l, i) => { const p = l.v[idx]; if (!p) return; const row = document.createElement('div'); row.className = 'tip-row'; const k = document.createElement('i'); k.className = 'lk s' + (i + 1); const nom = document.createElement('span'); nom.textContent = l.nom; const val = document.createElement('b'); val.textContent = `${p.sym || ''}${fmtV(p.v)}${data.unite ? ' ' + data.unite : ''}`; row.appendChild(k); row.appendChild(nom); row.appendChild(val); t.appendChild(row); if (p.note) { const n = document.createElement('div'); n.className = 'tip-note'; n.textContent = p.note; t.appendChild(n); } });
-    t.style.display = 'block'; const r = svg.getBoundingClientRect(); const sx = r.left + (px / 520) * r.width; const left = Math.min(window.innerWidth - t.offsetWidth - 8, sx + 12); const top = Math.max(8, (cy != null ? cy : r.top + 20) - t.offsetHeight - 10); t.style.left = left + 'px'; t.style.top = top + 'px';
+    t.style.display = 'block'; const r = svg.getBoundingClientRect(); const sx = r.left + (px / (data.W || 520)) * r.width; const left = Math.min(window.innerWidth - t.offsetWidth - 8, sx + 12); const top = Math.max(8, (cy != null ? cy : r.top + 20) - t.offsetHeight - 10); t.style.left = left + 'px'; t.style.top = top + 'px';
     wrap.dataset.idx = idx;
   };
   const cacher = wrap => { if (tip) tip.style.display = 'none'; if (wrap) { const c = wrap.querySelector('.cross'); if (c) c.style.opacity = '0'; const f = wrap.querySelector('.focus'); if (f) { f.setAttribute('cx', -20); f.setAttribute('cy', -20); } } };
-  document.addEventListener('pointermove', e => { const wrap = e.target.closest && e.target.closest('.courbe[data-courbe]'); if (!wrap) { if (tip && tip.style.display === 'block' && !e.target.closest('#courbe-tip')) { document.querySelectorAll('.courbe[data-courbe]').forEach(cacher); cacher(); } return; } const data = lireCourbe(wrap); if (!data) return; const svg = wrap.querySelector('svg'); const r = svg.getBoundingClientRect(); const px = (e.clientX - r.left) / r.width * 520; let best = 0, bd = Infinity; data.xs.forEach((x, i) => { const d = Math.abs(x - px); if (d < bd) { bd = d; best = i; } }); montrer(wrap, best, e.clientX, e.clientY); });
+  document.addEventListener('pointermove', e => { const wrap = e.target.closest && e.target.closest('.courbe[data-courbe]'); if (!wrap) { if (tip && tip.style.display === 'block' && !e.target.closest('#courbe-tip')) { document.querySelectorAll('.courbe[data-courbe]').forEach(cacher); cacher(); } return; } const data = lireCourbe(wrap); if (!data) return; const svg = wrap.querySelector('svg'); const r = svg.getBoundingClientRect(); const px = (e.clientX - r.left) / r.width * (data.W || 520); let best = 0, bd = Infinity; data.xs.forEach((x, i) => { const d = Math.abs(x - px); if (d < bd) { bd = d; best = i; } }); montrer(wrap, best, e.clientX, e.clientY); });
   /* l'infobulle disparaît quand on clique ailleurs (fermeture d'une fenêtre comprise) ou sur Échap */
   document.addEventListener('click', e => { if (tip && tip.style.display === 'block' && !(e.target.closest && e.target.closest('.courbe[data-courbe]'))) document.querySelectorAll('.courbe[data-courbe]').forEach(cacher), cacher(); }, true);
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && tip) { document.querySelectorAll('.courbe[data-courbe]').forEach(cacher); cacher(); } }, true);
@@ -317,6 +357,23 @@
     cliniqueCourbes(el) { R.modalCourbes(R.patient(el.dataset.pid), 'clinique'); },
     courbesPeriode(el) { R.ui.courbes.periode = +el.dataset.mois; const p = R.patient(R.ui.courbes.pid); if (p) R.modalCourbes(p, R.ui.courbes.quoi); }
   });
+
+  /* ---------- Courbes pour les documents imprimés (carnet professionnel, compte rendu) ---------- */
+  R.fmtV = fmtV;
+  const ORDRE_DOC = ['poids', 'crp', 'calpro', 'tdm', 'hb', 'alb', 'transa', 'ferr', 'b12', 'imc', 'temp', 'fc', 'ta'];
+  R.chartsDoc = (p, depuis) => { const all = [...R.seriesClinique(p), ...R.seriesBio(p)]; const rang = ch => { const i = ORDRE_DOC.indexOf(ch.key); return i < 0 ? 50 : i; }; return filtrerCharts(all, depuis || null).filter(ch => ch.lignes.some(l => l.pts.length >= 2)).sort((a, b) => rang(a) - rang(b)); };
+  R.courbesDoc = (p, o) => {
+    o = o || {}; const charts = R.chartsDoc(p, o.depuis).slice(0, o.max || 6); if (!charts.length) return '';
+    return `<div class="doc-courbes" style="grid-template-columns:repeat(${o.cols || 3},minmax(0,1fr))">${charts.map(ch => { const l0 = ch.lignes[0]; const last = l0.pts[l0.pts.length - 1], prev = l0.pts[l0.pts.length - 2] || l0.avant; const dv = prev ? last.v - prev.v : null;
+      return `<div class="doc-courbe"><div class="dc-t"><b>${esc(ch.titre)}</b><span>${esc(ch.unite || '')}</span></div><div class="dc-v">${ch.lignes.length > 1 ? esc(l0.nom) + ' ' : ''}<b>${last.sym || ''}${fmtV(last.v)}</b> le ${R.fmtDate(last.date)}${dv != null ? ` · ${dv > 0 ? '+' : ''}${fmtV(dv)}` : ''}${ch.ref ? ` · réf. ${fmtV(ch.ref[0])}–${fmtV(ch.ref[1])}` : ''}</div>${R.courbe(ch, { h: 150, w: 340, compact: true })}</div>`; }).join('')}</div>`;
+  };
+  /* dernières valeurs : une ligne par donnée suivie, avec la précédente et le sens d'évolution */
+  R.tableDernieres = (p, depuis) => {
+    const charts = [...R.seriesClinique(p), ...R.seriesBio(p)].filter(ch => ['poids', 'imc', 'crp', 'calpro', 'tdm', 'hb', 'alb', 'transa', 'ferr', 'b12'].includes(ch.key) || /^libre-bio|^vit/.test(ch.key));
+    const rows = []; charts.forEach(ch => ch.lignes.forEach(l => { const pts = l.pts; const last = pts[pts.length - 1]; if (!last || (depuis && last.date < depuis)) return; const prev = pts[pts.length - 2]; const sens = !prev ? '' : Math.abs(last.v - prev.v) < 1e-9 ? 'stable' : last.v > prev.v ? 'en hausse' : 'en baisse'; const hors = ch.ref && (last.v < ch.ref[0] || last.v > ch.ref[1]);
+      rows.push(`<tr><td>${esc(ch.lignes.length > 1 ? l.nom : ch.titre)}</td><td class="m"${hors ? ' style="font-weight:700"' : ''}>${last.sym || ''}${fmtV(last.v)} ${esc(ch.unite || '')}${hors ? ' *' : ''}</td><td class="m">${R.fmtDate(last.date)}</td><td class="m">${prev ? `${prev.sym || ''}${fmtV(prev.v)} (${R.fmtDate(prev.date)})` : '—'}</td><td>${sens}</td><td>${ch.ref ? `${fmtV(ch.ref[0])}–${fmtV(ch.ref[1])}` : ''}</td></tr>`); }));
+    return rows.length ? `<table class="doc-table"><thead><tr><th>Donnée</th><th>Dernière valeur</th><th>Date</th><th>Précédente</th><th>Évolution</th><th>Réf.</th></tr></thead><tbody>${rows.join('')}</tbody></table><div style="font-size:8pt;color:#7E8C88;margin-top:3px">* hors de la zone de référence indicative</div>` : '<p style="font-size:9.5pt;color:#7E8C88;margin:0">Aucun résultat chiffré sur la période.</p>';
+  };
   /* Un contrôle annulé par l'équipe n'est pas recréé par le plan ou la prolongation (tolérance de 10 jours) */
   R.bloqueParAnnulation = (p, s) => p.surveillance.some(x => x.statut === 'annulee' && x.annuleLe && !x.annuleAuto && x.id === s.id && (x.nom || '') === (s.nom || '') && x.echeance && s.echeance && Math.abs(R.diffDays(x.echeance, s.echeance)) <= 10);
   /* Le dosage résiduel se prélève juste avant une perfusion : chaque dosage prévu est placé le jour de la séance suivante */
