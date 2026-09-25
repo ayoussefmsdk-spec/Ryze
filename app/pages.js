@@ -179,8 +179,8 @@
     const pBio = prochain(R.estBio), pAutre = prochain(x => !R.estBio(x) && !R.estClin(x));
     const sub = (n, txt) => n ? `${txt} le ${R.fmtDate(n)}${n < t ? ' <b>(en retard)</b>' : ''}` : '';
     return `<div class="stack">
-      <section class="card"><div class="card-head"><div><h2>Examens cliniques</h2><div class="sub">poids, douleur, fièvre, atteinte périnéale, syndrome digestif — saisis à chaque séance ou en consultation</div></div></div><div class="card-body flush">${R.tableClinique(p)}</div></section>
-      <section class="card"><div class="card-head"><div><h2>Résultats biologiques</h2><div class="sub">une ligne par date, une colonne par analyse${pBio ? ' · ' + sub(pBio, 'prochain prélèvement prévu') : ''}</div></div></div><div class="card-body flush">${R.tableBio(p)}</div></section>
+      <section class="card"><div class="card-head"><div><h2>Examens cliniques</h2><div class="sub">poids, douleur, fièvre, atteinte périnéale, syndrome digestif — saisis à chaque séance ou en consultation</div></div><button class="btn sm" data-action="cliniqueCourbes" data-pid="${p.id}">${R.icon('chart', 'ico')}Détails et courbes</button></div><div class="card-body flush">${R.tableClinique(p)}</div></section>
+      <section class="card"><div class="card-head"><div><h2>Résultats biologiques</h2><div class="sub">une ligne par date, une colonne par analyse${pBio ? ' · ' + sub(pBio, 'prochain prélèvement prévu') : ''}</div></div><button class="btn sm" data-action="bioCourbes" data-pid="${p.id}">${R.icon('chart', 'ico')}Détails et courbes</button></div><div class="card-body flush">${R.tableBio(p)}</div></section>
       <section class="card"><div class="card-head"><div><h2>Endoscopies, imagerie et autres contrôles</h2><div class="sub">prévus, faits ou annulés — résultats et remarques${pAutre ? ' · ' + sub(pAutre, 'prochain contrôle prévu') : ''}</div></div>${d ? `<button class="btn sm" data-action="survAjouter" data-pid="${p.id}">${R.icon('plus', 'ico')}Contrôle</button>` : ''}</div><div class="card-body flush">${R.tableAutres(p, w, d)}</div></section>
       ${tabBilan(p)}</div>`;
   }

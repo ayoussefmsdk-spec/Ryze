@@ -163,8 +163,8 @@
   };
 
   /* ---------- Tableaux du dossier : examens cliniques et résultats biologiques ---------- */
-  R.tableClinique = p => {
-    const rows = [...p.cures.filter(c => c.statut === 'realisee' && c.clinique && !R.cliniqueVide(c.clinique)).map(c => ({ date: c.dateReelle, src: `Séance ${c.label}`, poids: c.poids, d: c.clinique })), ...p.surveillance.filter(s => s.statut === 'faite' && s.clinique).map(s => ({ date: s.dateFaite, src: s.label, poids: s.clinique.poids, d: s.clinique }))].sort((a, b) => b.date.localeCompare(a.date));
+  R.tableClinique = (p, depuis) => {
+    const rows = [...p.cures.filter(c => c.statut === 'realisee' && c.clinique && !R.cliniqueVide(c.clinique)).map(c => ({ date: c.dateReelle, src: `Séance ${c.label}`, poids: c.poids, d: c.clinique })), ...p.surveillance.filter(s => s.statut === 'faite' && s.clinique).map(s => ({ date: s.dateFaite, src: s.label, poids: s.clinique.poids, d: s.clinique }))].filter(r => !depuis || r.date >= depuis).sort((a, b) => b.date.localeCompare(a.date));
     return `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Date</th><th>Contexte</th><th>Poids</th><th>Taille</th><th>Douleur</th><th>Fièvre</th><th>Périnéal / cutané</th><th>Digestif · remarques</th></tr></thead><tbody>${rows.map(r => `<tr class="${R.alerteClinique(r.d) ? '' : ''}"><td class="nowrap">${R.fmtDate(r.date)}</td><td class="small">${esc(r.src)}</td><td class="num">${r.poids ? r.poids + ' kg' : '—'}</td><td class="num">${r.d.taille ? r.d.taille + ' cm' : '—'}</td><td class="small">${r.d.douleur ? `<span class="badge warn">${(r.d.douleurLoc || []).map(x => (R.CLINIQUE.douleurLoc.find(y => y[0] === x) || [x, x])[1]).join(' + ') || 'oui'}</span> ${esc(r.d.douleurNote || '')}` : '<span class="muted">non</span>'}</td><td class="small">${r.d.fievre ? `<span class="badge crit">${r.d.temperature ? r.d.temperature + ' °C' : 'oui'}</span> ${esc(r.d.fievreNote || '')}` : '<span class="muted">non</span>'}</td><td class="small">${(r.d.perineal || []).length ? `<span class="badge crit">${r.d.perineal.map(x => (R.CLINIQUE.perineal.find(y => y[0] === x) || [x, x])[1]).join(', ')}</span> ` : ''}${esc(r.d.cutaneNote || '')}${!(r.d.perineal || []).length && !r.d.cutaneNote ? '<span class="muted">RAS</span>' : ''}</td><td class="small">${esc(r.d.digestif || '')}${r.d.digestif && r.d.remarques ? ' · ' : ''}${esc(r.d.remarques || '')}${r.d.puberte && !/Non applicable/.test(r.d.puberte) ? ' · ' + esc(r.d.puberte) : ''}</td></tr>`).join('') || '<tr><td colspan="8" class="empty">Aucun examen clinique saisi — remplissez le bilan clinique dans la fenêtre « Fait » d’une séance</td></tr>'}</tbody></table></div>`;
   };
   R.estBio = s => !!(s.valeurs || ['calpro', 'tdm', 'vit', 'actnf', 'libre-bio'].includes(s.id) || (R.itemBilan(s.id) && R.itemBilan(s.id).groupe.id === 'bio'));
@@ -175,12 +175,138 @@
     if (!rows.length) return '<div class="empty">Aucune endoscopie, imagerie ou contrôle personnalisé dans ce dossier — ajoutez-en depuis Planification → Contrôle</div>';
     return `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Échéance</th><th>Contrôle</th><th>Bilan</th><th>Statut</th><th>Fait le</th><th>Résultat</th><th>Remarques</th><th></th></tr></thead><tbody>${rows.map(({ s, i }) => `<tr class="${s.statut === 'annulee' ? 'done' : ''}"><td class="nowrap">${R.fmtDate(s.echeance)}${s.echeance < t && s.statut === 'prevue' ? ' <span class="badge crit" style="padding:0 6px">retard</span>' : ''}</td><td><b>${esc(s.label)}</b>${(s.reports || []).length ? ` <span class="tag" title="reporté ${s.reports.length} fois">reporté</span>` : ''}</td><td class="small">${esc(s.cat || '')}</td><td>${R.statutSurvBadge(s)}</td><td class="nowrap">${s.dateFaite ? R.fmtDate(s.dateFaite) : '—'}</td><td class="small">${esc(s.resultat || '')}</td><td class="small">${esc(s.note || '')}</td><td class="actions">${R.actionsControle ? R.actionsControle(p, s, i, w, d) : ''}</td></tr>`).join('')}</tbody></table></div>`;
   };
-  R.tableBio = p => {
-    const faits = p.surveillance.filter(s => s.statut === 'faite' && R.estBio(s));
+  R.tableBio = (p, depuis) => {
+    const faits = p.surveillance.filter(s => s.statut === 'faite' && R.estBio(s) && (!depuis || (s.dateFaite || '') >= depuis));
     if (!faits.length) return '<div class="empty">Aucun résultat biologique saisi</div>';
     const cols = []; const add = (k, l) => { if (!cols.some(c => c.k === k)) cols.push({ k, l }); };
     const bio = R.itemBilan('biostd'); faits.forEach(s => { if (s.valeurs) Object.keys(s.valeurs).forEach(k => add(k, (bio.sous.find(x => x.id === k) || { label: k }).label)); else add(s.id + (s.nom ? ':' + s.nom : ''), s.nom ? s.nom : s.label.split(' (')[0]); });
     const dates = [...new Set(faits.map(s => s.dateFaite))].sort((a, b) => b.localeCompare(a));
     return `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Date</th>${cols.map(c => `<th>${esc(c.l)}</th>`).join('')}<th>Remarques</th></tr></thead><tbody>${dates.map(d => { const ss = faits.filter(s => s.dateFaite === d); return `<tr><td class="nowrap">${R.fmtDate(d)}</td>${cols.map(c => { let v = ''; ss.forEach(s => { if (s.valeurs && s.valeurs[c.k]) v = s.valeurs[c.k]; else if (!s.valeurs && c.k === s.id + (s.nom ? ':' + s.nom : '')) v = s.resultat; }); return `<td class="num small">${esc(v || '')}</td>`; }).join('')}<td class="small">${esc(ss.map(s => s.note).filter(Boolean).join(' · '))}</td></tr>`; }).join('')}</tbody></table></div>`;
   };
+
+  /* ---------- Courbes : séries biologiques et cliniques ---------- */
+  R.nums = s => (String(s ?? '').replace(/,/g, '.').match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
+  R.num = s => { const n = R.nums(s); return n.length ? n[0] : null; };
+  R.uniteDe = s => { const m = String(s || '').match(/-?\d+(?:[.,]\d+)?\s*([a-zA-Zµ%]+(?:\/[a-zA-Zµ]+)?)/); return m ? m[1] : ''; };
+  /* zones de référence indicatives (adulte) : à adapter aux normes du laboratoire */
+  R.REFS = { crp: [0, 5], transa: [0, 40], alb: [35, 50], ferr: [30, 300], b12: [200, 900], calpro: [0, 250], temperature: [36, 37.5], fc: [50, 100], hbF: [12, 16], hbM: [13, 17] };
+  const nouvChart = (key, titre, unite, ref) => ({ key, titre, unite: unite || '', ref: ref || null, lignes: [] });
+  const ajouterPt = (ch, nom, pt) => { let l = ch.lignes.find(x => x.nom === nom); if (!l) { l = { nom, pts: [] }; ch.lignes.push(l); } l.pts.push(pt); };
+  const finaliser = charts => Object.values(charts).map(ch => { ch.lignes.forEach(l => l.pts.sort((a, b) => a.date.localeCompare(b.date))); ch.lignes = ch.lignes.filter(l => l.pts.length); return ch; }).filter(ch => ch.lignes.length);
+
+  R.seriesBio = p => {
+    const charts = {}; const bio = R.itemBilan('biostd') || { sous: [] }; const antiTNF = /TNF/.test((R.proto(p.protocoleId) || {}).classe || '');
+    p.surveillance.filter(s => s.statut === 'faite' && s.dateFaite && R.estBio(s)).forEach(s => {
+      const note = s.note || '';
+      if (s.valeurs) {
+        Object.keys(s.valeurs).forEach(k => {
+          const brut = s.valeurs[k]; const def = bio.sous.find(x => x.id === k) || { id: k, label: k, unite: '' }; const n = R.nums(brut); if (!n.length) return;
+          if (k === 'transa' && n.length >= 2) { const ch = charts.transa || (charts.transa = nouvChart('transa', 'ASAT / ALAT', def.unite || 'UI/L', R.REFS.transa)); ajouterPt(ch, 'ASAT', { date: s.dateFaite, v: n[0], brut, note }); ajouterPt(ch, 'ALAT', { date: s.dateFaite, v: n[1], brut, note }); return; }
+          if (k === 'nfs') { const hb = /h[ée]mo|hb/i.test(brut); const ch = charts.nfs || (charts.nfs = nouvChart('nfs', hb ? 'Hémoglobine (NFS)' : 'NFS — première valeur saisie', def.unite || R.uniteDe(brut), hb ? (p.sexe === 'F' ? R.REFS.hbF : R.REFS.hbM) : null)); ajouterPt(ch, ch.titre, { date: s.dateFaite, v: n[0], brut, note }); return; }
+          const ch = charts[k] || (charts[k] = nouvChart(k, def.label, def.unite || R.uniteDe(brut), R.REFS[k] || null)); ajouterPt(ch, def.label, { date: s.dateFaite, v: n[0], brut, note });
+        });
+        return;
+      }
+      const n = R.nums(s.resultat); if (!n.length) return; const it = R.itemBilan(s.id) || {};
+      const key = s.id + (s.nom ? ':' + s.nom : ''); const titre = s.nom ? `${s.nom}` : (s.id === 'tdm' ? 'Taux résiduel anti-TNF' : (it.label || s.label));
+      const ref = s.id === 'calpro' ? R.REFS.calpro : s.id === 'tdm' && antiTNF ? (/infliximab/i.test(R.proto(p.protocoleId)?.dci || '') ? [3, 7] : /adalimumab/i.test(R.proto(p.protocoleId)?.dci || '') ? [7.5, 12] : null) : null;
+      const ch = charts[key] || (charts[key] = nouvChart(key, titre, it.unite || s.unite || R.uniteDe(s.resultat), ref)); ajouterPt(ch, titre, { date: s.dateFaite, v: n[0], brut: s.resultat, note });
+    });
+    return finaliser(charts);
+  };
+
+  /* lignes cliniques : une par séance réalisée ou consultation faite */
+  R.lignesCliniques = p => {
+    const rows = [...p.cures.filter(c => c.statut === 'realisee' && c.dateReelle).map(c => ({ date: c.dateReelle, src: `Séance ${c.label}`, poids: c.poids || null, taille: (c.clinique && c.clinique.taille) || null, temp: R.num(c.constantes && c.constantes.temp) ?? (c.clinique && c.clinique.temperature) ?? null, fc: R.num(c.constantes && c.constantes.fc), ta: (c.constantes && c.constantes.ta) || '', d: c.clinique || null, tolerance: c.tolerance || '' })),
+      ...p.surveillance.filter(s => s.statut === 'faite' && s.dateFaite && s.clinique).map(s => ({ date: s.dateFaite, src: s.label, poids: s.clinique.poids || null, taille: s.clinique.taille || null, temp: s.clinique.temperature || null, fc: null, ta: '', d: s.clinique, tolerance: '' }))];
+    return rows.sort((a, b) => a.date.localeCompare(b.date));
+  };
+  R.seriesClinique = p => {
+    const charts = {}; const rows = R.lignesCliniques(p);
+    rows.forEach(r => {
+      if (r.poids) { const ch = charts.poids || (charts.poids = nouvChart('poids', 'Poids', 'kg', null)); ajouterPt(ch, 'Poids', { date: r.date, v: r.poids, brut: r.poids + ' kg', note: r.src }); const taille = r.taille || p.taille; if (taille) { const imc = +(r.poids / Math.pow(taille / 100, 2)).toFixed(1); const c2 = charts.imc || (charts.imc = nouvChart('imc', 'IMC', 'kg/m²', [18.5, 25])); ajouterPt(c2, 'IMC', { date: r.date, v: imc, brut: imc + ' kg/m²', note: `${r.poids} kg · ${taille} cm` }); } }
+      if (r.taille) { const ch = charts.taille || (charts.taille = nouvChart('taille', 'Taille', 'cm', null)); ajouterPt(ch, 'Taille', { date: r.date, v: r.taille, brut: r.taille + ' cm', note: r.src }); }
+      if (r.temp != null && r.temp > 30) { const ch = charts.temp || (charts.temp = nouvChart('temp', 'Température', '°C', R.REFS.temperature)); ajouterPt(ch, 'Température', { date: r.date, v: r.temp, brut: r.temp + ' °C', note: r.src }); }
+      if (r.fc) { const ch = charts.fc || (charts.fc = nouvChart('fc', 'Fréquence cardiaque', 'bpm', R.REFS.fc)); ajouterPt(ch, 'FC', { date: r.date, v: r.fc, brut: r.fc + ' bpm', note: r.src }); }
+      const ta = R.nums(r.ta); if (ta.length >= 2) { const ch = charts.ta || (charts.ta = nouvChart('ta', 'Tension artérielle', 'mmHg', null)); ajouterPt(ch, 'Systolique', { date: r.date, v: ta[0], brut: r.ta, note: r.src }); ajouterPt(ch, 'Diastolique', { date: r.date, v: ta[1], brut: r.ta, note: r.src }); }
+    });
+    /* la taille n'a d'intérêt en courbe que si elle change (enfant, adolescent) */
+    if (charts.taille && new Set(charts.taille.lignes[0].pts.map(x => x.v)).size < 2) delete charts.taille;
+    const ordre = ['poids', 'imc', 'taille', 'temp', 'fc', 'ta'];
+    return finaliser(charts).sort((a, b) => ordre.indexOf(a.key) - ordre.indexOf(b.key));
+  };
+
+  /* ---------- Traceur : courbe temporelle SVG avec survol et clavier ---------- */
+  const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+  const fmtV = v => (Math.abs(v) >= 100 ? Math.round(v) : Math.round(v * 10) / 10).toLocaleString('fr-FR');
+  const niceStep = span => { const raw = span / 4 || 1; const p = Math.pow(10, Math.floor(Math.log10(raw))); const m = raw / p; return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 2.5 ? 2.5 : m <= 5 ? 5 : 10) * p; };
+  R.courbe = (ch, o) => {
+    o = o || {}; const W = 520, H = o.h || 176, padL = 44, padR = 74, padT = 12, padB = 26; const plotW = W - padL - padR, plotH = H - padT - padB;
+    const dates = [...new Set(ch.lignes.flatMap(l => l.pts.map(p => p.date)))].sort(); const t0 = R.parse(dates[0]).getTime(), t1 = R.parse(dates[dates.length - 1]).getTime();
+    const span = Math.max(t1 - t0, 1); const x = d => dates.length === 1 ? padL + plotW / 2 : padL + (R.parse(d).getTime() - t0) / span * plotW;
+    const vals = ch.lignes.flatMap(l => l.pts.map(p => p.v)); let lo = Math.min(...vals), hi = Math.max(...vals);
+    if (ch.ref) { lo = Math.min(lo, ch.ref[0]); hi = Math.max(hi, ch.ref[1]); }
+    if (lo === hi) { lo -= 1; hi += 1; } const marge = (hi - lo) * 0.12; lo -= marge; hi += marge; if (lo > 0 && lo < 0.35 * hi) lo = 0; if (Math.min(...vals) >= 0 && lo < 0) lo = 0;
+    const step = niceStep(hi - lo); lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step; const y = v => padT + plotH - (v - lo) / (hi - lo) * plotH;
+    let g = ''; for (let v = lo; v <= hi + 1e-9; v += step) g += `<line class="grid-line" x1="${padL}" x2="${W - padR}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/><text x="${padL - 6}" y="${(y(v) + 3.5).toFixed(1)}" text-anchor="end">${fmtV(v)}</text>`;
+    /* graduations de l'axe des dates : au plus 5, sur des débuts de mois */
+    let xt = ''; if (dates.length > 1) { const d0 = R.parse(dates[0]), d1 = R.parse(dates[dates.length - 1]); const nbMois = (d1.getFullYear() - d0.getFullYear()) * 12 + d1.getMonth() - d0.getMonth() + 1; const pas = Math.max(1, Math.ceil(nbMois / 5)); let d = new Date(d0.getFullYear(), d0.getMonth() + 1, 1); if (nbMois <= 2) d = new Date(d0.getFullYear(), d0.getMonth(), 1); for (let i = 0; d <= d1 && i < 12; d = new Date(d.getFullYear(), d.getMonth() + pas, 1), i++) { if (d < d0) continue; const px = x(R.iso(d)); xt += `<text x="${px.toFixed(1)}" y="${H - 8}" text-anchor="middle">${MOIS[d.getMonth()]} ${String(d.getFullYear()).slice(2)}</text>`; } } else xt += `<text x="${x(dates[0]).toFixed(1)}" y="${H - 8}" text-anchor="middle">${R.fmtDate(dates[0])}</text>`;
+    const ref = ch.ref ? `<rect class="ref" x="${padL}" y="${y(ch.ref[1]).toFixed(1)}" width="${plotW}" height="${Math.max(1, y(ch.ref[0]) - y(ch.ref[1])).toFixed(1)}"/><text class="ref-lbl" x="${W - padR + 4}" y="${((y(ch.ref[0]) + y(ch.ref[1])) / 2 + 3.5).toFixed(1)}">réf. ${fmtV(ch.ref[0])}–${fmtV(ch.ref[1])}</text>` : '';
+    const lignes = ch.lignes.map((l, i) => { const cls = 's' + (i + 1); const d = l.pts.map((p, k) => `${k ? 'L' : 'M'}${x(p.date).toFixed(1)} ${y(p.v).toFixed(1)}`).join(' '); const last = l.pts[l.pts.length - 1]; const lab = ch.lignes.length === 1 || i === 0 ? `<text class="fin" x="${(x(last.date) + 8).toFixed(1)}" y="${(y(last.v) + 3.5).toFixed(1)}">${fmtV(last.v)}</text>` : ''; return `<path class="ligne ${cls}" d="${d}"/>${l.pts.map(p => `<circle class="pt ${cls}" cx="${x(p.date).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="4"/>`).join('')}${ch.ref ? '' : lab}`; }).join('');
+    const data = { dates, unite: ch.unite, lignes: ch.lignes.map(l => ({ nom: l.nom, v: dates.map(d => { const p = l.pts.find(q => q.date === d); return p ? { v: p.v, brut: p.brut, note: p.note } : null; }) })), xs: dates.map(d => +x(d).toFixed(1)), ys: ch.lignes.map(l => dates.map(d => { const p = l.pts.find(q => q.date === d); return p ? +y(p.v).toFixed(1) : null; })) };
+    return `<div class="courbe" data-courbe="${esc(JSON.stringify(data))}"><svg viewBox="0 0 ${W} ${H}" role="img" tabindex="0" aria-label="${esc(ch.titre)}${ch.unite ? ' en ' + esc(ch.unite) : ''}, ${dates.length} valeur(s)">${g}${ref}${xt}<line class="axis" x1="${padL}" x2="${W - padR}" y1="${(padT + plotH).toFixed(1)}" y2="${(padT + plotH).toFixed(1)}"/>${lignes}<line class="cross" x1="0" x2="0" y1="${padT}" y2="${padT + plotH}"/><circle class="focus" r="6" cx="-20" cy="-20"/></svg>${ch.lignes.length > 1 ? `<div class="legend courbe-legend">${ch.lignes.map((l, i) => `<span><i class="lk s${i + 1}"></i>${esc(l.nom)}</span>`).join('')}</div>` : ''}</div>`;
+  };
+
+  /* signes cliniques par séance : une ligne par signe, un point par date */
+  R.stripSignes = rows => {
+    const items = rows.filter(r => r.d); if (!items.length) return '<div class="empty">Aucun examen clinique saisi</div>';
+    const SIGNES = [['douleur', 'Douleur', r => r.d.douleur, r => ((r.d.douleurLoc || []).join(' + ') + (r.d.douleurNote ? ' — ' + r.d.douleurNote : '')) || 'présente'], ['fievre', 'Fièvre', r => r.d.fievre, r => (r.d.temperature ? r.d.temperature + ' °C' : 'oui') + (r.d.fievreNote ? ' — ' + r.d.fievreNote : '')], ['perineal', 'Périnéal', r => (r.d.perineal || []).length > 0, r => (r.d.perineal || []).join(', ') + (r.d.cutaneNote ? ' — ' + r.d.cutaneNote : '')], ['digestif', 'Digestif', r => !!r.d.digestif, r => r.d.digestif]];
+    const W = 520, rowH = 22, padL = 70, padR = 16, padT = 6, padB = 24; const H = padT + rowH * SIGNES.length + padB; const plotW = W - padL - padR;
+    const t0 = R.parse(items[0].date).getTime(), t1 = R.parse(items[items.length - 1].date).getTime(); const x = d => items.length === 1 ? padL + plotW / 2 : padL + (R.parse(d).getTime() - t0) / Math.max(1, t1 - t0) * plotW;
+    let svg = ''; SIGNES.forEach(([k, lab], i) => { const cy = padT + rowH * i + rowH / 2; svg += `<line class="grid-line" x1="${padL}" x2="${W - padR}" y1="${cy}" y2="${cy}"/><text x="${padL - 8}" y="${cy + 3.5}" text-anchor="end">${lab}</text>`; items.forEach(r => { const on = SIGNES[i][2](r); svg += `<circle class="sig ${on ? 'on' : 'off'}" cx="${x(r.date).toFixed(1)}" cy="${cy}" r="${on ? 5 : 3}"><title>${esc(R.fmtDate(r.date))} · ${lab} : ${on ? esc(SIGNES[i][3](r)) : 'non'}</title></circle>`; }); });
+    items.forEach((r, i) => { if (items.length <= 8 || i % Math.ceil(items.length / 8) === 0 || i === items.length - 1) svg += `<text x="${x(r.date).toFixed(1)}" y="${H - 8}" text-anchor="middle">${R.fmtDate(r.date, { day: '2-digit', month: '2-digit', year: '2-digit' })}</text>`; });
+    return `<div class="courbe strip"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Signes cliniques par séance">${svg}</svg><div class="legend"><span><i class="sw" style="background:var(--crit)"></i>signe présent</span><span><i class="sw" style="background:var(--line-strong);width:6px;height:6px;border-radius:50%"></i>examiné, absent</span></div></div>`;
+  };
+
+  /* survol et clavier : un seul écouteur pour toutes les courbes de la page */
+  let tip = null; const getTip = () => { if (!tip) { tip = document.createElement('div'); tip.id = 'courbe-tip'; document.body.appendChild(tip); } return tip; };
+  const montrer = (wrap, idx, cx, cy) => {
+    let data; try { data = JSON.parse(wrap.dataset.courbe); } catch (e) { return; } if (!data || idx == null || idx < 0 || idx >= data.dates.length) return;
+    const svg = wrap.querySelector('svg'); const cross = svg.querySelector('.cross'); const foc = svg.querySelector('.focus'); const px = data.xs[idx]; cross.setAttribute('x1', px); cross.setAttribute('x2', px); cross.style.opacity = '.7';
+    const firstY = data.ys.map(a => a[idx]).find(v => v != null); if (firstY != null) { foc.setAttribute('cx', px); foc.setAttribute('cy', firstY); }
+    const t = getTip(); t.textContent = ''; const h = document.createElement('div'); h.className = 'tip-date'; h.textContent = R.fmtDateLong(data.dates[idx]); t.appendChild(h);
+    data.lignes.forEach((l, i) => { const p = l.v[idx]; if (!p) return; const row = document.createElement('div'); row.className = 'tip-row'; const k = document.createElement('i'); k.className = 'lk s' + (i + 1); const nom = document.createElement('span'); nom.textContent = l.nom; const val = document.createElement('b'); val.textContent = `${fmtV(p.v)}${data.unite ? ' ' + data.unite : ''}`; row.appendChild(k); row.appendChild(nom); row.appendChild(val); t.appendChild(row); if (p.note) { const n = document.createElement('div'); n.className = 'tip-note'; n.textContent = p.note; t.appendChild(n); } });
+    t.style.display = 'block'; const r = svg.getBoundingClientRect(); const sx = r.left + (px / 520) * r.width; const left = Math.min(window.innerWidth - t.offsetWidth - 8, sx + 12); const top = Math.max(8, (cy != null ? cy : r.top + 20) - t.offsetHeight - 10); t.style.left = left + 'px'; t.style.top = top + 'px';
+    wrap.dataset.idx = idx;
+  };
+  const cacher = wrap => { if (tip) tip.style.display = 'none'; if (wrap) { const c = wrap.querySelector('.cross'); if (c) c.style.opacity = '0'; const f = wrap.querySelector('.focus'); if (f) { f.setAttribute('cx', -20); f.setAttribute('cy', -20); } } };
+  document.addEventListener('pointermove', e => { const wrap = e.target.closest && e.target.closest('.courbe[data-courbe]'); if (!wrap) { if (tip && tip.style.display === 'block' && !e.target.closest('#courbe-tip')) { document.querySelectorAll('.courbe[data-courbe]').forEach(cacher); } return; } let data; try { data = JSON.parse(wrap.dataset.courbe); } catch (x) { return; } const svg = wrap.querySelector('svg'); const r = svg.getBoundingClientRect(); const px = (e.clientX - r.left) / r.width * 520; let best = 0, bd = Infinity; data.xs.forEach((x, i) => { const d = Math.abs(x - px); if (d < bd) { bd = d; best = i; } }); montrer(wrap, best, e.clientX, e.clientY); });
+  document.addEventListener('pointerleave', e => { if (e.target && e.target.closest && e.target.closest('.courbe[data-courbe]')) cacher(e.target.closest('.courbe')); }, true);
+  document.addEventListener('keydown', e => { const wrap = e.target.closest && e.target.closest('.courbe[data-courbe]'); if (!wrap) return; if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Home' && e.key !== 'End') return; e.preventDefault(); let data; try { data = JSON.parse(wrap.dataset.courbe); } catch (x) { return; } const n = data.dates.length; let idx = wrap.dataset.idx != null ? +wrap.dataset.idx : n - 1; idx = e.key === 'ArrowLeft' ? Math.max(0, idx - 1) : e.key === 'ArrowRight' ? Math.min(n - 1, idx + 1) : e.key === 'Home' ? 0 : n - 1; const r = wrap.querySelector('svg').getBoundingClientRect(); montrer(wrap, idx, null, r.top + r.height / 2); });
+  document.addEventListener('focusin', e => { const wrap = e.target.closest && e.target.closest('.courbe[data-courbe]'); if (!wrap) return; let data; try { data = JSON.parse(wrap.dataset.courbe); } catch (x) { return; } const r = wrap.querySelector('svg').getBoundingClientRect(); montrer(wrap, data.dates.length - 1, null, r.top + r.height / 2); });
+  document.addEventListener('focusout', e => { const wrap = e.target.closest && e.target.closest('.courbe[data-courbe]'); if (wrap) cacher(wrap); });
+
+  /* ---------- Fenêtre « Détails et courbes » ---------- */
+  const carteCourbe = ch => { const l0 = ch.lignes[0]; const last = l0.pts[l0.pts.length - 1], prev = l0.pts[l0.pts.length - 2]; const delta = prev ? (last.v - prev.v) : null;
+    return `<div class="courbe-card"><div class="row between" style="align-items:baseline"><b>${esc(ch.titre)}</b><span class="small muted">${esc(ch.unite || '')}</span></div><div class="small ink2" style="margin:2px 0 6px">${ch.lignes.length > 1 ? esc(l0.nom) + ' ' : ''}<b class="mono">${fmtV(last.v)}${ch.unite ? ' ' + esc(ch.unite) : ''}</b> le ${R.fmtDate(last.date)}${prev ? ` · <span class="muted">${delta > 0 ? '+' : ''}${fmtV(delta)} depuis le ${R.fmtDate(prev.date)}</span>` : ' · <span class="muted">première valeur</span>'}</div>${R.courbe(ch)}</div>`; };
+  const filtrePeriode = () => { const per = (R.ui.courbes && R.ui.courbes.periode) || 0; const opts = [[6, '6 mois'], [12, '12 mois'], [24, '24 mois'], [0, 'Tout']]; return `<div class="row" style="gap:6px;align-items:center"><span class="small muted">Période</span>${opts.map(o => `<button type="button" class="btn sm${per === o[0] ? ' primary' : ''}" data-action="courbesPeriode" data-mois="${o[0]}">${o[1]}</button>`).join('')}</div>`; };
+  const depuis = () => { const per = (R.ui.courbes && R.ui.courbes.periode) || 0; return per ? R.addDays(R.today(), -Math.round(per * 30.44)) : null; };
+  const filtrerCharts = (charts, d) => !d ? charts : charts.map(ch => ({ ...ch, lignes: ch.lignes.map(l => ({ ...l, pts: l.pts.filter(p => p.date >= d) })).filter(l => l.pts.length) })).filter(ch => ch.lignes.length);
+  R.modalCourbes = (p, quoi) => {
+    R.ui.courbes = R.ui.courbes || { periode: 12 }; const d = depuis(); const bio = quoi === 'bio';
+    const charts = filtrerCharts(bio ? R.seriesBio(p) : R.seriesClinique(p), d);
+    const rows = bio ? null : R.lignesCliniques(p).filter(r => !d || r.date >= d);
+    const body = `<div class="row between" style="gap:10px"><div class="small ink2">${bio ? 'Une courbe par analyse : les valeurs sont celles saisies dans les contrôles marqués « Fait ». Survolez un point ou utilisez les flèches du clavier pour lire les valeurs.' : 'Une courbe par mesure : poids, IMC, température, fréquence cardiaque et tension viennent de chaque séance réalisée et de chaque consultation saisie.'}</div>${filtrePeriode()}</div>
+      ${charts.length ? `<div class="courbes-grid">${charts.map(carteCourbe).join('')}</div>` : `<div class="empty">Aucune valeur numérique${d ? ' sur cette période' : ''}. ${bio ? 'Saisissez les résultats dans la fenêtre « Fait » des contrôles biologiques.' : 'Renseignez le poids et les constantes dans la fenêtre « Fait » des séances.'}</div>`}
+      ${bio ? '' : `<div><div class="caps mb8">Signes cliniques par séance</div>${R.stripSignes(rows)}</div>`}
+      <div><div class="caps mb8">${bio ? 'Tableau des résultats' : 'Tableau des examens cliniques'}</div>${bio ? R.tableBio(p, d) : R.tableClinique(p, d)}</div>
+      ${bio ? '<p class="small muted" style="margin:0">Les zones de référence sont indicatives (adulte) : adaptez-les aux normes de votre laboratoire.</p>' : ''}`;
+    R.modal({ title: `${bio ? 'Résultats biologiques' : 'Examens cliniques'} — ${esc(R.nomComplet(p))}`, wide: true, body, foot: `<button type="button" class="btn primary" data-action="closeModal">Fermer</button>` });
+    R.ui.courbes.pid = p.id; R.ui.courbes.quoi = quoi;
+  };
+  Object.assign(R.actions, {
+    bioCourbes(el) { R.modalCourbes(R.patient(el.dataset.pid), 'bio'); },
+    cliniqueCourbes(el) { R.modalCourbes(R.patient(el.dataset.pid), 'clinique'); },
+    courbesPeriode(el) { R.ui.courbes.periode = +el.dataset.mois; const p = R.patient(R.ui.courbes.pid); if (p) R.modalCourbes(p, R.ui.courbes.quoi); }
+  });
 })(window.RYZE);
