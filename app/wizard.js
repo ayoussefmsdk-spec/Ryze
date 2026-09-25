@@ -217,15 +217,14 @@
     wVariante(el) { const w = W(); const pr = R.proto(w.protocoleId); const v = el.value === '' ? null : pr.variantes[+el.value]; w.variante = el.value === '' ? null : +el.value; const tmp = R.appliquerVariante(pr, v); w.induction = tmp.induction; w.entretien = tmp.entretien; /* doses de la variante dans les unités du protocole : modes remis par défaut */
       if (w.sansInduction) { w.memoInd = { debutJour: w.entretien.debutJour }; w.entretien.debutJour = 0; } R.brouillon(); R.render(); },
     wCreate() { const p = creer(); if (!p) return; R.toast('Dossier créé, carnet généré', 'good'); R.go('patient', { id: p.id }); },
-    wCreatePrint() { const p = creer(); if (!p) return; R.go('carnet', { id: p.id }); setTimeout(() => window.print(), 400); },
-    imprimer() { window.print(); }
+    wCreatePrint() { const p = creer(); if (!p) return; R.go('carnet', { id: p.id }); setTimeout(R.imprimer, 400); }
   });
 
   /* ---------- Carnet de suivi (document imprimable) ---------- */
   R.pages.carnet = {
     render(params) {
       const p = R.patient(params.id); if (!p) return '<div class="empty">Dossier introuvable.</div>';
-      return `<div class="row between no-print mb16"><button class="btn" data-go="patient" data-params='${R.params({ id: p.id })}'>${R.icon('back')}Retour au dossier</button><div class="row"><span class="small muted">Format A4</span><button class="btn primary" data-action="imprimer">${R.icon('print')}Imprimer / PDF</button></div></div>${R.carnetHTML(p)}`;
+      return `<div class="row between no-print mb16"><button class="btn" data-go="patient" data-params='${R.params({ id: p.id })}'>${R.icon('back')}Retour au dossier</button><div class="row"><span class="small muted">Format A4</span>${R.boutonsDoc()}</div></div>${R.carnetHTML(p)}`;
     }
   };
   /* schéma réellement planifié : instantané de l'assistant pour le 1er cycle, sinon protocole (entretien direct le cas échéant) */
@@ -335,7 +334,7 @@
       return `<div class="row between no-print mb16" style="flex-wrap:wrap;gap:8px"><button class="btn" data-go="patient" data-params='${R.params({ id: p.id, tab: quoi === 'bilans' ? 'bilans' : (p.carnetMixte ? 'plan' : 'cures') })}'>${R.icon('back')}Retour au dossier</button>
         <div class="row" style="gap:6px;flex-wrap:wrap"><span class="small muted">Période</span>${opts.map(o => `<button type="button" class="btn sm${mois === o[0] ? ' primary' : ''}" data-go="impression" data-params='${lien({ mois: o[0] })}'>${o[1]}</button>`).join('')}
         <label class="check" style="padding:5px 9px"><input type="checkbox" data-go="impression" data-params='${lien({ avenir: !avenir })}'${avenir ? ' checked' : ''}> inclure ce qui est à venir</label>
-        <button class="btn primary" data-action="imprimer">${R.icon('print')}Imprimer / PDF</button></div></div>${quoi === 'bilans' ? R.impressionBilans(p, depuis, mois, avenir) : R.impressionSeances(p, depuis, mois, avenir)}`;
+        ${R.boutonsDoc()}</div></div>${quoi === 'bilans' ? R.impressionBilans(p, depuis, mois, avenir) : R.impressionSeances(p, depuis, mois, avenir)}`;
     }
   };
   const bandeImpr = (p, titre) => { const s = S.settings; return `<div class="doc-band"><div><b>${esc(s.etablissement)}</b>${esc(s.service)}<br>${esc(s.unite)}</div><div class="r"><b>${titre}</b>${esc(R.nomComplet(p))} · IPP ${esc(p.ipp)}<br>Édité le ${R.fmtDate(R.today())}</div></div>`; };
@@ -390,62 +389,88 @@
       <div class="doc-sign" style="grid-template-columns:1fr 1fr"><div>Hôpital de jour<br><span style="color:#7E8C88">${esc(S.settings.unite || '')}</span></div><div>Date et signature</div></div>
       ${piedImpr(p)}</div></div>`;
   };
-  /* ---------- Compte rendu de suivi pour le médecin traitant ---------- */
+  /* ---------- Compte rendu de suivi : document clinique structuré (résumé, résultats, remarques, conclusion) ---------- */
   R.pages.compteRendu = {
     render(params) {
       const p = R.patient(params.id); if (!p) return '<div class="empty">Dossier introuvable.</div>';
       const mois = params.mois == null ? 12 : +params.mois; const depuis = mois ? R.addDays(R.today(), -Math.round(mois * 30.44)) : null;
       const opts = [[6, '6 mois'], [12, '12 mois'], [24, '24 mois'], [0, 'Tout le suivi']];
-      return `<div class="row between no-print mb16" style="flex-wrap:wrap;gap:8px"><button class="btn" data-go="patient" data-params='${R.params({ id: p.id })}'>${R.icon('back')}Retour au dossier</button><div class="row" style="gap:6px;flex-wrap:wrap"><span class="small muted">Période</span>${opts.map(o => `<button type="button" class="btn sm${mois === o[0] ? ' primary' : ''}" data-go="compteRendu" data-params='${R.params({ id: p.id, mois: o[0] })}'>${o[1]}</button>`).join('')}<span class="small muted" style="margin-left:8px">Les zones en pointillé se modifient avant impression</span><button class="btn primary" data-action="imprimer">${R.icon('print')}Imprimer / PDF</button></div></div>${R.compteRenduHTML(p, depuis, mois)}`;
+      return `<div class="row between no-print mb16" style="flex-wrap:wrap;gap:8px"><button class="btn" data-go="patient" data-params='${R.params({ id: p.id })}'>${R.icon('back')}Retour au dossier</button><div class="row" style="gap:6px;flex-wrap:wrap"><span class="small muted">Période</span>${opts.map(o => `<button type="button" class="btn sm${mois === o[0] ? ' primary' : ''}" data-go="compteRendu" data-params='${R.params({ id: p.id, mois: o[0] })}'>${o[1]}</button>`).join('')}<span class="small muted" style="margin-left:8px">Les zones en pointillé se modifient avant impression</span>${R.boutonsDoc()}</div></div>${R.compteRenduHTML(p, depuis, mois)}`;
     }
   };
+  const grpBilan = s => ((R.itemBilan(s.id) || {}).groupe || {}).id || (String(s.id).match(/^libre-(\w+)/) || [])[1] || '';
+  const rythme = j => !j ? '' : j === 7 ? 'chaque semaine' : j % 7 === 0 ? `toutes les ${j / 7} semaines` : `tous les ${j} jours`;
+  const phr = s => String(s).trim().replace(/[\s.;,:]+$/, '') + '.';
+  /* éléments du suivi sur la période, communs au résumé et au corps du document */
+  function donneesCR(p, depuis) {
+    const t = R.today(), pr = R.proto(p.protocoleId) || {}, hist = p.historiqueProtocoles || [];
+    const cyc = hist.find(h => h.statut === 'en cours') || hist.slice(-1)[0] || {}; const cc = R.prochaineCure(p) || R.derniereCure(p);
+    const faites = p.cures.filter(c => c.statut === 'realisee' && c.dateReelle && (!depuis || c.dateReelle >= depuis)).sort((a, b) => a.dateReelle.localeCompare(b.dateReelle));
+    const inter = faites.slice(1).map((c, i) => R.diffDays(faites[i].dateReelle, c.dateReelle)).filter(x => x > 0);
+    const morpho = p.surveillance.filter(x => x.statut === 'faite' && x.dateFaite && x.mode === 'echeance' && !R.estBio(x) && !R.estClin(x)).sort((a, b) => b.dateFaite.localeCompare(a.dateFaite));
+    return { t, pr, cyc, cc, faites, morpho, examens: morpho.filter(x => !depuis || x.dateFaite >= depuis).slice(0, 6), interMoy: inter.length ? Math.round(inter.reduce((a, b) => a + b, 0) / inter.length) : null,
+      manquees: p.cures.reduce((n, c) => n + (c.absences || []).filter(a => !depuis || a.date >= depuis).length, 0) || p.cures.filter(c => c.statut === 'manquee' && (!depuis || c.datePrevue >= depuis)).length,
+      reactions: faites.filter(c => /Réaction/.test(c.tolerance || '')),
+      tdm: p.surveillance.filter(x => x.id === 'tdm' && x.statut === 'faite' && x.dateFaite).sort((a, b) => b.dateFaite.localeCompare(a.dateFaite))[0] || null,
+      rythme: rythme(+cyc.intervalle || +(pr.entretien || {}).intervalleJours || 0), voie: (cc && cc.voie) || pr.voie || '' };
+  }
+  /* résumé automatique de la période, en phrases courtes : modifiable, régénérable */
+  R.resumeCR = (p, depuis, mois) => {
+    const d = donneesCR(p, depuis), t = d.t, fem = p.sexe === 'F', paris = R.parisCode(p.paris, p.pathologie), L = [];
+    const patho = ((R.PATHOS[p.pathologie] || {}).label || '').replace(/^./, c => c.toLowerCase());
+    L.push(`${fem ? 'Patiente' : 'Patient'} de ${R.age(p.ddn)} ans${patho ? ` ${fem ? 'suivie' : 'suivi'} pour une ${patho}${paris ? ` (Paris ${paris})` : ''}${p.dateDiag ? ` diagnostiquée en ${R.fmtDate(p.dateDiag, { month: 'long', year: 'numeric' })}` : ''}` : ''}.`);
+    const phase = { induction: `phase d’induction${d.rythme ? ', entretien prévu ' + d.rythme : ''}`, entretien: 'phase d’entretien', suspendu: `traitement suspendu${p.motifSuspension ? ' (' + p.motifSuspension + ')' : ''}`, termine: `traitement arrêté${p.dateFin ? ' le ' + R.fmtDate(p.dateFin) : ''}${p.motifFin ? ' (' + p.motifFin + ')' : ''}` }[p.statut] || '';
+    L.push(phr(`Traitement : ${[d.pr.dci, d.cc && d.cc.doseTexte, d.voie, p.statut !== 'induction' && d.rythme].filter(Boolean).join(' ')} depuis le ${R.fmtDate(d.cyc.dateDebut || p.dateDebut)}${(p.cycleCourant || 1) > 1 ? ` (cycle ${p.cycleCourant})` : ''}${phase ? ' — ' + phase : ''}`));
+    L.push(`${depuis ? `Sur les ${mois} derniers mois` : 'Depuis le début du suivi'} : ${d.faites.length} séance(s) réalisée(s), ${d.manquees ? d.manquees + ' séance(s) manquée(s)' : 'aucune séance manquée'}, ${d.reactions.length ? `${d.reactions.length} réaction(s) à la perfusion (${d.reactions.map(c => R.fmtDate(c.dateReelle)).join(', ')})` : 'aucune réaction à la perfusion'}.`);
+    const series = R.seriesBio(p);
+    const bio = [['crp', 'CRP'], ['calpro', 'calprotectine'], ['hb', 'hémoglobine'], ['alb', 'albumine']].map(([k, nom]) => { const ch = series.find(c => c.key === k); if (!ch) return ''; const ev = R.evolSerie(ch, ch.lignes[0]); if (!ev.last || (depuis && ev.last.date < depuis)) return '';
+      const det = [ev.hors ? 'hors référence' : '', ev.sens, ev.prev ? `précédent ${ev.prev.sym || ''}${R.fmtV(ev.prev.v)}` : ''].filter(Boolean).join(', '); return `${nom} ${ev.last.sym || ''}${R.fmtV(ev.last.v)}${ch.unite ? ' ' + ch.unite : ''}${det ? ` (${det})` : ''}`; }).filter(Boolean);
+    L.push(bio.length ? `Biologie : ${bio.join(' ; ')}.` : `Aucun résultat biologique chiffré ${depuis ? `sur les ${mois} derniers mois` : 'depuis le début du suivi'}.`);
+    if (d.tdm) { const td = R.tdmDe(d.tdm, p) || {}; const i = R.interpTdm(td); const niv = { bas: 'sous la cible', haut: 'au-dessus de la cible', cible: 'dans la cible' }[i.niveau];
+      L.push(phr(`Dernier dosage pharmacologique (${R.fmtDate(d.tdm.dateFaite)}) : ${td.taux != null ? `résiduel ${R.fmtV(td.taux)} µg/mL, ${R.AC_LIB[td.ac] || R.AC_LIB.nd}` : d.tdm.resultat || 'résultat non chiffré'}${niv ? ` — ${niv}${i.cible ? ` (${i.cible})` : ''}` : ''}`)); }
+    const endo = d.morpho.find(x => grpBilan(x) === 'endo' || /scopie/i.test(x.label)), imag = d.morpho.find(x => grpBilan(x) === 'radio' || /IRM|échographie|scanner|radiographie|imagerie/i.test(x.label));
+    [[endo, 'Dernière endoscopie'], [imag, 'Dernière imagerie']].forEach(([x, lib]) => { if (x) L.push(phr(`${lib} (${R.fmtDate(x.dateFaite)}) : ${x.label.split(' (')[0]}${x.resultat ? ' — ' + x.resultat : ''}`)); });
+    const nextC = ['suspendu', 'termine'].includes(p.statut) ? null : p.cures.filter(c => c.statut === 'prevue' && c.datePrevue >= t).sort((a, b) => a.datePrevue.localeCompare(b.datePrevue))[0];
+    const ech = p.surveillance.filter(s => s.statut === 'prevue' && s.mode === 'echeance' && s.echeance).sort((a, b) => a.echeance.localeCompare(b.echeance)); const nextS = ech.find(s => s.echeance >= t), retard = ech.filter(s => s.echeance < t);
+    const suite = [nextC ? `prochaine séance le ${R.fmtDate(nextC.datePrevue)} (${nextC.label})` : '', nextS ? `prochain contrôle le ${R.fmtDate(nextS.echeance)} : ${nextS.label.split(' (')[0]}` : '', retard.length ? `${retard.length} contrôle(s) en retard : ${retard.slice(0, 3).map(s => `${s.label.split(' (')[0]} (${R.fmtDate(s.echeance)})`).join(', ')}` : ''].filter(Boolean);
+    if (suite.length) L.push(phr(suite.join(' ; ').replace(/^./, c => c.toUpperCase())));
+    return L.join('\n');
+  };
   R.compteRenduHTML = function (p, depuis, mois) {
-    const s = S.settings, t = R.today(), pr = R.proto(p.protocoleId) || {}; const cr = p.cr || {};
-    const e = (k, def, tag) => `<${tag || 'span'} class="cr-edit" contenteditable="true" data-input="crChamp" data-pid="${p.id}" data-k="${k}" spellcheck="true">${esc(cr[k] != null ? cr[k] : def)}</${tag || 'span'}>`;
-    const age = R.age(p.ddn); const fem = p.sexe === 'F'; const paris = R.parisCode(p.paris, p.pathologie);
-    const cyc = (p.historiqueProtocoles || []).find(h => h.statut === 'en cours') || (p.historiqueProtocoles || []).slice(-1)[0] || {};
-    const cc = R.prochaineCure(p) || R.derniereCure(p); const next = p.cures.find(c => c.statut === 'prevue' && c.datePrevue >= t);
+    const s = S.settings, d = donneesCR(p, depuis), t = d.t, pr = d.pr, cc = d.cc, cr = p.cr || {};
+    const e = (k, def, tag, ph) => { const v = cr[k] != null ? cr[k] : def; tag = tag || 'span'; return `<${tag} class="cr-edit${tag === 'div' ? ' cr-bloc' : ''}${ph && !v ? ' vide' : ''}" contenteditable="true" data-input="crChamp" data-pid="${p.id}" data-k="${k}"${ph ? ` data-placeholder="${esc(ph)}"` : ''} spellcheck="true">${esc(v)}</${tag}>`; };
+    const fem = p.sexe === 'F'; const paris = R.parisCode(p.paris, p.pathologie);
     const periode = mois ? `sur les ${mois} derniers mois` : 'depuis le début du suivi';
     const faits = R.faitsMarquants(p).filter(x => !depuis || x.date >= depuis || /Début du traitement/.test(x.titre)).slice(0, 8);
-    const examens = p.surveillance.filter(x => x.statut === 'faite' && x.mode === 'echeance' && !R.estBio(x) && !R.estClin(x) && (!depuis || x.dateFaite >= depuis)).sort((a, b) => b.dateFaite.localeCompare(a.dateFaite)).slice(0, 6);
-    const tdm = p.surveillance.filter(x => x.id === 'tdm' && x.statut === 'faite').sort((a, b) => b.dateFaite.localeCompare(a.dateFaite))[0];
-    const tdmI = tdm ? R.interpTdm(R.tdmDe(tdm, p)) : null;
-    const realisees = p.cures.filter(c => c.statut === 'realisee' && (!depuis || c.dateReelle >= depuis)).length;
-    const manquees = p.cures.reduce((n, c) => n + (c.absences || []).filter(a => !depuis || a.date >= depuis).length, 0);
-    const reactions = p.cures.filter(c => c.statut === 'realisee' && /Réaction/.test(c.tolerance || '') && (!depuis || c.dateReelle >= depuis));
+    const tdmI = d.tdm ? R.interpTdm(R.tdmDe(d.tdm, p)) : null; const der = d.faites[d.faites.length - 1];
     const aVenir = R.planPatient(p, 'tout').filter(x => x.date >= t && ((x.c && x.c.statut === 'prevue') || (x.s && x.s.statut === 'prevue'))).slice(0, 6);
     const epingles = p.notes.filter(n => n.epingle).slice(0, 4);
-    const conclDef = [tdmI && tdmI.texte ? `Dernier dosage (${R.fmtDate(tdm.dateFaite)}) : ${tdm.resultat}. ${tdmI.texte}` : '', `Poursuite de ${pr.dci || 'la biothérapie'} ${cc ? '(' + (cc.doseTexte || '') + ')' : ''} selon le calendrier ci-dessous.`].filter(Boolean).join(' ');
+    const statut = { induction: 'induction', entretien: 'entretien', suspendu: 'suspendu', termine: 'arrêté' }[p.statut] || '';
+    const conclDef = [tdmI && tdmI.texte ? phr(`Dernier dosage (${R.fmtDate(d.tdm.dateFaite)}) : ${d.tdm.resultat}`) + ' ' + tdmI.texte : '', p.statut === 'suspendu' ? phr(`Traitement suspendu${p.motifSuspension ? ' : ' + p.motifSuspension : ''}`) + ' Reprise à rediscuter.' : p.statut === 'termine' ? 'Traitement arrêté.' : `Poursuite ${pr.dci ? 'du traitement par ' + pr.dci.replace(/^./, c => c.toLowerCase()) : 'de la biothérapie'}${cc && cc.doseTexte ? ' (' + cc.doseTexte + ')' : ''} selon le calendrier prévu.`].filter(Boolean).join(' ');
     const band = `<div class="doc-band"><div><b>${esc(s.etablissement)}</b>${esc(s.service)}<br>${esc(s.unite)} · Tél. ${esc(s.telHDJ || '')}</div><div class="r"><b>Compte rendu de suivi</b>${esc(R.nomComplet(p))} · IPP ${esc(p.ipp)}<br>${R.fmtDateLong(t)}</div></div>`;
-    const foot = `<div class="doc-foot"><span>Compte rendu de suivi — ${esc(R.nomComplet(p))} — document médical confidentiel</span><span></span></div>`;
+    const foot = (n, tot) => `<div class="doc-foot"><span>Compte rendu de suivi — ${esc(R.nomComplet(p))} — document médical confidentiel</span><span>Page ${n} / ${tot}</span></div>`;
     const courbes = R.courbesDoc(p, { depuis, max: 6, cols: 3 });
-    return `<div class="carnet-wrap cr">
-      <div class="carnet-page">${band}
-        <div class="cr-dest">À l’attention du ${e('destinataire', p.medecinTraitant ? p.medecinTraitant : 'Dr …, médecin traitant')}</div>
-        <p class="cr-p">Cher confrère,</p>
-        <p class="cr-p">Je vous adresse des nouvelles de ${fem ? 'votre patiente' : 'votre patient'} <b>${esc(p.prenom)} ${esc(p.nom)}</b>, ${fem ? 'née' : 'né'} le ${R.fmtDate(p.ddn)} (${age} ans), ${fem ? 'suivie' : 'suivi'} dans notre hôpital de jour pour une <b>${esc((R.PATHOS[p.pathologie] || {}).label || p.pathologie || '')}</b>${paris ? ` (classification de Paris ${esc(paris)})` : ''}${p.dateDiag ? `, diagnostiquée en ${R.fmtDate(p.dateDiag, { month: 'long', year: 'numeric' })}` : ''}. Ce compte rendu couvre la période ${periode}.</p>
+    const p1 = `<dl class="doc-kv"><div><dt>Patient</dt><dd>${esc(p.nom)} ${esc(p.prenom)}</dd></div><div><dt>IPP</dt><dd>${esc(p.ipp)}</dd></div><div><dt>Sexe · âge</dt><dd>${fem ? 'Femme' : 'Homme'} · ${R.age(p.ddn)} ans · ${fem ? 'née' : 'né'} le ${R.fmtDate(p.ddn)}</dd></div><div><dt>Maladie</dt><dd>${esc((R.PATHOS[p.pathologie] || {}).label || p.pathologie || '—')}${paris ? ' · Paris ' + esc(paris) : ''}</dd></div><div><dt>Diagnostic</dt><dd>${p.dateDiag ? R.fmtDate(p.dateDiag, { month: 'long', year: 'numeric' }) : '—'}</dd></div><div><dt>Médecin référent</dt><dd>${esc(R.userName(p.medecinId))}</dd></div>${p.medecinTraitant ? `<div><dt>Médecin traitant</dt><dd>${esc(p.medecinTraitant)}</dd></div>` : ''}<div><dt>Période couverte</dt><dd>${mois ? `${mois} derniers mois (${R.fmtDate(depuis)} → ${R.fmtDate(t)})` : `tout le suivi (depuis le ${R.fmtDate(p.dateDebut)})`}</dd></div></dl>
+        <div class="doc-h2 cr-h2">Résumé<button type="button" class="btn sm ghost no-print${cr.resume != null ? '' : ' hidden'}" data-action="crRegenerer" data-pid="${p.id}" data-k="resume">Régénérer le résumé</button></div>${e('resume', R.resumeCR(p, depuis, mois), 'div')}
         <div class="doc-h2">Traitement</div>
-        <dl class="doc-kv"><div><dt>Biothérapie</dt><dd>${esc(pr.dci || '')} <span class="ui" style="font-weight:400">(${esc(pr.specialites || '')})</span></dd></div><div><dt>Posologie</dt><dd>${esc(cc ? cc.doseTexte || '' : '')} · ${esc(pr.voie || '')} · ${esc((pr.entretien || {}).label || '')}</dd></div><div><dt>Depuis le</dt><dd>${R.fmtDate(cyc.dateDebut || p.dateDebut)}${(p.cycleCourant || 1) > 1 ? ` · cycle ${p.cycleCourant}` : ''}</dd></div><div><dt>Traitements associés</dt><dd>${esc(p.traitementsAssocies || '—')}</dd></div><div><dt>Biothérapies antérieures</dt><dd>${esc(p.antecedentsBio || '—')}</dd></div><div><dt>Allergies · comorbidités</dt><dd>${esc(p.allergies || '—')} · ${esc(p.comorbidites || '—')}</dd></div></dl>
+        <dl class="doc-kv"><div><dt>Biothérapie</dt><dd>${esc(pr.dci || '')} <span class="ui" style="font-weight:400">(${esc(pr.specialites || '')})</span></dd></div><div><dt>Posologie</dt><dd>${esc([cc && cc.doseTexte, d.voie, d.rythme].filter(Boolean).join(' · '))}</dd></div><div><dt>Depuis le</dt><dd>${R.fmtDate(d.cyc.dateDebut || p.dateDebut)}${(p.cycleCourant || 1) > 1 ? ` · cycle ${p.cycleCourant}` : ''}${statut ? ' · ' + statut : ''}</dd></div><div><dt>Traitements associés</dt><dd>${esc(p.traitementsAssocies || '—')}</dd></div><div><dt>Biothérapies antérieures</dt><dd>${esc(p.antecedentsBio || '—')}</dd></div><div><dt>Allergies · comorbidités</dt><dd>${esc(p.allergies || '—')} · ${esc(p.comorbidites || '—')}</dd></div></dl>
         ${faits.length ? `<div class="doc-h2">Faits marquants</div><table class="doc-table"><tbody>${faits.map(f => `<tr><td class="m" style="width:24mm">${R.fmtDate(f.date)}</td><td>${esc(f.titre)}</td></tr>`).join('')}</tbody></table>` : ''}
-        <div class="doc-h2">Déroulement ${periode}</div>
-        <p class="cr-p">${realisees} séance(s) réalisée(s)${manquees ? `, ${manquees} séance(s) manquée(s)` : ''}${reactions.length ? `, ${reactions.length} réaction(s) à la perfusion (${reactions.map(c => R.fmtDate(c.dateReelle)).join(', ')})` : ', aucune réaction à la perfusion'}.${p.statut === 'suspendu' ? ` <b>Traitement actuellement suspendu</b> : ${esc(p.motifSuspension || '')}.` : ''}</p>
-        <div class="doc-h2">Résultats</div>
-        ${R.tableDernieres(p, depuis)}
-        ${tdm ? `<div class="doc-box" style="margin-top:8px"><b>Dosage pharmacologique du ${R.fmtDate(tdm.dateFaite)}</b> — ${esc(tdm.resultat || '')}${tdmI && tdmI.texte ? `<br><span style="font-size:9.5pt">${esc(tdmI.texte)}${tdmI.cible ? ` Cible indicative : ${esc(tdmI.cible)}.` : ''}</span>` : ''}</div>` : ''}
-        ${foot}</div>
-      <div class="carnet-page">${band}
-        ${courbes ? `<div class="doc-h2" style="margin-top:0">Évolution ${periode}</div>${courbes}` : ''}
-        ${examens.length ? `<div class="doc-h2">Endoscopies et imagerie</div><table class="doc-table"><tbody>${examens.map(x => `<tr><td class="m" style="width:24mm">${R.fmtDate(x.dateFaite)}</td><td><b>${esc(x.label)}</b>${x.resultat ? ' — ' + esc(x.resultat) : ''}${x.note ? `<br><span style="font-size:9pt;color:#4E5E59">${esc(x.note)}</span>` : ''}</td></tr>`).join('')}</tbody></table>` : ''}
-        ${epingles.length ? `<div class="doc-h2">Points à retenir</div><ul class="doc-list">${epingles.map(n => `<li><b>${esc(R.titreNote ? R.titreNote(n) : n.txt)}</b>${n.titre ? ' — ' + esc(n.txt) : ''} <span style="color:#7E8C88">(${R.fmtDate(n.date)})</span></li>`).join('')}</ul>` : ''}
+        <div class="doc-h2">Déroulement des séances ${periode}</div>
+        <p class="cr-p">${d.faites.length} séance(s) réalisée(s)${der ? ` — dernière le ${R.fmtDate(der.dateReelle)} (${esc(der.label)})` : ''}${d.interMoy ? `, intervalle moyen ${d.interMoy} jours` : ''} ; ${d.manquees ? d.manquees + ' séance(s) manquée(s)' : 'aucune séance manquée'} ; ${d.reactions.length ? `${d.reactions.length} réaction(s) à la perfusion (${d.reactions.map(c => R.fmtDate(c.dateReelle)).join(', ')})` : 'aucune réaction à la perfusion'}.${p.statut === 'suspendu' ? ` <b>Traitement actuellement suspendu</b> : ${esc(p.motifSuspension || '')}.` : ''}</p>`;
+    const p2 = `<div class="doc-h2">Résultats</div>${R.tableDernieres(p, depuis)}
+        ${d.tdm ? `<div class="doc-box" style="margin-top:8px"><b>Dosage pharmacologique du ${R.fmtDate(d.tdm.dateFaite)}</b> — ${esc(d.tdm.resultat || '')}${tdmI && tdmI.texte ? `<br><span style="font-size:9.5pt">${esc(tdmI.texte)}${tdmI.cible ? ` Cible indicative : ${esc(tdmI.cible)}.` : ''}</span>` : ''}</div>` : ''}
+        ${courbes ? `<div class="doc-h2">Évolution ${periode}</div>${courbes}` : ''}`;
+    const p3 = `${d.examens.length ? `<div class="doc-h2">Endoscopies et imagerie</div><table class="doc-table"><tbody>${d.examens.map(x => `<tr><td class="m" style="width:24mm">${R.fmtDate(x.dateFaite)}</td><td><b>${esc(x.label)}</b>${x.resultat ? ' — ' + esc(x.resultat) : ''}${x.note ? `<br><span style="font-size:9pt;color:#4E5E59">${esc(x.note)}</span>` : ''}</td></tr>`).join('')}</tbody></table>` : ''}
+        <div class="cr-sec"><div class="doc-h2">Remarques</div>${epingles.length ? `<ul class="doc-list">${epingles.map(n => `<li><b>${esc(R.titreNote(n))}</b>${n.titre ? ' — ' + esc(n.txt) : ''} <span style="color:#7E8C88">(${R.fmtDate(n.date)})</span></li>`).join('')}</ul>` : ''}${e('remarques', '', 'div', 'Remarques libres : tolérance, observance, projet thérapeutique… (facultatif, non imprimé si vide)')}</div>
         <div class="doc-h2">Suite de la prise en charge</div>
         ${aVenir.length ? `<table class="doc-table"><tbody>${aVenir.map(x => `<tr><td class="m" style="width:24mm">${R.fmtDate(x.date)}</td><td>${x.c ? `Séance ${esc(x.c.label)} — ${esc((R.protoDeCure(p, x.c) || {}).dci || '')} ${esc(x.c.doseTexte || '')}` : `Contrôle — ${esc(x.s.label)}${x.s.avantSeance ? ' (avant la perfusion)' : ''}`}</td></tr>`).join('')}</tbody></table>` : '<p class="cr-p">Aucune échéance programmée.</p>'}
         <div class="doc-h2">Conclusion</div>
         ${e('conclusion', conclDef, 'div')}
-        <div class="doc-box" style="font-size:9pt;margin-top:10px"><b>Surveillance entre deux séances</b> : toute fièvre, infection ou symptôme inhabituel doit faire contacter l’hôpital de jour (${esc(s.telHDJ || '')}) avant la séance suivante. Pas de vaccin vivant atténué sous biothérapie ; vaccins inactivés recommandés (grippe, pneumocoque, zona recombinant). Merci de nous signaler tout nouveau traitement.</div>
-        <p class="cr-p" style="margin-top:10px">Je reste à votre disposition. Bien confraternellement,</p>
-        <div class="doc-sign" style="grid-template-columns:1fr 1fr"><div>${e('signataire', R.userName(p.medecinId) + ' — ' + ((R.userById(p.medecinId) || {}).fonction || 'Gastro-entérologue'))}<br><span style="color:#7E8C88">Signature</span></div><div>Copie : dossier patient</div></div>
-        ${foot}</div>
-    </div>`;
+        <div class="doc-box" style="font-size:9pt;margin-top:10px"><b>Consignes</b> — Fièvre, infection ou symptôme inhabituel : contacter l’hôpital de jour${s.telHDJ ? ' au ' + esc(s.telHDJ) : ''} avant la séance suivante. Pas de vaccin vivant atténué sous biothérapie ; vaccins inactivés recommandés (grippe, pneumocoque, zona recombinant). Tout nouveau traitement est à signaler à l’équipe.</div>
+        <div class="doc-sign" style="grid-template-columns:1fr 1fr"><div>Médecin<br>${e('signataire', R.userName(p.medecinId) + ' — ' + ((R.userById(p.medecinId) || {}).fonction || 'Gastro-entérologue'))}</div><div>Date et signature</div></div>`;
+    const pages = courbes ? [p1, p2, p3] : [p1, p2 + p3]; /* sans courbes, résultats et suite tiennent sur une page */
+    return `<div class="carnet-wrap cr">${pages.map((c, i) => `<div class="carnet-page">${band}${c}${foot(i + 1, pages.length)}</div>`).join('')}</div>`;
   };
-  R.actions.crChamp = el => { const p = R.patient(el.dataset.pid); if (!p) return; p.cr = p.cr || {}; p.cr[el.dataset.k] = el.innerText.trim(); if (el.dataset.k === 'destinataire' && p.cr.destinataire && !/…/.test(p.cr.destinataire)) p.medecinTraitant = p.cr.destinataire; clearTimeout(R.ui.crTimer); R.ui.crTimer = setTimeout(() => R.touch(), 500); };
+  R.actions.crChamp = el => { const p = R.patient(el.dataset.pid); if (!p) return; p.cr = p.cr || {}; const v = el.innerText.trim(); p.cr[el.dataset.k] = v; if (el.dataset.placeholder) el.classList.toggle('vide', !v); const b = document.querySelector(`[data-action="crRegenerer"][data-k="${el.dataset.k}"]`); if (b) b.classList.remove('hidden'); clearTimeout(R.ui.crTimer); R.ui.crTimer = setTimeout(() => R.touch(), 500); };
+  R.actions.crRegenerer = el => { const p = R.patient(el.dataset.pid); if (!p || !p.cr) return; clearTimeout(R.ui.crTimer); delete p.cr[el.dataset.k]; R.touch(); R.render(); };
 })(window.RYZE);

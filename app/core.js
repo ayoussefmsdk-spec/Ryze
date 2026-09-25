@@ -229,6 +229,7 @@
     cog: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
     search: '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
     print: '<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
+    download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
     logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
     menu: '<line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>',
     check: '<polyline points="20 6 9 17 4 12"/>', chevL: '<polyline points="15 18 9 12 15 6"/>', chevR: '<polyline points="9 18 15 12 9 6"/>', chevD: '<polyline points="6 9 12 15 18 9"/>',
@@ -469,7 +470,7 @@
       for (let d = debut; d <= fin; d = R.addDays(d, nbJ > 45 ? 7 : 1)) { const f = nbJ > 45 ? R.addDays(d, 6) : d; let n = 0; for (let x = d; x <= f && x <= fin; x = R.addDays(x, 1)) n += st.parJour[x] || 0; semaines.push({ label: nbJ > 45 ? R.fmtDate(d, { day: 'numeric', month: 'short' }) : R.fmtDate(d, { day: 'numeric' }), n }); }
       const chart = R.columnChart({ labels: semaines.map(s => s.label), series: [{ name: 'Séances réalisées', color: 'var(--s1)', values: semaines.map(s => s.n) }], height: 200 });
       const tile = (label, val, sub, cls) => `<div class="kpi${cls ? ' ' + cls : ''}"><div class="label">${label}</div><div class="value">${val}</div><div class="sub">${sub || ''}</div></div>`;
-      return `<div class="page-head"><div><h1>Activité & rapports</h1><p>Performance de l’hôpital de jour sur la période choisie</p></div><div class="page-actions"><button class="btn primary" data-action="imprimer">${R.icon('print')}Imprimer le rapport</button></div></div>
+      return `<div class="page-head"><div><h1>Activité & rapports</h1><p>Performance de l’hôpital de jour sur la période choisie</p></div><div class="page-actions">${R.boutonsDoc('Imprimer le rapport')}</div></div>
       <section class="card mb16 no-print"><div class="card-body"><div class="row" style="gap:6px;flex-wrap:wrap">${presets.map(x => `<button type="button" class="btn sm${r.preset === x[0] ? ' primary' : ''}" data-action="rapportPreset" data-v="${x[0]}">${x[1]}</button>`).join('')}<span class="grow"></span><span class="badge accent">${R.fmtDateLong(debut)} → ${R.fmtDateLong(fin)} · ${nbJ} j</span></div>
         ${r.preset === 'perso' ? `<div class="mt16">${R.rangePicker({ debut, fin, mois: r.mois || debut.slice(0, 7) })}</div>` : ''}</div></section>
       <div class="rapport">
@@ -502,9 +503,46 @@
   Object.assign(R.actions, {
     rapportPreset(el) { R.ui.rapport.preset = el.dataset.v; R.ui.rapport.pick = null; if (el.dataset.v === 'perso' && !R.ui.rapport.debut) { const p = R.periodeRapport(); R.ui.rapport.debut = p.debut; R.ui.rapport.fin = p.fin; } R.render(); },
     rapportMois(el) { const r = R.ui.rapport; const base = r.mois || (r.debut || R.today()).slice(0, 7); const [y, m] = base.split('-').map(Number); r.mois = R.iso(new Date(y, m - 1 + (+el.dataset.delta), 1)).slice(0, 7); R.render(); },
-    rapportJour(el) { const r = R.ui.rapport; const d = el.dataset.date; if (!r.pick) { r.pick = d; } else { const a = r.pick < d ? r.pick : d, b = r.pick < d ? d : r.pick; r.debut = a; r.fin = b; r.pick = null; r.preset = 'perso'; } R.render(); },
-    imprimer() { window.print(); }
+    rapportJour(el) { const r = R.ui.rapport; const d = el.dataset.date; if (!r.pick) { r.pick = d; } else { const a = r.pick < d ? r.pick : d, b = r.pick < d ? d : r.pick; r.debut = a; r.fin = b; r.pick = null; r.preset = 'perso'; } R.render(); }
   });
+
+  /* ---------- Impression et téléchargement du document affiché ---------- */
+  R.boutonsDoc = lib => `<button class="btn" data-action="telechargerDoc" title="Fichier à ouvrir puis imprimer depuis l’ordinateur">${R.icon('download')}Télécharger</button><button class="btn primary" data-action="imprimer">${R.icon('print')}${lib || 'Imprimer / PDF'}</button>`;
+  /* une impression bloquée (page intégrée dans un cadre isolé) échoue sans erreur : sans « beforeprint » on propose le fichier */
+  R.imprimer = () => {
+    let vu = false; const f = () => { vu = true; }; window.addEventListener('beforeprint', f);
+    try { window.print(); } catch (e) {}
+    setTimeout(() => { window.removeEventListener('beforeprint', f); if (vu) return;
+      R.modal({ title: 'Impression directe indisponible ici', body: `<p style="margin:0 0 8px">Le navigateur bloque l’impression dans cette fenêtre (application affichée dans une page intégrée).</p><p class="small" style="margin:0">Téléchargez le document, ouvrez le fichier téléchargé puis <b>Ctrl+P</b> (ou <b>Cmd+P</b>) → imprimante ou « Enregistrer en PDF ».</p>`, foot: `<button type="button" class="btn" data-action="closeModal">Fermer</button><button type="button" class="btn primary" data-action="telechargerDoc">${R.icon('download')}Télécharger le document</button>` }); }, 500);
+  };
+  const CSS_EXPORT = `@media screen{body.export{background:#E4E9E7}.export-barre{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;padding:10px 16px;background:#fff;border-bottom:1px solid #DCE3E0;font-size:13px;color:#4E5E59}.export-barre button{font:inherit;font-weight:600;border:0;border-radius:8px;padding:7px 18px;background:#1C6B62;color:#fff;cursor:pointer}.export .carnet-wrap{background:none;padding:22px 0 6px}.export-rapport{background:#fff;max-width:1180px;margin:22px auto;padding:24px 28px;box-shadow:0 8px 28px rgba(0,0,0,.12)}}
+.export .rapport .print-only{display:flex!important}
+@media print{.export-rapport{margin:0;padding:0}}`;
+  const sansAccents = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  /* fichier HTML autonome du document affiché : styles de l'application, thème clair, zones modifiables figées */
+  R.docExport = () => {
+    const r = S.route || {}, par = r.params || {}; const p = par.id ? R.patient(par.id) : null;
+    const type = r.page === 'impression' ? (par.quoi === 'seances' ? ['Seances', 'Historique des séances'] : ['Bilans', 'Bilans et contrôles']) : { carnet: ['Carnet', 'Carnet de suivi biothérapique'], compteRendu: ['Compte-rendu', 'Compte rendu de suivi'], activite: ['Rapport-activite', 'Rapport d’activité'] }[r.page];
+    const root = type && document.querySelector(r.page === 'activite' ? '#app .rapport' : '#app .carnet-wrap'); if (!root) return null;
+    const doc = root.cloneNode(true);
+    doc.querySelectorAll('.no-print, button, script').forEach(x => x.remove());
+    doc.querySelectorAll('[data-placeholder]').forEach(x => { if (x.textContent.trim()) return; const sec = x.closest('.cr-sec'); x.remove(); if (sec && !sec.querySelector('li, table, .doc-box')) sec.remove(); }); /* zone facultative laissée vide : rien à imprimer */
+    doc.querySelectorAll('*').forEach(x => { [...x.attributes].forEach(a => { if (/^data-|^(contenteditable|spellcheck|tabindex|title)$/.test(a.name) || (a.name === 'role' && /^(button|link)$/.test(a.value))) x.removeAttribute(a.name); }); x.classList.remove('cr-edit', 'vide', 'plie', 'pli-titre'); if (x.getAttribute('class') === '') x.removeAttribute('class'); });
+    const titre = type[1] + (p ? ' — ' + R.nomComplet(p) : ''); const css = [...document.querySelectorAll('style')].map(s => s.textContent).join('\n');
+    const polices = [...document.querySelectorAll('link[href*="fonts.googleapis.com"], link[href*="fonts.gstatic.com"]')].map(l => l.outerHTML).join('');
+    const html = `<!doctype html><html lang="fr" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${R.esc(titre)}</title>${polices}<style>${css}\n${CSS_EXPORT}</style></head><body class="export"><div class="export-barre no-print"><button type="button" onclick="window.print()">Imprimer</button><span>${R.esc(titre)} — exporté de Ryze le ${R.fmtDate(R.today())}. Ctrl+P (ou Cmd+P) : imprimante ou « Enregistrer en PDF ».</span></div>${r.page === 'activite' ? `<div class="export-rapport">${doc.outerHTML}</div>` : doc.outerHTML}</body></html>`;
+    return { html, nom: ['Ryze', type[0], p && sansAccents(p.nom), p && sansAccents(p.prenom), R.today()].filter(Boolean).join('_') + '.html', droit: r.page === 'activite' ? 'dashboard' : 'carnet' };
+  };
+  /* dernier recours si le téléchargement est impossible ou peut-être bloqué : le contenu à copier dans un fichier */
+  R.exportTexte = (nom, txt, lance) => { R.modal({ title: 'Télécharger le document', wide: true, body: `<p class="small" style="margin:0 0 8px">${lance ? `Le fichier <b>${R.esc(nom)}</b> a été proposé au téléchargement : ouvrez-le puis <b>Ctrl+P</b> (ou <b>Cmd+P</b>). Si aucun fichier n’apparaît (téléchargements bloqués dans cette fenêtre), copiez` : `Le téléchargement n’a pas pu démarrer. Copiez`} le contenu ci-dessous dans un fichier texte nommé <b>${R.esc(nom)}</b>, ouvrez-le dans le navigateur puis imprimez.</p><textarea id="export-txt" readonly style="min-height:160px;font-family:'IBM Plex Mono',monospace;font-size:11px"></textarea>`, foot: `<button type="button" class="btn" data-action="copierExport">Copier</button><button type="button" class="btn primary" data-action="closeModal">Fermer</button>` }); const ta = document.getElementById('export-txt'); if (ta) ta.value = txt; };
+  R.telechargerDoc = () => {
+    const d = R.docExport(); if (!d) { R.toast('Aucun document à télécharger sur cette page', 'crit'); return; }
+    if (!R.can(d.droit, 'r')) { R.toast('Action réservée : accès au document requis', 'crit'); return; }
+    try { const url = URL.createObjectURL(new Blob([d.html], { type: 'text/html;charset=utf-8' })); const a = document.createElement('a'); a.href = url; a.download = d.nom; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000); } catch (e) { R.exportTexte(d.nom, d.html, false); return; }
+    let cadre = false; try { cadre = window.self !== window.top; } catch (e) { cadre = true; }
+    if (cadre) { R.exportTexte(d.nom, d.html, true); return; } /* dans un cadre, un téléchargement bloqué ne se détecte pas */
+    R.closeModal(); R.toast('Fichier téléchargé : ouvrez-le puis imprimez (Ctrl+P)', 'good');
+  };
 
   /* ---------- Actions globales ---------- */
   Object.assign(R.actions, {
@@ -512,6 +550,7 @@
     loginFill(el) { const i = document.getElementById('login-code'); i.value = el.dataset.code; i.form.requestSubmit(); },
     logout() { S.user = null; S.route = { page: 'dashboard', params: {} }; R.ui.w = null; R.ui.cfgEdit = null; R.ui.synthOpen = {}; R.ui.filtres = {}; R.saveUi(); R.save(); R.render(); },
     closeModal() { R.closeModal(); },
+    imprimer() { R.imprimer(); }, telechargerDoc() { R.telechargerDoc(); },
     toggleRail() { const r = document.getElementById('rail'); r.classList.toggle('open'); let b = document.getElementById('rail-backdrop'); if (r.classList.contains('open')) { if (!b) { b = document.createElement('div'); b.id = 'rail-backdrop'; b.className = 'rail-backdrop'; b.setAttribute('data-action', 'toggleRail'); document.body.appendChild(b); } } else if (b) b.remove(); },
     globalSearch(el) {
       const q = el.value.trim().toLowerCase(); const box = document.getElementById('search-results'); if (q.length < 2) { box.innerHTML = ''; return; }
