@@ -4,7 +4,7 @@
    ===================================================================== */
 'use strict';
 (function (R) {
-  const KEY = 'ryze-hdj-v1', VERSION = 6;
+  const KEY = 'ryze-hdj-v1', VERSION = 7;
   const S = {};
   R.S = S; R.ui = { filtres: {}, semaineOffset: 0, cal: {}, plies: {} };
   let uiInit = {}; try { uiInit = JSON.parse(localStorage.getItem('ryze-hdj-ui') || '{}') || {}; } catch (e) {} R.ui.plies = uiInit.plies || {};
@@ -13,7 +13,7 @@
   /* ---------- Migration des données locales ---------- */
   function migrer(s) {
     (s.patients || []).forEach(p => { p.notes = p.notes || []; p.surveillance = p.surveillance || []; p.bilan = p.bilan || []; p.cures = p.cures || []; }); s.settings = s.settings || {};
-    const seedUsers = R.seed().users;
+    const seedUsers = [['u-chef', 'CHEF01', true], ['u-med1', 'MED001', true], ['u-med2', 'MED002', true], ['u-pha1', 'PUI001', false], ['u-int', 'PUI002', false], ['u-ide1', 'HDJ001', false], ['u-ide2', 'HDJ002', false], ['u-sec', 'HDJ003', false]].map(x => ({ id: x[0], code: x[1], medecin: x[2] })); /* codes du jeu de démonstration, sans régénérer toute la démo */
     if (s.version === 1) {
       const map = { medecin: 'complet', pharmacien: 'complet', admin: 'complet', ide: 'hdj', secretaire: 'hdj' };
       (s.users || []).forEach(u => { if (!R.ROLES[u.role]) { u.medecin = u.role === 'medecin'; u.role = map[u.role] || 'hdj'; } });
@@ -28,6 +28,7 @@
     if (s.version === 3) { s.version = 4; }
     if (s.version === 4) { try { R.purgerAncienCatalogue(s); } catch (e) { console.error('Purge des anciens contrôles', e); } s.version = 5; }
     if (s.version === 5) { (s.patients || []).forEach(p => { if (!p.paris) p.paris = R.parisDepuisTexte(p.montreal || '', p.pathologie, p.ddn, p.dateDiag, true); delete p.montreal; }); s.version = 6; }
+    if (s.version === 6) { delete s.stock; delete s.mouvements; (s.patients || []).forEach(p => { try { R.alignerTdm(p); } catch (e) {} }); s.version = 7; }
     if (s.brouillon) { s.brouillons = s.brouillons || {}; if (s.user && s.brouillon.d) s.brouillons[s.user] = s.brouillon; delete s.brouillon; }
     if (!s.rdv) s.rdv = []; if (!s.journal) s.journal = []; (s.patients || []).forEach(p => { p.notes = p.notes || []; p.surveillance = p.surveillance || []; p.bilan = p.bilan || []; p.cures = p.cures || []; });
     if (s.user && !(s.users || []).some(u => u.id === s.user)) s.user = null;
@@ -37,7 +38,7 @@
     let raw = null; try { raw = localStorage.getItem(KEY); } catch (e) { return null; }
     if (!raw) return null;
     /* une base présente mais illisible n'est jamais écrasée sans copie : elle est mise de côté et signalée à la connexion */
-    const illisible = raison => { try { localStorage.setItem(KEY + '.bak', raw); } catch (e) {} R.ui.baseIllisible = raison; console.error('Base locale non chargée :', raison); return null; };
+    const illisible = raison => { let copie = false; try { localStorage.setItem(KEY + '.bak', raw); copie = localStorage.getItem(KEY + '.bak') === raw; } catch (e) {} R.ui.baseIllisible = raison; R.ui.rawIllisible = raw; R.ui.copieOk = copie; console.error('Base locale non chargée :', raison); return null; };
     let s; try { s = JSON.parse(raw); } catch (e) { return illisible('contenu illisible'); }
     if (!s || !s.users || !s.patients) return illisible('structure inattendue');
     if (+s.version > VERSION) return illisible(`base enregistrée par une version plus récente de l’application (version ${s.version}, celle-ci lit jusqu’à la version ${VERSION})`);
@@ -49,7 +50,7 @@
   S.version = VERSION; if (uiInit.route && uiInit.route.page) S.route = uiInit.route;
   /* si un autre onglet a enregistré une version plus récente, on l'adopte au lieu de l'écraser */
   const plusRecenteAilleurs = () => { if (!S.modifieLe) return null; let raw = null; try { raw = localStorage.getItem(KEY); } catch (e) { return null; } if (!raw) return null; const m = raw.match(/"modifieLe":"([^"]+)"/); return m && m[1] > S.modifieLe ? raw : null; };
-  R.save = () => { const autre = plusRecenteAilleurs(); if (autre) { try { const s = JSON.parse(autre); const route = S.route, user = S.user; remplacer(migrer(s)); S.route = route; S.user = user && S.users.some(x => x.id === user && x.actif) ? user : null; R.closeModal(); R.toast('Données mises à jour depuis un autre onglet : votre dernière action n’a pas été enregistrée, vérifiez et recommencez', 'warn'); R.render(); return; } catch (e) {} }
+  R.save = () => { if (R.ui.baseIllisible && !R.ui.baseIllisibleAccepte) return; /* la base d'origine n'est jamais écrasée avant un choix explicite */ const autre = plusRecenteAilleurs(); if (autre) { try { const s = JSON.parse(autre); const route = S.route, user = S.user; remplacer(migrer(s)); S.route = route; S.user = user && S.users.some(x => x.id === user && x.actif) ? user : null; R.closeModal(); R.toast('Données mises à jour depuis un autre onglet : votre dernière action n’a pas été enregistrée, vérifiez et recommencez', 'warn'); R.render(); return; } catch (e) {} }
     try { S.enregistreLe = new Date().toISOString(); localStorage.setItem(KEY, JSON.stringify(S)); if (R.ui.saveError) { R.ui.saveError = false; R.bandeau(); } } catch (e) { R.ui.saveError = true; R.bandeau(); console.error('Sauvegarde impossible', e); } };
   R.touch = () => { S.dirty = true; S.modifieLe = new Date().toISOString(); R.save(); };
   R.bandeau = () => { let b = document.getElementById('bandeau'); if (!R.ui.saveError) { if (b) b.remove(); return; } if (!b) { b = document.createElement('div'); b.id = 'bandeau'; b.className = 'bandeau'; document.body.appendChild(b); } b.innerHTML = '<b>Sauvegarde impossible dans ce navigateur</b> (espace plein ou stockage bloqué). Vos dernières modifications ne sont pas conservées : exportez la base depuis Paramètres avant de fermer la page.'; };
@@ -171,7 +172,8 @@
     const pr0 = R.proto(p.protocoleId); if (!pr0 || !pr0.entretien) return 0;
     const cyc = p.cycleCourant || 1; const hist = (p.historiqueProtocoles || []).find(x => x.cycle === cyc) || {}; const pr = R.appliquerVariante(pr0, hist.variante || null); const curesCyc = p.cures.filter(c => (c.cycle || 1) === cyc && c.statut !== 'annulee');
     const derniere = curesCyc[curesCyc.length - 1]; if (!derniere) return 0;
-    const ref = curesCyc.filter(c => c.phase === 'Entretien').slice(-1)[0] || derniere;
+    let ref = curesCyc.filter(c => c.phase === 'Entretien').slice(-1)[0];
+    if (!ref) { const d0 = R.doseEtape(pr, { dose: pr.entretien.dose, doseType: pr.entretien.doseType, texte: pr.entretien.texte }, p.poids, 'entretien'); ref = { voie: pr.entretien.voie, dose: d0.dose, doseTexte: d0.texte, flacons: d0.flacons, articleId: d0.articleId || pr.articleEntretienId || pr.articleId, heure: derniere.heure }; } /* aucune séance d'entretien active : dose et voie d'entretien du protocole, jamais celles de l'induction */
     const inter = Math.max(7, +hist.intervalle || +pr.entretien.intervalleJours || 56); const t = R.today();
     const base = derniere.datePrevue > t ? derniere.datePrevue : t; const fin = R.addDays(base, Math.round((mois || 12) * 30.4)); const j0 = R.j0(p, cyc); const nouvelles = [];
     let debut = R.addDays(derniere.datePrevue, inter); if (debut <= t) debut = R.jourOuvre(R.addDays(t, 1)); /* un plan échu reprend demain, jamais dans le passé */
@@ -180,27 +182,29 @@
     /* contrôles périodiques selon le plan de surveillance du dossier */
     const cfg = p.planSurveillance || R.cfgDepuisPatient(p); const cle = s => s.id + (s.nom ? '|' + s.nom : ''); const dernier = {};
     p.surveillance.filter(s => s.echeance && s.statut !== 'annulee').forEach(s => { const k = cle(s); if (!dernier[k] || s.echeance > dernier[k]) dernier[k] = s.echeance; });
-    R.genererSurveillanceCfg(cfg, j0, R.diffDays(j0, fin), cyc).filter(s => s.mode === 'echeance' && s.echeance > (dernier[cle(s)] || R.today())).forEach(s => p.surveillance.push(s));
+    R.genererSurveillanceCfg(cfg, j0, R.diffDays(j0, fin), cyc).filter(s => s.mode === 'echeance' && s.echeance > (dernier[cle(s)] || R.today()) && !R.bloqueParAnnulation(p, s)).forEach(s => p.surveillance.push(s)); R.alignerTdm(p);
     const h = (p.historiqueProtocoles || []).find(x => x.statut === 'en cours'); if (h && nouvelles.length) h.planifieJusqua = nouvelles[nouvelles.length - 1].label;
     return nouvelles.length;
   };
+  let alertesCache = null; const alertesCalcul = () => R.alertesBrut();
+  R.alertesMemo = () => { const k = [S.modifieLe || '', S.enregistreLe ? '' : 'x', S.derniereSauvegarde || '', R.today(), S.user, S.patients.length].join('|'); if (alertesCache && alertesCache.k === k) return alertesCache.v; const v = alertesCalcul(); alertesCache = { k, v }; return v; };
   R.finPlanification = p => { const c = p.cures.filter(x => x.statut === 'prevue'); return c.length ? c[c.length - 1].datePrevue : null; };
   R.conflitsCapacite = () => {
     const out = [], t = R.today(), h = R.hdj();
     const derniere = S.patients.reduce((m, p) => p.cures.reduce((m2, c) => c.statut === 'prevue' && c.datePrevue > m2 ? c.datePrevue : m2, m), t); const nJ = Math.min(400, Math.max(90, R.diffDays(t, derniere) + 1));
-    for (let i = 0; i < nJ; i++) { const d = R.addDays(t, i); const s = R.seances(d).filter(x => x.cure.statut === 'prevue'); if (!s.length) continue; if (!R.jourOuvert(d)) { out.push({ date: d, motif: `${s.length} séance(s) un jour de fermeture` }); continue; } if (s.length > h.maxParJour) { out.push({ date: d, motif: `${s.length} séances pour ${h.maxParJour} maximum` }); continue; } let max = 0; s.forEach(x => { const n = s.filter(y => y.deb < x.fin && x.deb < y.fin).length; if (n > max) max = n; }); if (max > h.fauteuils) out.push({ date: d, motif: `${max} séances simultanées pour ${h.fauteuils} fauteuils` }); }
+    for (let i = 0; i < nJ; i++) { const d = R.addDays(t, i); const s = R.seances(d).filter(x => x.cure.statut === 'prevue'); if (!s.length) continue; if (!R.jourOuvert(d)) { out.push({ date: d, motif: `${s.length} séance(s) un jour de fermeture` }); continue; } const trop = s.filter(x => (x.cure.fauteuil || 0) > h.fauteuils); if (trop.length) out.push({ date: d, motif: `${trop.length} séance(s) sur un fauteuil qui n’existe plus (n° > ${h.fauteuils})` }); if (s.length > h.maxParJour) { out.push({ date: d, motif: `${s.length} séances pour ${h.maxParJour} maximum` }); continue; } let max = 0; s.forEach(x => { const n = s.filter(y => y.deb < x.fin && x.deb < y.fin).length; if (n > max) max = n; }); if (max > h.fauteuils) out.push({ date: d, motif: `${max} séances simultanées pour ${h.fauteuils} fauteuils` }); }
     return out;
   };
 
   /* ---------- Alertes ---------- */
-  R.alertes = () => {
+  R.alertesBrut = () => {
     const out = [], t = R.today();
     R.conflitsCapacite().forEach(c => out.push({ sev: 'crit', t: `Capacité dépassée le ${R.fmtDate(c.date)}`, d: `${c.motif} — déplacez des séances ou ajustez la capacité`, go: ['planning', { date: c.date }] }));
     if (S.derniereSauvegarde ? R.diffDays(S.derniereSauvegarde, t) > 7 : S.patients.some(p => p.creePar)) out.push({ sev: 'info', t: 'Sauvegarde recommandée', d: S.derniereSauvegarde ? `Dernier export le ${R.fmtDate(S.derniereSauvegarde)} — exportez la base depuis Paramètres` : 'Aucun export de la base encore réalisé — Paramètres → Exporter', go: ['parametres', {}] });
     S.patients.forEach(p => {
       if (p.statut !== 'suspendu') { p.cures.filter(c => c.statut === 'prevue' && c.datePrevue < t && c.voie === 'IV').forEach(c => out.push({ sev: 'crit', t: `Séance n°${c.n} non réalisée — ${R.nomComplet(p)}`, d: `${R.protoDeCure(p, c)?.dci} ${c.label} prévue le ${R.fmtDate(c.datePrevue)}`, go: ['patient', { id: p.id, tab: 'plan' }] }));
         const dom = p.cures.filter(c => c.statut === 'prevue' && c.datePrevue < t && c.voie !== 'IV'); if (dom.length) out.push({ sev: 'info', t: `${dom.length} injection(s) à domicile à confirmer — ${R.nomComplet(p)}`, d: `${R.protoDeCure(p, dom[0])?.dci} ${dom[0].label} du ${R.fmtDate(dom[0].datePrevue)}${dom.length > 1 ? ' et suivantes' : ''} : à cocher « Fait » après vérification avec le patient`, go: ['patient', { id: p.id, tab: 'plan' }] }); }
-      p.cures.filter(c => c.statut === 'reportee' || c.statut === 'manquee').forEach(c => out.push({ sev: 'warn', t: `${c.statut === 'manquee' ? 'Séance manquée' : 'Séance'} à replanifier — ${R.nomComplet(p)}`, d: `${c.label} · ${c.motif || ''}`, go: ['patient', { id: p.id, tab: 'plan' }] }));
+      p.cures.filter(c => (c.statut === 'reportee' || c.statut === 'manquee') && !c.parSuspension).forEach(c => out.push({ sev: 'warn', t: `${c.statut === 'manquee' ? 'Séance manquée' : 'Séance'} à replanifier — ${R.nomComplet(p)}`, d: `${c.label} · ${c.motif || ''}`, go: ['patient', { id: p.id, tab: 'plan' }] }));
       p.cures.filter(c => c.sansCreneau && c.statut === 'prevue').forEach(c => out.push({ sev: 'warn', t: `Aucun créneau trouvé — ${R.nomComplet(p)}`, d: `Séance ${c.label} du ${R.fmtDate(c.datePrevue)} : capacité dépassée, à replacer manuellement`, go: ['patient', { id: p.id, tab: 'plan' }] }));
       p.surveillance.filter(s => s.statut === 'prevue' && s.echeance && s.echeance < t).forEach(s => out.push({ sev: 'warn', t: `Contrôle en retard — ${R.nomComplet(p)}`, d: `${s.label} · échéance ${R.fmtDate(s.echeance)}`, go: ['patient', { id: p.id, tab: 'surveillance' }] }));
       if (p.statut === 'induction') { const manq = p.bilan.filter(b => b.statut === 'attente' && ['igra', 'rxt', 'vhb'].includes(b.id)); if (manq.length) out.push({ sev: 'warn', t: `Bilan pré-thérapeutique incomplet — ${R.nomComplet(p)}`, d: manq.map(b => R.BILAN_PRE.find(x => x.id === b.id)?.label.split(' (')[0]).join(' · '), go: ['patient', { id: p.id, tab: 'bilans' }] }); }
@@ -210,6 +214,9 @@
     const rank = { crit: 0, warn: 1, info: 2 };
     return out.sort((a, b) => rank[a.sev] - rank[b.sev]);
   };
+  R.alertes = () => R.alertesMemo();
+  document.documentElement.lang = 'fr';
+
 
   /* ---------- Icônes ---------- */
   const ICONS = {
@@ -243,13 +250,18 @@
 
   /* ---------- Modale, toast ---------- */
   R.modal = ({ title, body, foot, wide, form }) => {
-    document.getElementById('modal-root').innerHTML = `<div class="modal-overlay"><form class="modal${wide ? ' wide' : ''}" ${form ? `data-form="${form}"` : ''}>
-      <div class="modal-head"><h3>${title}</h3><button type="button" class="x-btn" data-action="closeModal" aria-label="Fermer">${R.icon('x')}</button></div>
+    if (!document.querySelector('#modal-root .modal')) { R.ui.modalSale = false; R.ui.focusAvant = document.activeElement; }
+    document.getElementById('modal-root').innerHTML = `<div class="modal-overlay"><form class="modal${wide ? ' wide' : ''}" role="dialog" aria-modal="true" aria-labelledby="modal-titre" ${form ? `data-form="${form}"` : ''}>
+      <div class="modal-head"><h3 id="modal-titre">${title}</h3><button type="button" class="x-btn" data-action="closeModal" aria-label="Fermer">${R.icon('x')}</button></div>
       <div class="modal-body">${body}</div>${foot ? `<div class="modal-foot">${/required/.test(body) ? '<span class="req-note small muted">* champ obligatoire</span>' : ''}${foot}</div>` : ''}</form></div>`;
-    R.pliables(document.getElementById('modal-root'));
+    R.pliables(document.getElementById('modal-root')); R.accessibilite(document.getElementById('modal-root'));
     const first = document.querySelector('#modal-root input:not([readonly]):not([type=hidden]), #modal-root select, #modal-root textarea'); if (first) first.focus();
   };
-  R.closeModal = () => { document.getElementById('modal-root').innerHTML = ''; };
+  R.closeModal = () => { const ouverte = !!document.querySelector('#modal-root .modal'); document.getElementById('modal-root').innerHTML = ''; R.ui.modalSale = false; if (ouverte && R.ui.focusAvant && document.contains(R.ui.focusAvant)) { try { R.ui.focusAvant.focus(); } catch (e) {} } R.ui.focusAvant = null; };
+  /* Échap ou clic à côté : si une saisie est en cours, il faut confirmer par un second geste */
+  R.fermerModalDemande = () => { if (!document.querySelector('#modal-root .modal')) return; if (R.ui.modalSale && !(R.ui.confirmFermeture && Date.now() - R.ui.confirmFermeture < 4000)) { R.ui.confirmFermeture = Date.now(); R.toast('Saisie en cours : recommencez (Échap ou clic à côté) pour fermer sans enregistrer', 'warn'); return; } R.ui.confirmFermeture = 0; R.closeModal(); };
+  /* Accès clavier et étiquettes : lignes cliquables focalisables, libellés reliés à leur champ */
+  R.accessibilite = root => { root = root || document.getElementById('app'); if (!root) return; root.querySelectorAll('[data-go]:not(button):not(a):not([tabindex]), [data-action]:not(button):not(a):not(input):not(select):not(textarea):not(h2):not(h3):not(label):not([tabindex])').forEach(el => { el.tabIndex = 0; el.setAttribute('role', el.dataset.go ? 'link' : 'button'); }); root.querySelectorAll('.field').forEach(f => { const lab = f.querySelector(':scope > label'); const ctl = f.querySelector(':scope > input:not([type=hidden]), :scope > select, :scope > textarea'); if (lab && ctl && !lab.htmlFor) { if (!ctl.id) ctl.id = 'c-' + Math.random().toString(36).slice(2, 9); lab.htmlFor = ctl.id; } }); };
   /* Toute carte avec un titre peut être réduite (clic sur le titre ou le chevron) ; l'état est mémorisé par page et par titre */
   R.pliables = root => {
     root = root || document.getElementById('app'); if (!root) return; const page = (S.route && S.route.page) || '';
@@ -307,7 +319,7 @@
   R.saveUi = () => { try { localStorage.setItem('ryze-hdj-ui', JSON.stringify({ plies: R.ui.plies || {}, route: S.route })); } catch (e) {} };
   R.go = (page, params) => { R.closeModal(); S.route = { page, params: params || {} }; R.saveUi(); R.render(); window.scrollTo(0, 0); };
   R.render = () => {
-    try { rendre(); R.pliables(); } catch (e) {
+    try { rendre(); R.pliables(); R.accessibilite(); } catch (e) {
       console.error('Rendu impossible', e);
       /* on ne supprime jamais les données : on propose de revenir à l'accueil ou d'exporter la base */
       document.getElementById('app').innerHTML = `<div class="login-wrap"><div class="card" style="max-width:520px;margin:40px auto"><div class="card-head"><h2>Erreur d’affichage</h2></div><div class="card-body"><p class="small">Cette page n’a pas pu être affichée. Vos données sont conservées.</p><pre class="small muted" style="white-space:pre-wrap">${R.esc(e && e.message || e)}</pre><div class="row" style="gap:8px;flex-wrap:wrap"><button type="button" class="btn primary" data-action="secoursAccueil">Revenir à l’accueil</button>${R.can('equipe', 'w') ? '<button type="button" class="btn" data-action="exporterBase">Exporter la base</button>' : ''}<button type="button" class="btn ghost" data-action="secoursRecharger">Recharger la page</button></div></div></div></div>`;
@@ -340,7 +352,7 @@
 
   function loginView() {
     const actifs = S.users.filter(u => u.actif);
-    return `<div class="login"><div class="login-box">${R.ui.baseIllisible ? `<div class="callout crit mb16"><b>Vos données précédentes n’ont pas pu être chargées</b> — ${R.esc(R.ui.baseIllisible)}. Une copie intacte est conservée dans ce navigateur : <button type="button" class="btn sm" data-action="telechargerBak">Télécharger la copie</button>, puis importez-la depuis Paramètres une fois l’application mise à jour. Rien n’est perdu tant que vous ne videz pas les données du navigateur.</div>` : ''}
+    return `<div class="login"><div class="login-box">${R.ui.baseIllisible ? `<div class="callout crit mb16"><b>Vos données précédentes n’ont pas pu être chargées</b> — ${R.esc(R.ui.baseIllisible)}. ${R.ui.baseIllisibleAccepte ? 'Vous travaillez sur une base neuve.' : `Elles n’ont pas été modifiées. ${R.ui.copieOk ? 'Une copie a aussi été mise de côté dans ce navigateur.' : 'Aucune copie supplémentaire n’a pu être faite (espace plein) : téléchargez-les maintenant.'}`}<div class="row mt8" style="gap:8px;flex-wrap:wrap"><button type="button" class="btn sm primary" data-action="telechargerBak">Télécharger mes données</button>${R.ui.baseIllisibleAccepte ? '' : '<button type="button" class="btn sm danger" data-action="baseNeuve">Continuer avec une base neuve</button>'}</div><div class="small mt8">Importez ensuite le fichier depuis Paramètres, une fois l’application mise à jour.</div></div>` : ''}
       <div class="login-left">
         <div class="brand" style="padding:0"><div class="brand-mark">Rz</div><div><b>Ryze</b><span>Suivi biothérapique</span></div></div>
         <h1>Gestion des biothérapies en hôpital de jour</h1>
@@ -359,9 +371,9 @@
           <div class="field"><label for="login-code">Code d’accès personnel</label><input type="text" id="login-code" name="code" class="mono" style="font-size:18px;letter-spacing:.12em;text-transform:uppercase" placeholder="ex. MED001" autocomplete="off" autofocus required></div>
           <button type="submit" class="btn primary" style="justify-content:center">Entrer</button>
         </form>
-        <div class="subtle mt24"><div class="caps mb8">Codes de démonstration (cliquer pour entrer)</div>
+        ${S.dirty ? '' : `<div class="subtle mt24"><div class="caps mb8">Codes de démonstration (cliquer pour entrer)</div>
           <div class="stack" style="gap:6px">${actifs.map(u => `<div class="row between small" style="flex-wrap:nowrap"><span class="grow" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${R.esc(R.userName(u.id))} <span class="muted">· ${R.esc(u.fonction)}</span></span><span class="row" style="gap:6px;flex-wrap:nowrap"><span class="badge ${u.role === 'complet' ? 'accent' : ''}">${(R.ROLES[u.role] || R.ROLES.hdj).court}</span><button type="button" class="tag" data-action="loginFill" data-code="${R.esc(u.code)}" style="cursor:pointer">${R.esc(u.code)}</button></span></div>`).join('')}</div>
-          <p class="xs muted" style="margin:10px 0 0">Les codes sont créés dans Équipe & codes par un accès complet. En production, cette liste n’est pas affichée.</p></div>
+          <p class="xs muted" style="margin:10px 0 0">Les codes sont créés dans Équipe & codes par un accès complet. Cette liste disparaît dès que la base contient des données réelles.</p></div>`}
       </div></div></div>`;
   }
 
@@ -431,7 +443,7 @@
     const dans = x => (x.c.dateReelle || x.c.datePrevue) >= debut && (x.c.dateReelle || x.c.datePrevue) <= fin;
     const realisees = cures.filter(x => x.c.statut === 'realisee' && x.c.dateReelle >= debut && x.c.dateReelle <= fin);
     const prevues = cures.filter(x => x.c.datePrevue >= debut && x.c.datePrevue <= fin && x.c.statut !== 'annulee');
-    const manquees = cures.filter(x => x.c.datePrevue >= debut && x.c.datePrevue <= fin && (x.c.statut === 'manquee' || (x.c.statut === 'prevue' && x.c.datePrevue < t)));
+    const manquees = cures.filter(x => (x.c.absences || []).some(a => a.date >= debut && a.date <= fin) || (x.c.datePrevue >= debut && x.c.datePrevue <= fin && (x.c.statut === 'manquee' || (x.c.statut === 'prevue' && x.c.datePrevue < t))));
     const aVenir = prevues.filter(x => x.c.statut === 'prevue' && x.c.datePrevue >= t);
     const annulees = cures.filter(x => x.c.statut === 'annulee' && x.c.datePrevue >= debut && x.c.datePrevue <= fin);
     const reports = cures.flatMap(x => (x.c.reports || []).filter(r => r.date >= debut && r.date <= fin).map(r => ({ r, c: x.c, p: x.p })));
@@ -496,9 +508,9 @@
 
   /* ---------- Actions globales ---------- */
   Object.assign(R.actions, {
-    loginCode(f, fd) { const code = String(fd.get('code') || '').trim().toUpperCase(); const u = S.users.find(x => x.actif && String(x.code).toUpperCase() === code); if (!u) { R.toast('Code inconnu ou désactivé', 'crit'); return; } u.derniere = R.today(); S.user = u.id; S.route = { page: 'dashboard', params: {} }; R.ui.w = null; R.ui.cfgEdit = null; R.ui.synthOpen = {}; R.ui.filtres = {}; R.save(); R.render(); },
+    loginCode(f, fd) { if (R.ui.baseIllisible && !R.ui.baseIllisibleAccepte) { R.toast('Téléchargez d’abord vos données, ou choisissez « Continuer avec une base neuve »', 'crit'); return; } const code = String(fd.get('code') || '').trim().toUpperCase(); const u = S.users.find(x => x.actif && String(x.code).toUpperCase() === code); if (!u) { R.toast('Code inconnu ou désactivé', 'crit'); return; } u.derniere = R.today(); S.user = u.id; S.route = { page: 'dashboard', params: {} }; R.ui.w = null; R.ui.cfgEdit = null; R.ui.synthOpen = {}; R.ui.filtres = {}; R.saveUi(); R.save(); R.render(); },
     loginFill(el) { const i = document.getElementById('login-code'); i.value = el.dataset.code; i.form.requestSubmit(); },
-    logout() { S.user = null; R.ui.w = null; R.ui.cfgEdit = null; R.ui.synthOpen = {}; R.ui.filtres = {}; R.save(); R.render(); },
+    logout() { S.user = null; S.route = { page: 'dashboard', params: {} }; R.ui.w = null; R.ui.cfgEdit = null; R.ui.synthOpen = {}; R.ui.filtres = {}; R.saveUi(); R.save(); R.render(); },
     closeModal() { R.closeModal(); },
     toggleRail() { const r = document.getElementById('rail'); r.classList.toggle('open'); let b = document.getElementById('rail-backdrop'); if (r.classList.contains('open')) { if (!b) { b = document.createElement('div'); b.id = 'rail-backdrop'; b.className = 'rail-backdrop'; b.setAttribute('data-action', 'toggleRail'); document.body.appendChild(b); } } else if (b) b.remove(); },
     globalSearch(el) {
@@ -517,29 +529,34 @@
     },
     pickPatientChoisir(el) { const box = el.closest('.picker'); box.querySelector('input[type=hidden]').value = el.dataset.id; box.querySelector('.picker-input').value = el.dataset.label; box.querySelector('.picker-results').innerHTML = ''; },
     secoursAccueil() { S.route = { page: 'dashboard', params: {} }; R.save(); R.render(); }, secoursRecharger() { location.reload(); },
-    exporterBase() { if (!R.can('equipe', 'w')) { R.toast('Connectez-vous avec un accès complet pour exporter', 'crit'); return; } S.derniereSauvegarde = R.today(); R.save(); const txt = JSON.stringify(S); const nom = `ryze-sauvegarde-${R.today()}.json`; try { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'application/json' })); a.download = nom; document.body.appendChild(a); a.click(); a.remove(); } catch (e) {} R.modal({ title: 'Export de la base', body: `<p class="small" style="margin:0 0 8px">Le fichier <b>${nom}</b> a été proposé au téléchargement. Si rien ne s’est passé, copiez le contenu ci-dessous dans un fichier texte.</p><textarea id="export-txt" style="min-height:160px;font-family:'IBM Plex Mono',monospace;font-size:11px">${R.esc(txt)}</textarea>`, foot: `<button type="button" class="btn" data-action="copierExport">Copier</button><button type="button" class="btn primary" data-action="closeModal">Fermer</button>` }); R.render(); },
+    exporterBase() { if (!R.can('equipe', 'w')) { R.toast('Connectez-vous avec un accès complet pour exporter', 'crit'); return; } S.derniereSauvegarde = R.today(); R.save(); const txt = JSON.stringify(S); const nom = `ryze-sauvegarde-${R.today()}.json`; try { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'application/json' })); a.download = nom; document.body.appendChild(a); a.click(); a.remove(); } catch (e) {} R.modal({ title: 'Export de la base', body: `<p class="small" style="margin:0 0 8px">Le fichier <b>${nom}</b> a été proposé au téléchargement. Si rien ne s’est passé, copiez le contenu ci-dessous dans un fichier texte.</p><textarea id="export-txt" readonly style="min-height:160px;font-family:'IBM Plex Mono',monospace;font-size:11px"></textarea>`, foot: `<button type="button" class="btn" data-action="copierExport">Copier</button><button type="button" class="btn primary" data-action="closeModal">Fermer</button>` }); const ta = document.getElementById('export-txt'); if (ta) ta.value = txt; R.render(); },
     copierExport() { const t = document.getElementById('export-txt'); t.select(); try { document.execCommand('copy'); R.toast('Copié dans le presse-papiers', 'good'); } catch (e) { R.toast('Sélectionnez le texte et copiez-le manuellement', 'warn'); } },
     importerBase() { if (!R.can('equipe', 'w')) { R.toast('Réservé à l’accès complet', 'crit'); return; } R.modal({ title: 'Importer une sauvegarde', body: `<p class="small" style="margin:0">Choisissez un fichier exporté par Ryze. <b>Les données actuelles seront remplacées.</b></p><input type="file" id="import-file" accept="application/json,.json">`, foot: `<button type="button" class="btn" data-action="closeModal">Annuler</button><button type="button" class="btn danger" data-action="importerBaseOk">Remplacer par ce fichier</button>` }); },
     importerBaseOk() { if (!R.can('equipe', 'w')) return; const f = document.getElementById('import-file').files[0]; if (!f) { R.toast('Choisissez un fichier', 'crit'); return; } const rd = new FileReader(); rd.onload = () => { try { const s = JSON.parse(rd.result); if (!s || !s.patients || !s.users || !s.settings) throw new Error('format'); if (+s.version > VERSION) { R.toast('Ce fichier vient d’une version plus récente de Ryze : mettez à jour l’application avant de l’importer', 'crit'); return; } remplacer(migrer(s)); S.user = null; S.dirty = true; S.modifieLe = new Date().toISOString(); R.save(); R.closeModal(); R.render(); R.toast('Base importée : reconnectez-vous', 'good'); } catch (e) { R.toast('Fichier invalide', 'crit'); } }; rd.readAsText(f); },
     resetDemo() { if (S.dirty && !R.can('equipe', 'w')) return; R.reset(); }, viderDemo() { if (S.dirty && !R.can('equipe', 'w')) return; R.vider(); },
-    telechargerBak() { let raw = null; try { raw = localStorage.getItem(KEY + '.bak'); } catch (e) {} if (!raw) { R.toast('Aucune copie trouvée', 'crit'); return; } try { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([raw], { type: 'application/json' })); a.download = `ryze-copie-${R.today()}.json`; document.body.appendChild(a); a.click(); a.remove(); R.toast('Copie téléchargée', 'good'); } catch (e) { R.toast('Téléchargement impossible', 'crit'); } },
+    baseNeuve() { R.ui.baseIllisibleAccepte = true; R.render(); R.toast('Base neuve : pensez à réimporter vos données une fois l’application mise à jour', 'warn'); },
+    telechargerBak() { let raw = R.ui.rawIllisible || null; try { raw = raw || localStorage.getItem(KEY + '.bak'); } catch (e) {} if (!raw) { R.toast('Aucune copie trouvée', 'crit'); return; } try { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([raw], { type: 'application/json' })); a.download = `ryze-copie-${R.today()}.json`; document.body.appendChild(a); a.click(); a.remove(); R.toast('Copie téléchargée', 'good'); } catch (e) { R.toast('Téléchargement impossible', 'crit'); } },
     viderDemoConfirm() { if (S.dirty && !R.can('equipe', 'w')) { R.toast('Réservé à l’accès complet', 'crit'); return; } R.confirmer('Démarrer avec une base vide ?', 'Les patients et rendez-vous de démonstration seront supprimés. Les protocoles et les codes d’accès sont conservés.', 'viderDemo'); }
   });
 
   /* ---------- Délégation d'événements ---------- */
   /* actions réservées : vérifiées ici quel que soit le bouton qui les déclenche */
-  const DROITS = { userSave: ['equipe', 'w'], userRole: ['equipe', 'w'], userToggle: ['equipe', 'w'], userCode: ['equipe', 'w'], settingsSave: ['equipe', 'w'], protoEditer: ['protocoles', 'w'], protoSave: ['protocoles', 'w'], protoAddStep: ['protocoles', 'w'], protoDelStep: ['protocoles', 'w'], protoAddVariante: ['protocoles', 'w'], protoSupprimer: ['protocoles', 'w'], patientModifier: ['dossier', 'w'], patientSave: ['dossier', 'w'], protoChanger: ['dossier', 'w'], protoChangerSave: ['dossier', 'w'], posologieModifier: ['dossier', 'w'], posologieSave: ['dossier', 'w'], patientTerminer: ['dossier', 'w'], patientTerminerSave: ['dossier', 'w'], patientRouvrir: ['dossier', 'w'], cycleEditer: ['dossier', 'w'], cycleSave: ['dossier', 'w'], planModifier: ['dossier', 'w'], planSave: ['dossier', 'w'], wCreate: ['dossier', 'w'], wCreatePrint: ['dossier', 'w'] };
+  let pointeurDebut = null; document.addEventListener('pointerdown', e => { pointeurDebut = e.target; }, true);
+  document.addEventListener('input', e => { if (e.target.closest && e.target.closest('#modal-root form')) R.ui.modalSale = true; }, true);
+  document.addEventListener('change', e => { if (e.target.closest && e.target.closest('#modal-root form')) R.ui.modalSale = true; }, true);
+  document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.getAttribute && e.target.getAttribute('tabindex') === '0' && (e.target.dataset.go || e.target.dataset.action) && !/^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) { e.preventDefault(); e.target.click(); } });
+  const DROITS = { userSave: ['equipe', 'w'], userRole: ['equipe', 'w'], userToggle: ['equipe', 'w'], userCode: ['equipe', 'w'], settingsSave: ['equipe', 'w'], protoEditer: ['protocoles', 'w'], protoSave: ['protocoles', 'w'], protoAddStep: ['protocoles', 'w'], protoDelStep: ['protocoles', 'w'], protoAddVariante: ['protocoles', 'w'], protoSupprimer: ['protocoles', 'w'], patientModifier: ['dossier', 'w'], patientSave: ['dossier', 'w'], protoChanger: ['dossier', 'w'], protoChangerSave: ['dossier', 'w'], posologieModifier: ['dossier', 'w'], posologieSave: ['dossier', 'w'], patientTerminer: ['dossier', 'w'], patientTerminerSave: ['dossier', 'w'], patientRouvrir: ['dossier', 'w'], cycleEditer: ['dossier', 'w'], cycleSave: ['dossier', 'w'], planModifier: ['dossier', 'w'], planSave: ['dossier', 'w'], wCreate: ['dossier', 'w'], wCreatePrint: ['dossier', 'w'], patientSuspendre: ['dossier', 'w'], patientSuspendreSave: ['dossier', 'w'], patientReprendre: ['dossier', 'w'], prolongerPlan: ['dossier', 'w'], cureModifier: ['dossier', 'w'], cureModifierSave: ['dossier', 'w'], cureAjouter: ['dossier', 'w'], cureAjouterSave: ['dossier', 'w'], survAjouter: ['dossier', 'w'], survAjouterSave: ['dossier', 'w'], survAnnuler: ['dossier', 'w'], importerBase: ['equipe', 'w'], importerBaseOk: ['equipe', 'w'], exporterBase: ['equipe', 'w'] };
   R.autorise = nom => { const d = DROITS[nom]; if (!d || R.can(d[0], d[1])) return true; R.toast('Action réservée à l’accès complet', 'crit'); return false; };
   document.addEventListener('click', e => {
     const t = e.target.closest('[data-go],[data-action]');
-    if (!t) { if (e.target.classList.contains('modal-overlay')) R.closeModal(); return; }
+    if (!t) { if (e.target.classList.contains('modal-overlay') && pointeurDebut === e.target) R.fermerModalDemande(); return; }
     if (t.dataset.go) { let p = {}; try { p = t.dataset.params ? JSON.parse(t.dataset.params) : {}; } catch (err) {} R.go(t.dataset.go, p); return; }
     const fn = R.actions[t.dataset.action]; if (fn && R.autorise(t.dataset.action)) fn(t, e);
   });
   document.addEventListener('submit', e => { const f = e.target.closest('form[data-form]'); if (!f) return; e.preventDefault(); const fn = R.actions[f.dataset.form]; if (fn && R.autorise(f.dataset.form)) fn(f, new FormData(f)); });
   document.addEventListener('change', e => { const t = e.target.closest('[data-change]'); if (t) { const fn = R.actions[t.dataset.change]; if (fn && R.autorise(t.dataset.change)) fn(t, e); } });
   document.addEventListener('input', e => { const t = e.target.closest('[data-input]'); if (t) { const fn = R.actions[t.dataset.input]; if (fn) fn(t, e); } });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') R.closeModal(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') R.fermerModalDemande(); });
   document.addEventListener('mousemove', e => { const tip = document.getElementById('tooltip'); const t = e.target.closest && e.target.closest('[data-tip]'); if (!t) { tip.hidden = true; return; } tip.textContent = t.dataset.tip; tip.hidden = false; const x = Math.min(e.clientX + 14, window.innerWidth - tip.offsetWidth - 8); tip.style.left = x + 'px'; tip.style.top = (e.clientY + 14) + 'px'; });
   document.addEventListener('click', e => { if (!e.target.closest('.search')) { const b = document.getElementById('search-results'); if (b) b.innerHTML = ''; } });
 

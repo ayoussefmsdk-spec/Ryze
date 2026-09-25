@@ -69,15 +69,17 @@ window.RYZE = window.RYZE || {};
   };
   R.ageAuDiag = (ddn, dateDiag) => { if (!ddn || !dateDiag) return null; const a = R.parse(ddn), b = R.parse(String(dateDiag).length === 7 ? dateDiag + '-01' : dateDiag); if (isNaN(a) || isNaN(b)) return null; let n = b.getFullYear() - a.getFullYear(); if (b.getMonth() < a.getMonth() || (b.getMonth() === a.getMonth() && b.getDate() < a.getDate())) n--; return n >= 0 ? n : null; };
   R.parisAuto = (ddn, dateDiag) => { const n = R.ageAuDiag(ddn, dateDiag); if (n == null) return null; return n < 10 ? 'A1a' : n < 17 ? 'A1b' : n <= 40 ? 'A2' : 'A3'; };
+  R.parisAVerifier = c => (c && c.aVerifier || []).join(' · ');
   R.parisCode = (c, patho) => { if (!c) return ''; if (patho === 'RCH') return [c.E, c.S].filter(Boolean).join(' '); return [c.A, c.L, c.L4a ? 'L4a' : '', c.L4b ? 'L4b' : '', (c.B || '') + (c.p ? 'p' : ''), c.G].filter(Boolean).join(' '); };
   /* lit un code écrit en texte (Paris, ou Montréal si montreal = true pour les anciens dossiers) */
   R.parisDepuisTexte = (txt, patho, ddn, dateDiag, montreal) => {
     const t = ' ' + String(txt || '').toUpperCase().replace(/\s+/g, ' ').trim() + ' '; const c = {};
-    if (patho === 'RCH') { const e = t.match(/E[1-4]/); if (e) c.E = e[0]; const s = t.match(/S[0-3]/); if (s) c.S = montreal ? (s[0] === 'S3' ? 'S1' : 'S0') : (s[0] === 'S1' ? 'S1' : 'S0'); return c; }
+    const aVerif = x => { c.aVerifier = (c.aVerifier || []).concat(x); };
+    if (patho === 'RCH') { const e = t.match(/E[1-4]/); if (e) { if (montreal && e[0] === 'E3') aVerif('étendue : E3 ou E4 (Montréal E3 = au-delà de l’angle splénique)'); else c.E = e[0]; } const s = t.match(/S[0-3]/); if (s) { if (!montreal) c.S = s[0] === 'S1' ? 'S1' : 'S0'; else if (s[0] === 'S3') c.S = 'S1'; else aVerif(`sévérité : S0 ou S1 (Montréal ${s[0]} décrit la poussée du moment)`); } return c; }
     const a = t.match(/A1A|A1B|A1|A2|A3/); const auto = R.parisAuto(ddn, dateDiag);
-    if (a) c.A = a[0] === 'A1A' ? 'A1a' : a[0] === 'A1B' ? 'A1b' : a[0] === 'A1' ? (auto && /^A1/.test(auto) ? auto : 'A1b') : a[0]; else if (auto) c.A = auto;
+    if (a) { if (a[0] === 'A1' && !(auto && /^A1/.test(auto))) aVerif('âge au diagnostic : A1a ou A1b'); else c.A = a[0] === 'A1A' ? 'A1a' : a[0] === 'A1B' ? 'A1b' : a[0] === 'A1' ? auto : a[0]; } else if (auto) c.A = auto;
     const l = t.match(/L[1-3]/); if (l) c.L = l[0];
-    if (/L4A/.test(t)) c.L4a = true; if (/L4B/.test(t)) c.L4b = true; if (/L4(?![AB])/.test(t)) c.L4a = true;
+    if (/L4A/.test(t)) c.L4a = true; if (/L4B/.test(t)) c.L4b = true; if (/L4(?![AB])/.test(t)) { if (montreal) aVerif('atteinte haute : L4a ou L4b (Montréal L4)'); else c.L4a = true; }
     const b = t.match(/B2B3|B[1-3]/); if (b) c.B = b[0];
     if (/B(?:2B3|[1-3])P/.test(t) || / P /.test(t)) c.p = true;
     const g = t.match(/G[01]/); if (g) c.G = g[0];
@@ -89,9 +91,9 @@ window.RYZE = window.RYZE || {};
     const at = k => mode === 'w' ? `data-change="wParis" data-k="${k}"` : `name="paris_${k}"`; const e = s => R.esc(s);
     const sel = (k, opts, label, hint) => `<div class="field"><label>${label}</label><select ${at(k)}><option value="">— non précisé —</option>${opts.map(o => `<option value="${o[0]}"${c[k] === o[0] ? ' selected' : ''}>${e(o[1])}</option>`).join('')}</select>${hint ? `<span class="hint">${e(hint)}</span>` : ''}</div>`;
     const chk = (k, label) => `<label class="check" style="padding:6px 10px"><input type="checkbox" ${at(k)} value="1"${c[k] ? ' checked' : ''}> ${e(label)}</label>`;
-    const P = R.PARIS;
-    if (patho === 'RCH') return `<div class="form-grid">${sel('E', P.RCH.E, 'Étendue (E)')}${sel('S', P.RCH.S, 'Sévérité (S)', 'S1 dès qu’une poussée a atteint un PUCAI ≥ 65')}</div>`;
-    return `<div class="form-grid">${sel('A', P.MC.A, 'Âge au diagnostic (A)', autoA ? 'proposé d’après la date de naissance et la date du diagnostic' : 'renseignez la date du diagnostic pour une proposition automatique')}${sel('L', P.MC.L, 'Localisation (L)')}<div class="field"><label>Atteinte haute (L4, en plus de L1 à L3)</label><div class="row" style="gap:6px">${chk('L4a', 'L4a — en amont de l’angle de Treitz')}${chk('L4b', 'L4b — en aval de Treitz, en amont du tiers distal de l’iléon')}</div></div>${sel('B', P.MC.B, 'Phénotype (B)')}<div class="field"><label>Périnée (p)</label>${chk('p', 'p — atteinte périnéale')}</div>${sel('G', P.MC.G, 'Croissance (G)')}</div>`;
+    const P = R.PARIS; const verif = c.aVerifier && c.aVerifier.length ? `<div class="callout warn" style="grid-column:1/-1"><b>À vérifier</b> — reprise d’un ancien code Montréal : ${e(c.aVerifier.join(' · '))}. Choisissez la valeur exacte ci-dessous.</div>` : '';
+    if (patho === 'RCH') return `<div class="form-grid">${verif}${sel('E', P.RCH.E, 'Étendue (E)')}${sel('S', P.RCH.S, 'Sévérité (S)', 'S1 dès qu’une poussée a atteint un PUCAI ≥ 65')}</div>`;
+    return `<div class="form-grid">${verif}${sel('A', P.MC.A, 'Âge au diagnostic (A)', autoA ? 'proposé d’après la date de naissance et la date du diagnostic' : 'renseignez la date du diagnostic pour une proposition automatique')}${sel('L', P.MC.L, 'Localisation (L)')}<div class="field"><label>Atteinte haute (L4, en plus de L1 à L3)</label><div class="row" style="gap:6px">${chk('L4a', 'L4a — en amont de l’angle de Treitz')}${chk('L4b', 'L4b — en aval de Treitz, en amont du tiers distal de l’iléon')}</div></div>${sel('B', P.MC.B, 'Phénotype (B)')}<div class="field"><label>Périnée (p)</label>${chk('p', 'p — atteinte périnéale')}</div>${sel('G', P.MC.G, 'Croissance (G)')}</div>`;
   };
   R.lireParis = (fd, patho) => { const g = k => fd.get('paris_' + k) || undefined; if (patho === 'RCH') return { E: g('E'), S: g('S') }; return { A: g('A'), L: g('L'), L4a: !!fd.get('paris_L4a'), L4b: !!fd.get('paris_L4b'), B: g('B'), p: !!fd.get('paris_p'), G: g('G') }; };
 
@@ -276,7 +278,7 @@ window.RYZE = window.RYZE || {};
       id: 'gol-rch', dureeSeanceMin: 30, dci: 'Golimumab — RCH', specialites: 'Simponi®', classe: 'Anti-TNFα',
       voie: 'SC', indications: ['RCH'], articleId: 'GOL100', articleEntretienId: 'GOL50', doseType: 'mg', doseRef: 50,
       induction: [{ label: 'S0', jour: 0, dose: 200, voie: 'SC' }, { label: 'S2', jour: 14, dose: 100, voie: 'SC' }],
-      entretien: { debutJour: 42, intervalleJours: 28, dose: 50, doseType: 'palier', voie: 'SC', label: '50 mg (< 80 kg) ou 100 mg (≥ 80 kg) SC toutes les 4 semaines dès S6' }, paliers: [{ max: 79.99, dose: 50, flacons: 1, lib: 'stylo de 50 mg' }, { max: Infinity, dose: 100, flacons: 1, lib: 'stylo de 100 mg' }],
+      entretien: { debutJour: 42, intervalleJours: 28, dose: 50, doseType: 'palier', voie: 'SC', label: '50 mg (< 80 kg) ou 100 mg (≥ 80 kg) SC toutes les 4 semaines dès S6' }, paliers: [{ max: 79.99, dose: 50, flacons: 1, lib: 'stylo de 50 mg', articleId: 'GOL50' }, { max: Infinity, dose: 100, flacons: 1, lib: 'stylo de 100 mg', articleId: 'GOL100' }],
       dureePerfusion: '—', preparation: '—', premedication: 'Aucune.', surveillancePerf: 'Éducation à l’auto-injection.',
       optimisation: 'Dose d’entretien selon le poids (100 mg si ≥ 80 kg).', surveillanceDefaut: ['clin', 'colo', 'recto', 'biostd', 'calpro', 'irm', 'echo', 'tdm', 'actnf'], remarque: ''
     },
@@ -311,7 +313,7 @@ window.RYZE = window.RYZE || {};
     if (dt === 'po') return { dose: null, texte: etape.texte || proto.entretien.texte || '', flacons: 0 };
     if (dt === 'palier') {
       const p = (proto.paliers || []).find(x => poids <= x.max) || proto.paliers[proto.paliers.length - 1];
-      return { dose: p.dose, flacons: p.flacons, texte: `${p.dose} mg (${p.flacons} ${p.lib || 'flacons'})` };
+      return { dose: p.dose, flacons: p.flacons, articleId: p.articleId, texte: `${p.dose} mg (${p.flacons} ${p.lib || 'flacons'})` };
     }
     const art = R.article(phase === 'entretien' && proto.articleEntretienId ? proto.articleEntretienId : proto.articleId);
     let dose = dt === 'mgkg' ? Math.round(etape.dose * poids) : etape.dose;
@@ -331,7 +333,7 @@ window.RYZE = window.RYZE || {};
       const inter = Math.max(7, +e.intervalleJours || 56);
       for (let j = +e.debutJour || 0; j <= horizonJours; j += inter) {
         const d = R.doseEtape(proto, { dose: e.dose, doseType: e.doseType, texte: e.texte }, poids, 'entretien');
-        cures.push({ n: n++, cycle: 1, protocoleId: proto.id, phase: 'Entretien', label: R.libelleJour(j), jour: j, datePrevue: R.jourOuvre(R.addDays(dateDebut, j)), voie: e.voie, dose: d.dose, doseTexte: d.texte, flacons: d.flacons, articleId: proto.articleEntretienId || proto.articleId, statut: 'prevue' });
+        cures.push({ n: n++, cycle: 1, protocoleId: proto.id, phase: 'Entretien', label: R.libelleJour(j), jour: j, datePrevue: R.jourOuvre(R.addDays(dateDebut, j)), voie: e.voie, dose: d.dose, doseTexte: d.texte, flacons: d.flacons, articleId: d.articleId || proto.articleEntretienId || proto.articleId, statut: 'prevue' });
       }
     }
     return cures;
@@ -381,10 +383,11 @@ window.RYZE = window.RYZE || {};
     /* surveillance : les contrôles prévus restent, on ajoute ceux propres au nouveau protocole s'ils n'existent pas déjà */
     const cfgN = p.planSurveillance ? JSON.parse(JSON.stringify(p.planSurveillance)) : R.cfgDefaut(proto); const antiTNF = /TNF/.test(proto.classe || '');
     ['tdm', 'actnf'].forEach(id => { cfgN.items[id] = Object.assign(cfgN.items[id] || {}, { on: antiTNF }); if (id === 'tdm' && antiTNF) cfgN.items.tdm.periode = cfgN.items.tdm.periode || 91; });
-    if (!antiTNF) p.surveillance.forEach(s => { if ((s.id === 'tdm' || s.id === 'actnf') && s.statut === 'prevue' && s.echeance >= o.dateDebut) { s.statut = 'annulee'; s.note = (s.note ? s.note + ' · ' : '') + 'Sans objet après changement de protocole'; } });
+    if (!antiTNF) p.surveillance.forEach(s => { if ((s.id === 'tdm' || s.id === 'actnf') && s.statut === 'prevue' && s.echeance >= o.dateDebut) { s.statut = 'annulee'; s.annuleAuto = true; s.note = (s.note ? s.note + ' · ' : '') + 'Sans objet après changement de protocole'; } });
     p.planSurveillance = cfgN;
+    p.surveillance = p.surveillance.filter(s => !(s.gen && s.statut === 'prevue' && s.mode === 'echeance' && s.echeance >= o.dateDebut && !(s.reports || []).length)); /* l'ancien plan s'arrête au nouveau J0 */
     const ajouts = R.genererSurveillanceCfg(cfgN, o.dateDebut, o.horizonJours || 365, cyc + 1)
-      .filter(s => s.mode === 'echeance' && !p.surveillance.some(x => x.id === s.id && (x.nom || '') === (s.nom || '') && x.statut !== 'faite' && x.echeance && Math.abs(R.diffDays(x.echeance, s.echeance)) < 21));
+      .filter(s => s.mode === 'echeance' && !p.surveillance.some(x => x.id === s.id && (x.nom || '') === (s.nom || '') && x.statut === 'prevue' && x.echeance && Math.abs(R.diffDays(x.echeance, s.echeance)) < 21));
     p.surveillance = p.surveillance.filter(s => s.mode !== 'cure'); p.surveillance.push(...R.genererSurveillanceCfg(cfgN, o.dateDebut, 1, cyc + 1).filter(s => s.mode === 'cure'), ...ajouts);
     p.protocoleId = proto.id; p.cycleCourant = cyc + 1; p.poids = o.poids || p.poids;
     p.statut = tmp.induction.length ? 'induction' : 'entretien'; p.motifSuspension = '';
@@ -534,15 +537,14 @@ window.RYZE = window.RYZE || {};
     return {
       version: 3, user: null, route: { page: 'dashboard', params: {} },
       settings: { hdj: { jours: [1, 2, 3, 4, 5], ouverture: '08:00', fermeture: '16:00', fauteuils: 6, maxParJour: 12, pas: 30 }, etablissement: 'Centre Hospitalier Universitaire', service: 'Service de Gastro-entérologie et Hépatologie', unite: 'Hôpital de jour — Biothérapies', telHDJ: '05 XX XX XX XX (poste 4412)', telUrgences: '05 XX XX XX XX (urgences 24 h/24)', chef: 'Pr Nawal BENJELLOUN', fauteuils: 6, joursPeremptionAlerte: 90, stockSecuriteJours: 15, horizonPrevisionJours: 28 },
-      users, protocoles: JSON.parse(JSON.stringify(R.PROTOCOLES_DEFAUT)), stock, mouvements, patients, rdv, journal: []
+      users, protocoles: JSON.parse(JSON.stringify(R.PROTOCOLES_DEFAUT)), patients, rdv, journal: []
     };
   };
 
   /* Base vide : référentiels, comptes et articles conservés ; aucun patient, aucun lot */
   R.seedVide = function () {
     const s = R.seed();
-    s.patients = []; s.rdv = []; s.mouvements = []; s.journal = [];
-    s.stock.forEach(it => { it.lots = []; it.cmm = 0; });
+    s.patients = []; s.rdv = []; s.journal = [];
     s.dirty = true; s.vide = true;
     return s;
   };

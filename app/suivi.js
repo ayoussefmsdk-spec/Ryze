@@ -185,13 +185,13 @@
   };
 
   /* ---------- Courbes : séries biologiques et cliniques ---------- */
-  R.nums = s => (String(s ?? '').replace(/,/g, '.').match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
+  R.nums = s => { const t = String(s ?? '').replace(/[\u00a0\u202f]/g, ' ').replace(/(\d) (?=\d{3}(?!\d))/g, '$1').replace(/,/g, '.').replace(/(\d)\s*[-–]\s*(?=\d)/g, '$1 '); return (t.match(/-?\d+(?:\.\d+)?/g) || []).map(Number); };
   R.num = s => { const n = R.nums(s); return n.length ? n[0] : null; };
   R.uniteDe = s => { const m = String(s || '').match(/-?\d+(?:[.,]\d+)?\s*([a-zA-Zµ%]+(?:\/[a-zA-Zµ]+)?)/); return m ? m[1] : ''; };
   /* zones de référence indicatives (adulte) : à adapter aux normes du laboratoire */
   R.REFS = { crp: [0, 5], transa: [0, 40], alb: [35, 50], ferr: [30, 300], b12: [200, 900], calpro: [0, 250], temperature: [36, 37.5], fc: [50, 100], hbF: [12, 16], hbM: [13, 17] };
   const nouvChart = (key, titre, unite, ref) => ({ key, titre, unite: unite || '', ref: ref || null, lignes: [] });
-  const ajouterPt = (ch, nom, pt) => { let l = ch.lignes.find(x => x.nom === nom); if (!l) { l = { nom, pts: [] }; ch.lignes.push(l); } l.pts.push(pt); };
+  const ajouterPt = (ch, nom, pt) => { let l = ch.lignes.find(x => x.nom === nom); if (!l) { l = { nom, pts: [] }; ch.lignes.push(l); } const m = String(pt.brut || '').match(/[<>≤≥]/); if (m) pt.sym = m[0]; l.pts.push(pt); };
   const finaliser = charts => Object.values(charts).map(ch => { ch.lignes.forEach(l => l.pts.sort((a, b) => a.date.localeCompare(b.date))); ch.lignes = ch.lignes.filter(l => l.pts.length); return ch; }).filter(ch => ch.lignes.length);
 
   R.seriesBio = p => {
@@ -201,16 +201,19 @@
       if (s.valeurs) {
         Object.keys(s.valeurs).forEach(k => {
           const brut = s.valeurs[k]; const def = bio.sous.find(x => x.id === k) || { id: k, label: k, unite: '' }; const n = R.nums(brut); if (!n.length) return;
-          if (k === 'transa' && n.length >= 2) { const ch = charts.transa || (charts.transa = nouvChart('transa', 'ASAT / ALAT', def.unite || 'UI/L', R.REFS.transa)); ajouterPt(ch, 'ASAT', { date: s.dateFaite, v: n[0], brut, note }); ajouterPt(ch, 'ALAT', { date: s.dateFaite, v: n[1], brut, note }); return; }
-          if (k === 'nfs') { const hb = /h[ée]mo|hb/i.test(brut); const ch = charts.nfs || (charts.nfs = nouvChart('nfs', hb ? 'Hémoglobine (NFS)' : 'NFS — première valeur saisie', def.unite || R.uniteDe(brut), hb ? (p.sexe === 'F' ? R.REFS.hbF : R.REFS.hbM) : null)); ajouterPt(ch, ch.titre, { date: s.dateFaite, v: n[0], brut, note }); return; }
+          if (k === 'transa') { const ch = charts.transa || (charts.transa = nouvChart('transa', 'ASAT / ALAT', def.unite || 'UI/L', R.REFS.transa)); if (n.length >= 2) { ajouterPt(ch, 'ASAT', { date: s.dateFaite, v: n[0], brut, note }); ajouterPt(ch, 'ALAT', { date: s.dateFaite, v: n[1], brut, note }); } else if (/alat|alt\b|tgp/i.test(brut)) ajouterPt(ch, 'ALAT', { date: s.dateFaite, v: n[0], brut, note }); else if (/asat|ast\b|tgo/i.test(brut)) ajouterPt(ch, 'ASAT', { date: s.dateFaite, v: n[0], brut, note }); return; }
+          if (k === 'nfs') { const m = String(brut).replace(/,/g, '.').match(/(?:h[ée]moglobine|hgb|hb)\s*[:=]?\s*(\d+(?:\.\d+)?)/i); if (m) { const ch = charts.hb || (charts.hb = nouvChart('hb', 'Hémoglobine', 'g/dL', p.sexe === 'F' ? R.REFS.hbF : R.REFS.hbM)); ajouterPt(ch, 'Hémoglobine', { date: s.dateFaite, v: +m[1], brut, note }); } return; }
           const ch = charts[k] || (charts[k] = nouvChart(k, def.label, def.unite || R.uniteDe(brut), R.REFS[k] || null)); ajouterPt(ch, def.label, { date: s.dateFaite, v: n[0], brut, note });
         });
         return;
       }
       const n = R.nums(s.resultat); if (!n.length) return; const it = R.itemBilan(s.id) || {};
       const key = s.id + (s.nom ? ':' + s.nom : ''); const titre = s.nom ? `${s.nom}` : (s.id === 'tdm' ? 'Taux résiduel anti-TNF' : (it.label || s.label));
-      const ref = s.id === 'calpro' ? R.REFS.calpro : s.id === 'tdm' && antiTNF ? (/infliximab/i.test(R.proto(p.protocoleId)?.dci || '') ? [3, 7] : /adalimumab/i.test(R.proto(p.protocoleId)?.dci || '') ? [7.5, 12] : null) : null;
-      const ch = charts[key] || (charts[key] = nouvChart(key, titre, it.unite || s.unite || R.uniteDe(s.resultat), ref)); ajouterPt(ch, titre, { date: s.dateFaite, v: n[0], brut: s.resultat, note });
+      const dciCycle = (R.proto(((p.historiqueProtocoles || []).find(h => h.cycle === (s.cycle || 1)) || {}).protocoleId || p.protocoleId) || {}).dci || '';
+      const refTdm = /infliximab/i.test(dciCycle) ? [3, 7] : /adalimumab/i.test(dciCycle) ? [7.5, 12] : null;
+      const ref = s.id === 'calpro' ? R.REFS.calpro : s.id === 'tdm' ? refTdm : null;
+      const ch = charts[key] || (charts[key] = nouvChart(key, titre, it.unite || s.unite || R.uniteDe(s.resultat), ref)); if (s.id === 'tdm') { if (ch.dci === undefined) ch.dci = dciCycle; else if (ch.dci !== dciCycle) ch.ref = null; /* molécules différentes : pas de zone commune */ }
+      ajouterPt(ch, titre, { date: s.dateFaite, v: n[0], brut: s.resultat, note });
     });
     return finaliser(charts);
   };
@@ -222,9 +225,9 @@
     return rows.sort((a, b) => a.date.localeCompare(b.date));
   };
   R.seriesClinique = p => {
-    const charts = {}; const rows = R.lignesCliniques(p);
-    rows.forEach(r => {
-      if (r.poids) { const ch = charts.poids || (charts.poids = nouvChart('poids', 'Poids', 'kg', null)); ajouterPt(ch, 'Poids', { date: r.date, v: r.poids, brut: r.poids + ' kg', note: r.src }); const taille = r.taille || p.taille; if (taille) { const imc = +(r.poids / Math.pow(taille / 100, 2)).toFixed(1); const c2 = charts.imc || (charts.imc = nouvChart('imc', 'IMC', 'kg/m²', [18.5, 25])); ajouterPt(c2, 'IMC', { date: r.date, v: imc, brut: imc + ' kg/m²', note: `${r.poids} kg · ${taille} cm` }); } }
+    const charts = {}; const rows = R.lignesCliniques(p); let tailleConnue = null;
+    rows.forEach(r => { if (r.taille) tailleConnue = r.taille;
+      if (r.poids) { const ch = charts.poids || (charts.poids = nouvChart('poids', 'Poids', 'kg', null)); ajouterPt(ch, 'Poids', { date: r.date, v: r.poids, brut: r.poids + ' kg', note: r.src }); const taille = r.taille || tailleConnue || p.taille; if (taille) { const imc = +(r.poids / Math.pow(taille / 100, 2)).toFixed(1); const c2 = charts.imc || (charts.imc = nouvChart('imc', 'IMC', 'kg/m²', [18.5, 25])); ajouterPt(c2, 'IMC', { date: r.date, v: imc, brut: imc + ' kg/m²', note: `${r.poids} kg · ${taille} cm` }); } }
       if (r.taille) { const ch = charts.taille || (charts.taille = nouvChart('taille', 'Taille', 'cm', null)); ajouterPt(ch, 'Taille', { date: r.date, v: r.taille, brut: r.taille + ' cm', note: r.src }); }
       if (r.temp != null && r.temp > 30) { const ch = charts.temp || (charts.temp = nouvChart('temp', 'Température', '°C', R.REFS.temperature)); ajouterPt(ch, 'Température', { date: r.date, v: r.temp, brut: r.temp + ' °C', note: r.src }); }
       if (r.fc) { const ch = charts.fc || (charts.fc = nouvChart('fc', 'Fréquence cardiaque', 'bpm', R.REFS.fc)); ajouterPt(ch, 'FC', { date: r.date, v: r.fc, brut: r.fc + ' bpm', note: r.src }); }
@@ -251,9 +254,10 @@
     let g = ''; for (let v = lo; v <= hi + 1e-9; v += step) g += `<line class="grid-line" x1="${padL}" x2="${W - padR}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/><text x="${padL - 6}" y="${(y(v) + 3.5).toFixed(1)}" text-anchor="end">${fmtV(v)}</text>`;
     /* graduations de l'axe des dates : au plus 5, sur des débuts de mois */
     let xt = ''; if (dates.length > 1) { const d0 = R.parse(dates[0]), d1 = R.parse(dates[dates.length - 1]); const nbMois = (d1.getFullYear() - d0.getFullYear()) * 12 + d1.getMonth() - d0.getMonth() + 1; const pas = Math.max(1, Math.ceil(nbMois / 5)); let d = new Date(d0.getFullYear(), d0.getMonth() + 1, 1); if (nbMois <= 2) d = new Date(d0.getFullYear(), d0.getMonth(), 1); for (let i = 0; d <= d1 && i < 12; d = new Date(d.getFullYear(), d.getMonth() + pas, 1), i++) { if (d < d0) continue; const px = x(R.iso(d)); xt += `<text x="${px.toFixed(1)}" y="${H - 8}" text-anchor="middle">${MOIS[d.getMonth()]} ${String(d.getFullYear()).slice(2)}</text>`; } } else xt += `<text x="${x(dates[0]).toFixed(1)}" y="${H - 8}" text-anchor="middle">${R.fmtDate(dates[0])}</text>`;
+    if (dates.length > 1 && !xt) xt = [dates[0], dates[dates.length - 1]].map(d => `<text x="${x(d).toFixed(1)}" y="${H - 8}" text-anchor="middle">${R.fmtDate(d, { day: '2-digit', month: '2-digit' })}</text>`).join('');
     const ref = ch.ref ? `<rect class="ref" x="${padL}" y="${y(ch.ref[1]).toFixed(1)}" width="${plotW}" height="${Math.max(1, y(ch.ref[0]) - y(ch.ref[1])).toFixed(1)}"/><text class="ref-lbl" x="${W - padR + 4}" y="${((y(ch.ref[0]) + y(ch.ref[1])) / 2 + 3.5).toFixed(1)}">réf. ${fmtV(ch.ref[0])}–${fmtV(ch.ref[1])}</text>` : '';
     const lignes = ch.lignes.map((l, i) => { const cls = 's' + (i + 1); const d = l.pts.map((p, k) => `${k ? 'L' : 'M'}${x(p.date).toFixed(1)} ${y(p.v).toFixed(1)}`).join(' '); const last = l.pts[l.pts.length - 1]; const lab = ch.lignes.length === 1 || i === 0 ? `<text class="fin" x="${(x(last.date) + 8).toFixed(1)}" y="${(y(last.v) + 3.5).toFixed(1)}">${fmtV(last.v)}</text>` : ''; return `<path class="ligne ${cls}" d="${d}"/>${l.pts.map(p => `<circle class="pt ${cls}" cx="${x(p.date).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="4"/>`).join('')}${ch.ref ? '' : lab}`; }).join('');
-    const data = { dates, unite: ch.unite, lignes: ch.lignes.map(l => ({ nom: l.nom, v: dates.map(d => { const p = l.pts.find(q => q.date === d); return p ? { v: p.v, brut: p.brut, note: p.note } : null; }) })), xs: dates.map(d => +x(d).toFixed(1)), ys: ch.lignes.map(l => dates.map(d => { const p = l.pts.find(q => q.date === d); return p ? +y(p.v).toFixed(1) : null; })) };
+    const data = { dates, unite: ch.unite, lignes: ch.lignes.map(l => ({ nom: l.nom, v: dates.map(d => { const p = l.pts.find(q => q.date === d); return p ? { v: p.v, brut: p.brut, note: p.note, sym: p.sym } : null; }) })), xs: dates.map(d => +x(d).toFixed(1)), ys: ch.lignes.map(l => dates.map(d => { const p = l.pts.find(q => q.date === d); return p ? +y(p.v).toFixed(1) : null; })) };
     return `<div class="courbe" data-courbe="${esc(JSON.stringify(data))}"><svg viewBox="0 0 ${W} ${H}" role="img" tabindex="0" aria-label="${esc(ch.titre)}${ch.unite ? ' en ' + esc(ch.unite) : ''}, ${dates.length} valeur(s)">${g}${ref}${xt}<line class="axis" x1="${padL}" x2="${W - padR}" y1="${(padT + plotH).toFixed(1)}" y2="${(padT + plotH).toFixed(1)}"/>${lignes}<line class="cross" x1="0" x2="0" y1="${padT}" y2="${padT + plotH}"/><circle class="focus" r="6" cx="-20" cy="-20"/></svg>${ch.lignes.length > 1 ? `<div class="legend courbe-legend">${ch.lignes.map((l, i) => `<span><i class="lk s${i + 1}"></i>${esc(l.nom)}</span>`).join('')}</div>` : ''}</div>`;
   };
 
@@ -269,32 +273,33 @@
   };
 
   /* survol et clavier : un seul écouteur pour toutes les courbes de la page */
+  const cacheCourbe = new WeakMap(); const lireCourbe = wrap => { const raw = wrap.dataset.courbe; const c = cacheCourbe.get(wrap); if (c && c.raw === raw) return c.data; let data = null; try { data = JSON.parse(raw); } catch (e) {} cacheCourbe.set(wrap, { raw, data }); return data; };
   let tip = null; const getTip = () => { if (!tip) { tip = document.createElement('div'); tip.id = 'courbe-tip'; document.body.appendChild(tip); } return tip; };
   const montrer = (wrap, idx, cx, cy) => {
-    let data; try { data = JSON.parse(wrap.dataset.courbe); } catch (e) { return; } if (!data || idx == null || idx < 0 || idx >= data.dates.length) return;
+    const data = lireCourbe(wrap); if (!data) return; if (!data || idx == null || idx < 0 || idx >= data.dates.length) return;
     const svg = wrap.querySelector('svg'); const cross = svg.querySelector('.cross'); const foc = svg.querySelector('.focus'); const px = data.xs[idx]; cross.setAttribute('x1', px); cross.setAttribute('x2', px); cross.style.opacity = '.7';
     const firstY = data.ys.map(a => a[idx]).find(v => v != null); if (firstY != null) { foc.setAttribute('cx', px); foc.setAttribute('cy', firstY); }
     const t = getTip(); t.textContent = ''; const h = document.createElement('div'); h.className = 'tip-date'; h.textContent = R.fmtDateLong(data.dates[idx]); t.appendChild(h);
-    data.lignes.forEach((l, i) => { const p = l.v[idx]; if (!p) return; const row = document.createElement('div'); row.className = 'tip-row'; const k = document.createElement('i'); k.className = 'lk s' + (i + 1); const nom = document.createElement('span'); nom.textContent = l.nom; const val = document.createElement('b'); val.textContent = `${fmtV(p.v)}${data.unite ? ' ' + data.unite : ''}`; row.appendChild(k); row.appendChild(nom); row.appendChild(val); t.appendChild(row); if (p.note) { const n = document.createElement('div'); n.className = 'tip-note'; n.textContent = p.note; t.appendChild(n); } });
+    data.lignes.forEach((l, i) => { const p = l.v[idx]; if (!p) return; const row = document.createElement('div'); row.className = 'tip-row'; const k = document.createElement('i'); k.className = 'lk s' + (i + 1); const nom = document.createElement('span'); nom.textContent = l.nom; const val = document.createElement('b'); val.textContent = `${p.sym || ''}${fmtV(p.v)}${data.unite ? ' ' + data.unite : ''}`; row.appendChild(k); row.appendChild(nom); row.appendChild(val); t.appendChild(row); if (p.note) { const n = document.createElement('div'); n.className = 'tip-note'; n.textContent = p.note; t.appendChild(n); } });
     t.style.display = 'block'; const r = svg.getBoundingClientRect(); const sx = r.left + (px / 520) * r.width; const left = Math.min(window.innerWidth - t.offsetWidth - 8, sx + 12); const top = Math.max(8, (cy != null ? cy : r.top + 20) - t.offsetHeight - 10); t.style.left = left + 'px'; t.style.top = top + 'px';
     wrap.dataset.idx = idx;
   };
   const cacher = wrap => { if (tip) tip.style.display = 'none'; if (wrap) { const c = wrap.querySelector('.cross'); if (c) c.style.opacity = '0'; const f = wrap.querySelector('.focus'); if (f) { f.setAttribute('cx', -20); f.setAttribute('cy', -20); } } };
-  document.addEventListener('pointermove', e => { const wrap = e.target.closest && e.target.closest('.courbe[data-courbe]'); if (!wrap) { if (tip && tip.style.display === 'block' && !e.target.closest('#courbe-tip')) { document.querySelectorAll('.courbe[data-courbe]').forEach(cacher); cacher(); } return; } let data; try { data = JSON.parse(wrap.dataset.courbe); } catch (x) { return; } const svg = wrap.querySelector('svg'); const r = svg.getBoundingClientRect(); const px = (e.clientX - r.left) / r.width * 520; let best = 0, bd = Infinity; data.xs.forEach((x, i) => { const d = Math.abs(x - px); if (d < bd) { bd = d; best = i; } }); montrer(wrap, best, e.clientX, e.clientY); });
+  document.addEventListener('pointermove', e => { const wrap = e.target.closest && e.target.closest('.courbe[data-courbe]'); if (!wrap) { if (tip && tip.style.display === 'block' && !e.target.closest('#courbe-tip')) { document.querySelectorAll('.courbe[data-courbe]').forEach(cacher); cacher(); } return; } const data = lireCourbe(wrap); if (!data) return; const svg = wrap.querySelector('svg'); const r = svg.getBoundingClientRect(); const px = (e.clientX - r.left) / r.width * 520; let best = 0, bd = Infinity; data.xs.forEach((x, i) => { const d = Math.abs(x - px); if (d < bd) { bd = d; best = i; } }); montrer(wrap, best, e.clientX, e.clientY); });
   /* l'infobulle disparaît quand on clique ailleurs (fermeture d'une fenêtre comprise) ou sur Échap */
   document.addEventListener('click', e => { if (tip && tip.style.display === 'block' && !(e.target.closest && e.target.closest('.courbe[data-courbe]'))) document.querySelectorAll('.courbe[data-courbe]').forEach(cacher), cacher(); }, true);
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && tip) { document.querySelectorAll('.courbe[data-courbe]').forEach(cacher); cacher(); } }, true);
   document.addEventListener('pointerleave', e => { if (e.target && e.target.closest && e.target.closest('.courbe[data-courbe]')) cacher(e.target.closest('.courbe')); }, true);
-  document.addEventListener('keydown', e => { const wrap = e.target.closest && e.target.closest('.courbe[data-courbe]'); if (!wrap) return; if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Home' && e.key !== 'End') return; e.preventDefault(); let data; try { data = JSON.parse(wrap.dataset.courbe); } catch (x) { return; } const n = data.dates.length; let idx = wrap.dataset.idx != null ? +wrap.dataset.idx : n - 1; idx = e.key === 'ArrowLeft' ? Math.max(0, idx - 1) : e.key === 'ArrowRight' ? Math.min(n - 1, idx + 1) : e.key === 'Home' ? 0 : n - 1; const r = wrap.querySelector('svg').getBoundingClientRect(); montrer(wrap, idx, null, r.top + r.height / 2); });
-  document.addEventListener('focusin', e => { const wrap = e.target.closest && e.target.closest('.courbe[data-courbe]'); if (!wrap) return; let data; try { data = JSON.parse(wrap.dataset.courbe); } catch (x) { return; } const r = wrap.querySelector('svg').getBoundingClientRect(); montrer(wrap, data.dates.length - 1, null, r.top + r.height / 2); });
+  document.addEventListener('keydown', e => { const wrap = e.target.closest && e.target.closest('.courbe[data-courbe]'); if (!wrap) return; if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Home' && e.key !== 'End') return; e.preventDefault(); const data = lireCourbe(wrap); if (!data) return; const n = data.dates.length; let idx = wrap.dataset.idx != null ? +wrap.dataset.idx : n - 1; idx = e.key === 'ArrowLeft' ? Math.max(0, idx - 1) : e.key === 'ArrowRight' ? Math.min(n - 1, idx + 1) : e.key === 'Home' ? 0 : n - 1; const r = wrap.querySelector('svg').getBoundingClientRect(); montrer(wrap, idx, null, r.top + r.height / 2); });
+  document.addEventListener('focusin', e => { const wrap = e.target.closest && e.target.closest('.courbe[data-courbe]'); if (!wrap) return; const data = lireCourbe(wrap); if (!data) return; const r = wrap.querySelector('svg').getBoundingClientRect(); montrer(wrap, data.dates.length - 1, null, r.top + r.height / 2); });
   document.addEventListener('focusout', e => { const wrap = e.target.closest && e.target.closest('.courbe[data-courbe]'); if (wrap) cacher(wrap); });
 
   /* ---------- Fenêtre « Détails et courbes » ---------- */
-  const carteCourbe = ch => { const l0 = ch.lignes[0]; const last = l0.pts[l0.pts.length - 1], prev = l0.pts[l0.pts.length - 2]; const delta = prev ? (last.v - prev.v) : null;
-    return `<div class="courbe-card"><div class="row between" style="align-items:baseline"><b>${esc(ch.titre)}</b><span class="small muted">${esc(ch.unite || '')}</span></div><div class="small ink2" style="margin:2px 0 6px">${ch.lignes.length > 1 ? esc(l0.nom) + ' ' : ''}<b class="mono">${fmtV(last.v)}${ch.unite ? ' ' + esc(ch.unite) : ''}</b> le ${R.fmtDate(last.date)}${prev ? ` · <span class="muted">${delta > 0 ? '+' : ''}${fmtV(delta)} depuis le ${R.fmtDate(prev.date)}</span>` : ' · <span class="muted">première valeur</span>'}</div>${R.courbe(ch)}</div>`; };
+  const carteCourbe = ch => { const l0 = ch.lignes[0]; const last = l0.pts[l0.pts.length - 1], prev = l0.pts[l0.pts.length - 2] || l0.avant; const delta = prev ? (last.v - prev.v) : null;
+    return `<div class="courbe-card"><div class="row between" style="align-items:baseline"><b>${esc(ch.titre)}</b><span class="small muted">${esc(ch.unite || '')}</span></div><div class="small ink2" style="margin:2px 0 6px">${ch.lignes.length > 1 ? esc(l0.nom) + ' ' : ''}<b class="mono">${last.sym || ''}${fmtV(last.v)}${ch.unite ? ' ' + esc(ch.unite) : ''}</b> le ${R.fmtDate(last.date)}${prev ? ` · <span class="muted">${delta > 0 ? '+' : ''}${fmtV(delta)} depuis le ${R.fmtDate(prev.date)}</span>` : ' · <span class="muted">première valeur</span>'}</div>${R.courbe(ch)}</div>`; };
   const filtrePeriode = () => { const per = (R.ui.courbes && R.ui.courbes.periode) || 0; const opts = [[6, '6 mois'], [12, '12 mois'], [24, '24 mois'], [0, 'Tout']]; return `<div class="row" style="gap:6px;align-items:center"><span class="small muted">Période</span>${opts.map(o => `<button type="button" class="btn sm${per === o[0] ? ' primary' : ''}" data-action="courbesPeriode" data-mois="${o[0]}">${o[1]}</button>`).join('')}</div>`; };
   const depuis = () => { const per = (R.ui.courbes && R.ui.courbes.periode) || 0; return per ? R.addDays(R.today(), -Math.round(per * 30.44)) : null; };
-  const filtrerCharts = (charts, d) => !d ? charts : charts.map(ch => ({ ...ch, lignes: ch.lignes.map(l => ({ ...l, pts: l.pts.filter(p => p.date >= d) })).filter(l => l.pts.length) })).filter(ch => ch.lignes.length);
+  const filtrerCharts = (charts, d) => !d ? charts : charts.map(ch => ({ ...ch, lignes: ch.lignes.map(l => ({ ...l, pts: l.pts.filter(p => p.date >= d), avant: l.pts.filter(p => p.date < d).slice(-1)[0] })).filter(l => l.pts.length) })).filter(ch => ch.lignes.length);
   R.modalCourbes = (p, quoi) => {
     R.ui.courbes = R.ui.courbes || { periode: 12 }; const d = depuis(); const bio = quoi === 'bio';
     const charts = filtrerCharts(bio ? R.seriesBio(p) : R.seriesClinique(p), d);
@@ -312,4 +317,17 @@
     cliniqueCourbes(el) { R.modalCourbes(R.patient(el.dataset.pid), 'clinique'); },
     courbesPeriode(el) { R.ui.courbes.periode = +el.dataset.mois; const p = R.patient(R.ui.courbes.pid); if (p) R.modalCourbes(p, R.ui.courbes.quoi); }
   });
+  /* Un contrôle annulé par l'équipe n'est pas recréé par le plan ou la prolongation (tolérance de 10 jours) */
+  R.bloqueParAnnulation = (p, s) => p.surveillance.some(x => x.statut === 'annulee' && x.annuleLe && !x.annuleAuto && x.id === s.id && (x.nom || '') === (s.nom || '') && x.echeance && s.echeance && Math.abs(R.diffDays(x.echeance, s.echeance)) <= 10);
+  /* Le dosage résiduel se prélève juste avant une perfusion : chaque dosage prévu est placé le jour de la séance suivante */
+  R.alignerTdm = p => {
+    if (!p || !p.cures || !p.surveillance) return 0; const t = R.today(); let n = 0; const prises = new Set();
+    const seances = p.cures.filter(c => c.statut === 'prevue' && c.datePrevue >= t).sort((a, b) => a.datePrevue.localeCompare(b.datePrevue));
+    p.surveillance.filter(s => s.id === 'tdm' && s.statut === 'prevue' && s.mode === 'echeance' && s.echeance >= t && !(s.reports || []).length).sort((a, b) => a.echeance.localeCompare(b.echeance)).forEach(s => {
+      const c = seances.find(x => x.datePrevue >= R.addDays(s.echeance, -21) && !prises.has(x)); if (!c || R.diffDays(s.echeance, c.datePrevue) > 60) return;
+      prises.add(c); if (s.echeance !== c.datePrevue) { s.echeance = c.datePrevue; s.jour = R.diffDays(R.j0(p, s.cycle), s.echeance); n++; } s.avantSeance = c.label;
+    });
+    return n;
+  };
 })(window.RYZE);
+
