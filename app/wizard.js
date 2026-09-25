@@ -28,6 +28,7 @@
   }
   function step1(w) {
     const d = w.d; d.paris = d.paris || {}; if (d.montreal && !Object.keys(d.paris).length) { d.paris = R.parisDepuisTexte(d.montreal, d.pathologie, d.ddn, d.dateDiag, true); delete d.montreal; }
+    { const autoA = R.parisAuto(d.ddn, d.dateDiag); if (d.pathologie !== 'RCH' && !d.paris.A && autoA) d.paris.A = autoA; } /* proposition d'âge au diagnostic mémorisée dans le brouillon */
     const app = w.bilan.filter(b => b.statut !== 'na'), fait = app.filter(b => b.statut.startsWith('fait')).length;
     const idBody = `<div class="form-grid">${field('Nom', 'nom', 'text', { attrs: 'required style="text-transform:uppercase"' })}${field('Prénom', 'prenom', 'text', { attrs: 'required' })}${field('N° de dossier (IPP)', 'ipp', 'text', { attrs: 'placeholder="laisser vide : numéro automatique"', hint: 'identifiant du patient dans le système de l’hôpital ; sinon numéro généré par Ryze' })}
       ${field('Date de naissance', 'ddn', 'date', { attrs: 'required' })}<div class="field"><label>Sexe</label><select data-change="wBindR" data-k="sexe"><option value="F"${d.sexe === 'F' ? ' selected' : ''}>Femme</option><option value="M"${d.sexe === 'M' ? ' selected' : ''}>Homme</option></select></div>${field('Téléphone', 'tel', 'tel')}
