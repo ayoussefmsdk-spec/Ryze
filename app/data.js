@@ -157,6 +157,10 @@ window.RYZE = window.RYZE || {};
   /* complète un bilan enregistré avec les examens ajoutés au catalogue depuis sa création */
   R.completerBilan = bilan => { bilan = bilan || []; R.BILAN_PRE.forEach(b => { if (bilan.some(x => x.id === b.id)) return; const src = { cmv: 'sero2', renal: 'iono' }[b.id]; const o = src && bilan.find(x => x.id === src); bilan.push(o && o.statut !== 'attente' ? { id: b.id, statut: o.statut, date: o.date || '', commentaire: o.commentaire ? o.commentaire + ' (repris de l’ancien libellé groupé)' : '' } : { id: b.id, statut: 'attente', date: '', commentaire: '' }); }); return bilan; };
   R.bilanFait = b => !!b && String(b.statut).startsWith('fait');
+  /* définitions des examens d'un bilan : catalogue puis examens personnalisés (id « libre-… », libellé porté par l'entrée) */
+  R.bilanDefs = bilan => R.BILAN_PRE.concat((bilan || []).filter(b => b.label && !R.BILAN_PRE.some(x => x.id === b.id)).map(b => ({ id: b.id, cat: b.cat || 'Personnalisé', label: b.label, libre: true })));
+  R.defBilan = (id, bilan) => R.bilanDefs(bilan).find(x => x.id === id) || { id, cat: 'Personnalisé', label: id };
+  R.BILAN_CATS = () => [...new Set(R.BILAN_PRE.map(b => b.cat))].concat('Personnalisé');
   /* poids : initial (à l'inclusion) et dernier poids mesuré lors d'une séance */
   R.poidsInitial = p => +p.poidsInitial || +((p.historiqueProtocoles || [])[0] || {}).poids || +p.poids || null;
   R.dernierPoids = p => { const c = (p.cures || []).filter(x => x.statut === 'realisee' && +x.poids > 0 && x.dateReelle).sort((a, b) => b.dateReelle.localeCompare(a.dateReelle))[0]; return c ? { poids: +c.poids, date: c.dateReelle } : null; };
