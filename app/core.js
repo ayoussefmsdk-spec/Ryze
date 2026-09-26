@@ -4,7 +4,7 @@
    ===================================================================== */
 'use strict';
 (function (R) {
-  const KEY = 'ryze-hdj-v1', VERSION = 7;
+  const KEY = 'ryze-hdj-v1', VERSION = 8;
   const S = {};
   R.S = S; R.ui = { filtres: {}, semaineOffset: 0, cal: {}, plies: {} };
   let uiInit = {}; try { uiInit = JSON.parse(localStorage.getItem('ryze-hdj-ui') || '{}') || {}; } catch (e) {} R.ui.plies = uiInit.plies || {};
@@ -29,8 +29,10 @@
     if (s.version === 4) { try { R.purgerAncienCatalogue(s); } catch (e) { console.error('Purge des anciens contrôles', e); } s.version = 5; }
     if (s.version === 5) { (s.patients || []).forEach(p => { if (!p.paris) p.paris = R.parisDepuisTexte(p.montreal || '', p.pathologie, p.ddn, p.dateDiag, true); delete p.montreal; }); s.version = 6; }
     if (s.version === 6) { delete s.stock; delete s.mouvements; (s.patients || []).forEach(p => { try { R.alignerTdm(p); } catch (e) {} }); s.version = 7; }
+    if (s.version === 7) { (s.patients || []).forEach(p => { if (!p.poidsInitial) p.poidsInitial = R.poidsInitial(p); }); s.version = 8; }
     if (s.brouillon) { s.brouillons = s.brouillons || {}; if (s.user && s.brouillon.d) s.brouillons[s.user] = s.brouillon; delete s.brouillon; }
-    if (!s.rdv) s.rdv = []; if (!s.journal) s.journal = []; (s.patients || []).forEach(p => { p.notes = p.notes || []; p.surveillance = p.surveillance || []; p.bilan = p.bilan || []; p.cures = p.cures || []; });
+    if (!s.rdv) s.rdv = []; if (!s.journal) s.journal = []; (s.patients || []).forEach(p => { p.notes = p.notes || []; p.surveillance = p.surveillance || []; p.bilan = R.completerBilan(p.bilan || []); p.cures = p.cures || []; });
+    Object.values(s.brouillons || {}).forEach(w => { if (w && Array.isArray(w.bilan)) R.completerBilan(w.bilan); });
     if (s.user && !(s.users || []).some(u => u.id === s.user)) s.user = null;
     return s;
   }
@@ -70,7 +72,9 @@
   R.can = (mod, lvl) => { const u = R.user(); if (!u) return false; const p = (R.PERMS[u.role] || {})[mod] || '-'; if (lvl === 'w') return p === 'rw'; return p !== '-'; };
   R.patient = id => S.patients.find(p => p.id === id);
   R.proto = id => S.protocoles.find(p => p.id === id);
-  R.imc = p => p.poids && p.taille ? (p.poids / Math.pow(p.taille / 100, 2)).toFixed(1) : '—';
+  R.imc = p => { const w = (R.dernierPoids(p) || {}).poids || p.poids; return w && p.taille ? (w / Math.pow(p.taille / 100, 2)).toFixed(1) : '—'; };
+  /* poids initial et dernier poids mesuré en séance, côte à côte */
+  R.poidsHTML = p => { const i = R.poidsInitial(p), d = R.dernierPoids(p), f = v => String(+v).replace('.', ','); if (!d || !i) return `${f(i || p.poids)} kg`; const ec = Math.round((d.poids - i) * 10) / 10; return `<span title="Poids à l’inclusion">initial ${f(i)} kg</span> · <span title="Dernier poids mesuré en séance"><b>dernier ${f(d.poids)} kg</b> <span class="muted">(${R.fmtDate(d.date)}${ec ? `, ${ec > 0 ? '+' : ''}${f(ec)} kg` : ''})</span></span>`; };
   R.uid = (pfx) => pfx + Math.random().toString(36).slice(2, 8);
   R.nomComplet = p => `${p.nom} ${p.prenom}`;
   R.params = obj => R.esc(JSON.stringify(obj || {}));
@@ -208,7 +212,7 @@
       p.cures.filter(c => c.sansCreneau && c.statut === 'prevue').forEach(c => out.push({ sev: 'warn', t: `Aucun créneau trouvé — ${R.nomComplet(p)}`, d: `Séance ${c.label} du ${R.fmtDate(c.datePrevue)} : capacité dépassée, à replacer manuellement`, go: ['patient', { id: p.id, tab: 'plan' }] }));
       p.surveillance.filter(s => s.statut === 'prevue' && s.echeance && s.echeance < t).forEach(s => out.push({ sev: 'warn', t: `Contrôle en retard — ${R.nomComplet(p)}`, d: `${s.label} · échéance ${R.fmtDate(s.echeance)}`, go: ['patient', { id: p.id, tab: 'surveillance' }] }));
       /* dépistage avant la 1re séance : induction, ou entretien direct pas encore commencé */
-      if (p.statut === 'induction' || (p.statut === 'entretien' && !p.cures.some(c => c.statut === 'realisee'))) { const manq = p.bilan.filter(b => b.statut === 'attente' && ['igra', 'rxt', 'vhb'].includes(b.id)); if (manq.length) out.push({ sev: 'warn', t: `Bilan pré-thérapeutique incomplet — ${R.nomComplet(p)}`, d: manq.map(b => R.BILAN_PRE.find(x => x.id === b.id)?.label.split(' (')[0]).join(' · '), go: ['patient', { id: p.id, tab: 'bilans' }] }); }
+      if (p.statut === 'induction' || (p.statut === 'entretien' && !p.cures.some(c => c.statut === 'realisee'))) { const manq = p.bilan.filter(b => b.statut === 'attente' && ['igra', 'rxt', 'vhb'].includes(b.id)); if (manq.length) out.push({ sev: 'warn', t: `Bilan pré-biothérapie incomplet — ${R.nomComplet(p)}`, d: manq.map(b => R.BILAN_PRE.find(x => x.id === b.id)?.label.split(' (')[0]).join(' · '), go: ['patient', { id: p.id, tab: 'bilans' }] }); }
       if (p.statut === 'suspendu') out.push({ sev: 'info', t: `Traitement suspendu — ${R.nomComplet(p)}`, d: p.motifSuspension, go: ['patient', { id: p.id }] });
       if (p.statut !== 'termine' && p.statut !== 'suspendu') { const fin = R.finPlanification(p); if (!fin || R.diffDays(t, fin) < 60) out.push({ sev: 'warn', t: `Planification à prolonger — ${R.nomComplet(p)}`, d: fin ? `Dernière séance planifiée le ${R.fmtDate(fin)}` : 'Aucune séance planifiée', go: ['patient', { id: p.id, tab: 'plan' }] }); }
     });
@@ -459,7 +463,9 @@
     const reactions = realisees.filter(x => /Réaction/.test(x.c.tolerance || '')).length;
     const changements = S.patients.flatMap(p => (p.historiqueProtocoles || []).filter(h => h.cycle > 1 && h.dateDebut >= debut && h.dateDebut <= fin));
     const parJour = {}; realisees.forEach(x => { parJour[x.c.dateReelle] = (parJour[x.c.dateReelle] || 0) + 1; });
-    return { realisees, prevues, manquees, aVenir, annulees, reports, cat, patients, nouveaux, controles, ctrlFaits, parMol, joursOuverts, capacite, passees, reactions, changements, parJour, tauxRealisation: passees ? Math.round(realisees.length / passees * 100) : null, occupation: capacite ? Math.round(prevues.length / capacite * 100) : null };
+    /* consommation : flacons (IV) et unités SC réellement utilisés, par présentation, toutes voies confondues */
+    const conso = {}; S.patients.forEach(p => p.cures.forEach(c => { if (c.statut !== 'realisee' || !c.dateReelle || c.dateReelle < debut || c.dateReelle > fin) return; const pr = R.protoDeCure(p, c) || {}; const art = R.article(c.articleId) || R.article(pr.articleId); if (!art) return; const k = art.id; const o = conso[k] = conso[k] || { art, dci: art.dci, seances: 0, flacons: 0, prevus: 0, mg: 0, patients: new Set(), saisis: 0 }; o.seances++; o.flacons += R.flaconsCure(c); o.prevus += +c.flacons || 0; o.mg += +c.dose || 0; o.patients.add(p.id); if (c.flaconsUtilises != null) o.saisis++; }));
+    return { conso: Object.values(conso).sort((a, b) => a.dci.localeCompare(b.dci) || a.art.unite - b.art.unite), realisees, prevues, manquees, aVenir, annulees, reports, cat, patients, nouveaux, controles, ctrlFaits, parMol, joursOuverts, capacite, passees, reactions, changements, parJour, tauxRealisation: passees ? Math.round(realisees.length / passees * 100) : null, occupation: capacite ? Math.round(prevues.length / capacite * 100) : null };
   };
   const CATS = { stock: 'Rupture de stock', patient: 'Indisponibilité du patient', clinique: 'État clinique / infection', capacite: 'Capacité de l’HDJ', autre: 'Autre' };
   R.CATS_REPORT = CATS;
@@ -490,6 +496,7 @@
         <section class="card"><div class="card-head"><div><h2>Séances réalisées ${nbJ > 45 ? 'par semaine' : 'par jour'}</h2><div class="sub">${R.fmtDate(debut)} → ${R.fmtDate(fin)}</div></div></div><div class="card-body">${chart}</div></section>
         <section class="card"><div class="card-head"><h2>Par biothérapie</h2></div><div class="card-body flush tbl-wrap"><table class="tbl"><thead><tr><th>Molécule</th><th class="right">Séances</th><th class="right">Part</th></tr></thead><tbody>${Object.entries(st.parMol).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<tr><td>${R.esc(k)}</td><td class="right num">${v}</td><td class="right num">${Math.round(v / st.realisees.length * 100)} %</td></tr>`).join('') || '<tr><td colspan="3" class="empty">Aucune séance</td></tr>'}</tbody></table></div></section>
       </div>
+      <section class="card"><div class="card-head"><div><h2>Consommation de médicaments</h2><div class="sub">flacons (perfusions) et unités sous-cutanées réellement utilisés lors des séances réalisées · ${R.fmtDate(debut)} → ${R.fmtDate(fin)}</div></div></div><div class="card-body flush tbl-wrap"><table class="tbl"><thead><tr><th>Médicament</th><th>Présentation</th><th>Voie</th><th class="right">Séances</th><th class="right">Patients</th><th class="right">Flacons / unités utilisés</th><th class="right">Prévus</th><th class="right">Dose totale</th></tr></thead><tbody>${st.conso.map(o => `<tr><td class="name">${R.esc(o.dci)}</td><td class="small">${R.esc(o.art.libelle)}</td><td>${R.esc(o.art.voie)}</td><td class="right num">${o.seances}</td><td class="right num">${o.patients.size}</td><td class="right num"><b>${o.flacons}</b>${o.saisis < o.seances ? `<div class="xs muted">${o.seances - o.saisis} séance(s) sans saisie : prévu retenu</div>` : ''}</td><td class="right num">${o.prevus}</td><td class="right num">${o.mg ? (o.mg >= 10000 ? (o.mg / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' g' : o.mg.toLocaleString('fr-FR') + ' mg') : '—'}</td></tr>`).join('') || '<tr><td colspan="8" class="empty">Aucune séance réalisée sur la période</td></tr>'}${st.conso.length ? `<tr><td colspan="5"><b>Total</b></td><td class="right num"><b>${st.conso.reduce((a, o) => a + o.flacons, 0)}</b></td><td class="right num">${st.conso.reduce((a, o) => a + o.prevus, 0)}</td><td></td></tr>` : ''}</tbody></table></div></section>
       <div class="grid c11">
         <section class="card"><div class="card-head"><div><h2>Reports et déplacements</h2><div class="sub">motif catégorisé lors du déplacement d’une séance</div></div></div><div class="card-body flush tbl-wrap"><table class="tbl"><thead><tr><th>Date</th><th>Patient</th><th>Séance</th><th>Catégorie</th><th>Motif</th></tr></thead><tbody>${st.reports.sort((a, b) => b.r.date.localeCompare(a.r.date)).map(x => `<tr><td class="nowrap">${R.fmtDate(x.r.date)}</td><td class="name">${R.esc(R.nomComplet(x.p))}</td><td>${R.esc(x.c.label)} <span class="muted small">(${R.fmtDate(x.r.de)} → ${R.fmtDate(x.c.datePrevue)})</span></td><td>${R.badge(x.r.categorie === 'stock' ? 'crit' : x.r.categorie === 'capacite' ? 'warn' : 'info', CATS[x.r.categorie] || x.r.categorie || 'Autre')}</td><td class="small">${R.esc(x.r.motif || '')}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">Aucun report sur la période</td></tr>'}</tbody></table></div></section>
         <section class="card"><div class="card-head"><div><h2>Séances manquées et non tracées</h2><div class="sub">à replanifier ou à régulariser</div></div></div><div class="card-body flush tbl-wrap"><table class="tbl"><thead><tr><th>Date</th><th>Patient</th><th>Séance</th><th>Statut</th><th>Motif</th></tr></thead><tbody>${st.manquees.map(x => `<tr class="row-link" data-go="patient" data-params='${R.params({ id: x.p.id, tab: 'plan' })}'><td class="nowrap">${R.fmtDate(x.c.datePrevue)}</td><td class="name">${R.esc(R.nomComplet(x.p))}</td><td>${R.esc(R.protoDeCure(x.p, x.c)?.dci || '')} ${R.esc(x.c.label)}</td><td>${R.statutCureBadge(x.c)}</td><td class="small">${R.esc(x.c.motif || 'non marquée réalisée')}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">Aucune séance manquée</td></tr>'}</tbody></table></div></section>
@@ -498,6 +505,7 @@
         <div><dt>Période</dt><dd>du ${R.fmtDateLong(debut)} au ${R.fmtDateLong(fin)} (${nbJ} jours, ${st.joursOuverts} jours d’ouverture)</dd></div>
         <div><dt>Activité</dt><dd>${st.realisees.length} séances de perfusion réalisées pour ${st.patients.size} patients ; ${st.prevues.length} programmées ; taux de réalisation ${st.tauxRealisation === null ? '—' : st.tauxRealisation + ' %'} ; occupation ${st.occupation === null ? '—' : st.occupation + ' %'} de la capacité théorique.</dd></div>
         <div><dt>Qualité</dt><dd>${st.manquees.length} séance(s) manquée(s), ${st.reports.length} report(s) dont ${st.cat.stock || 0} pour rupture de stock, ${st.reactions} réaction(s) à la perfusion, ${st.ctrlFaits.length} contrôle(s) réalisés sur ${st.controles.length} attendus.</dd></div>
+        <div><dt>Consommation</dt><dd>${st.conso.length ? st.conso.map(o => `${R.esc(o.dci)} ${R.esc(o.art.unite + ' ' + o.art.uniteLib)} (${R.esc(o.art.voie)}) : ${o.flacons} ${o.art.voie === 'IV' ? 'flacon(s)' : 'unité(s)'}`).join(' ; ') : 'aucune séance réalisée'}.</dd></div>
         <div><dt>File active</dt><dd>${S.patients.filter(p => p.statut !== 'termine').length} patients suivis au ${R.fmtDate(R.today())}, ${st.nouveaux.length} nouveau(x) dossier(s) et ${st.changements.length} changement(s) de protocole sur la période.</dd></div></dl></div></section></div>`;
     }
   };

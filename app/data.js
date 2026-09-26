@@ -124,23 +124,26 @@ window.RYZE = window.RYZE || {};
   ];
   R.article = id => R.ARTICLES.find(a => a.id === id);
 
-  /* ---------- Catalogue du bilan pré-thérapeutique ---------- */
+  /* ---------- Catalogue du bilan pré-biothérapie (classé par nature d'examen) ---------- */
   R.BILAN_PRE = [
-    { id: 'igra',  cat: 'Dépistage infectieux', label: 'IGRA (Quantiféron®) ou IDR à la tuberculine' },
-    { id: 'rxt',   cat: 'Dépistage infectieux', label: 'Radiographie thoracique' },
-    { id: 'vhb',   cat: 'Dépistage infectieux', label: 'Sérologie VHB (Ag HBs, Ac anti-HBc, Ac anti-HBs)' },
-    { id: 'vhc',   cat: 'Dépistage infectieux', label: 'Sérologie VHC' },
-    { id: 'vih',   cat: 'Dépistage infectieux', label: 'Sérologie VIH (avec accord du patient)' },
-    { id: 'vzv',   cat: 'Dépistage infectieux', label: 'Sérologie VZV (si pas d’antécédent certain de varicelle)' },
-    { id: 'ebv',   cat: 'Dépistage infectieux', label: 'Sérologie EBV (si thiopurine associée)' },
-    { id: 'sero2', cat: 'Dépistage infectieux', label: 'Sérologies complémentaires ECCO : VHA, CMV, rougeole (statut immunitaire)' },
-    { id: 'foyer', cat: 'Dépistage infectieux', label: 'Recherche de foyer infectieux (dentaire, ORL, urinaire, cutané)' },
-    { id: 'nfs',   cat: 'Biologie', label: 'NFS-plaquettes' },
-    { id: 'crp',   cat: 'Biologie', label: 'CRP' },
-    { id: 'bh',    cat: 'Biologie', label: 'Bilan hépatique (ASAT, ALAT, GGT, PAL, bilirubine)' },
-    { id: 'iono',  cat: 'Biologie', label: 'Ionogramme, créatinine' },
-    { id: 'alb',   cat: 'Biologie', label: 'Albumine' },
-    { id: 'lip',   cat: 'Biologie', label: 'Bilan lipidique (inhibiteurs de JAK, modulateurs S1P)' },
+    { id: 'igra',  cat: 'Tuberculose', label: 'QuantiFERON® (IGRA) ou IDR à la tuberculine' },
+    { id: 'rxt',   cat: 'Tuberculose', label: 'Radiographie thoracique' },
+    { id: 'vhb',   cat: 'Sérologies', label: 'Hépatite B — VHB (Ag HBs, Ac anti-HBc, Ac anti-HBs)' },
+    { id: 'vhc',   cat: 'Sérologies', label: 'Hépatite C — VHC' },
+    { id: 'vih',   cat: 'Sérologies', label: 'VIH — HIV (avec accord du patient)' },
+    { id: 'ebv',   cat: 'Sérologies', label: 'EBV — virus d’Epstein-Barr (important si thiopurine associée)' },
+    { id: 'cmv',   cat: 'Sérologies', label: 'CMV — cytomégalovirus' },
+    { id: 'vzv',   cat: 'Sérologies', label: 'Varicelle — VZV (si pas d’antécédent certain de varicelle)' },
+    { id: 'sero2', cat: 'Sérologies', label: 'Autres sérologies : VHA, rougeole (statut immunitaire)' },
+    { id: 'nfs',   cat: 'Bilan biologique', label: 'NFS-plaquettes' },
+    { id: 'crp',   cat: 'Bilan biologique', label: 'CRP' },
+    { id: 'bh',    cat: 'Bilan biologique', label: 'ASAT, ALAT (bilan hépatique : GGT, PAL, bilirubine)' },
+    { id: 'alb',   cat: 'Bilan biologique', label: 'Albumine' },
+    { id: 'renal', cat: 'Fonction rénale et bilan hydrique', label: 'Fonction rénale : créatinine, DFG, urée' },
+    { id: 'iono',  cat: 'Fonction rénale et bilan hydrique', label: 'Bilan hydrique : ionogramme sanguin (Na, K, Cl, bicarbonates)' },
+    { id: 'lip',   cat: 'Bilan lipidique', label: 'Bilan lipidique : cholestérol total, HDL, LDL, triglycérides (indispensable sous inhibiteurs de JAK et modulateurs S1P)' },
+    { id: 'sinus', cat: 'Imagerie et foyers infectieux', label: 'Radiographie des sinus (foyer ORL)' },
+    { id: 'foyer', cat: 'Imagerie et foyers infectieux', label: 'Recherche de foyer infectieux (dentaire, urinaire, cutané)' },
     { id: 'hcg',   cat: 'Clinique', label: 'β-hCG (femme en âge de procréer)' },
     { id: 'derm',  cat: 'Clinique', label: 'Examen dermatologique (lésions suspectes, antécédent de cancer cutané)' },
     { id: 'ecg',   cat: 'Clinique', label: 'ECG (inhibiteurs de JAK, modulateurs S1P)' },
@@ -151,6 +154,14 @@ window.RYZE = window.RYZE || {};
     { id: 'endo0',   cat: 'Référence', label: 'Endoscopie de référence avec score (SES-CD / Mayo endoscopique)' },
     { id: 'clostr',  cat: 'Référence', label: 'Recherche de C. difficile / coproculture (si poussée)' }
   ];
+  /* complète un bilan enregistré avec les examens ajoutés au catalogue depuis sa création */
+  R.completerBilan = bilan => { bilan = bilan || []; R.BILAN_PRE.forEach(b => { if (bilan.some(x => x.id === b.id)) return; const src = { cmv: 'sero2', renal: 'iono' }[b.id]; const o = src && bilan.find(x => x.id === src); bilan.push(o && o.statut !== 'attente' ? { id: b.id, statut: o.statut, date: o.date || '', commentaire: o.commentaire ? o.commentaire + ' (repris de l’ancien libellé groupé)' : '' } : { id: b.id, statut: 'attente', date: '', commentaire: '' }); }); return bilan; };
+  R.bilanFait = b => !!b && String(b.statut).startsWith('fait');
+  /* poids : initial (à l'inclusion) et dernier poids mesuré lors d'une séance */
+  R.poidsInitial = p => +p.poidsInitial || +((p.historiqueProtocoles || [])[0] || {}).poids || +p.poids || null;
+  R.dernierPoids = p => { const c = (p.cures || []).filter(x => x.statut === 'realisee' && +x.poids > 0 && x.dateReelle).sort((a, b) => b.dateReelle.localeCompare(a.dateReelle))[0]; return c ? { poids: +c.poids, date: c.dateReelle } : null; };
+  /* flacons (ou unités SC) réellement utilisés pour une séance réalisée, sinon prévus */
+  R.flaconsCure = c => c.statut === 'realisee' && c.flaconsUtilises != null && c.flaconsUtilises !== '' ? +c.flaconsUtilises : (+c.flacons || 0);
   R.BILAN_STATUTS = { fait_normal: 'Fait — normal', fait_anormal: 'Fait — anormal', attente: 'En attente', na: 'Non applicable' };
 
   /* ---------- Catalogue des éléments de surveillance ---------- */
@@ -511,7 +522,7 @@ window.RYZE = window.RYZE || {};
       });
       const derniere = cures.filter(c => c.statut === 'realisee').slice(-1)[0];
       return {
-        id: 'p' + (i + 1), ipp: s.ipp, nom: s.nom, prenom: s.prenom, ddn: s.ddn, sexe: s.sexe, poids: s.poids, taille: s.taille, tel: `06 ${String(10 + Math.floor(rand() * 89))} ${String(10 + Math.floor(rand() * 89))} ${String(10 + Math.floor(rand() * 89))} ${String(10 + Math.floor(rand() * 89))}`,
+        id: 'p' + (i + 1), ipp: s.ipp, nom: s.nom, prenom: s.prenom, ddn: s.ddn, sexe: s.sexe, poids: s.poids, poidsInitial: s.poids, taille: s.taille, tel: `06 ${String(10 + Math.floor(rand() * 89))} ${String(10 + Math.floor(rand() * 89))} ${String(10 + Math.floor(rand() * 89))} ${String(10 + Math.floor(rand() * 89))}`,
         pathologie: s.patho, paris: R.parisDepuisTexte(s.paris, s.patho, s.ddn, s.diag + '-01'), dateDiag: s.diag + '-01', medecinId: s.medecin, protocoleId: s.proto, dateDebut: dateDebutDossier, cycleCourant, historiqueProtocoles: historique, carnetMixte: i % 2 === 0, planSurveillance: cfgDemo,
         traitementsAssocies: s.tt, allergies: s.allergies, antecedentsBio: s.prev || 'Aucune biothérapie antérieure',
         statut: s.suspendu ? 'suspendu' : (cures.some(c => c.phase === 'Induction' && c.statut === 'prevue') ? 'induction' : 'entretien'),
