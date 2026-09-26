@@ -365,7 +365,7 @@
       renumeroter(p); R.journal(`Séance ${esc(c.label)} déplacée — ${R.nomComplet(p)}`); R.touch(); R.closeModal(); R.toast(nd ? 'Séance replanifiée' : 'Séance reportée, à replanifier', 'good'); R.render();
     },
     cureAjouter(el) {
-      const p = R.patient(el.dataset.pid), pr = R.proto(p.protocoleId); const e = pr.entretien || {}; const d = R.doseEtape(pr, { dose: e.dose, doseType: e.doseType, texte: e.texte }, p.poids, 'entretien'); const duree = R.dureeSeance(pr, { voie: e.voie || 'IV' }); const date = R.addDays(R.today(), 7);
+      const p = R.patient(el.dataset.pid), pr = R.proto(p.protocoleId); const e = R.schemaPatient(p).actuel || pr.entretien || {}; const d = R.doseEtape(pr, { dose: e.dose, doseType: e.doseType, texte: e.texte }, p.poids, 'entretien'); /* dose d'entretien réelle du patient */ const duree = R.dureeSeance(pr, { voie: e.voie || 'IV' }); const date = R.addDays(R.today(), 7);
       R.modal({ title: `Ajouter une séance — ${esc(R.nomComplet(p))}`, form: 'cureAjouterSave', body: `<input type="hidden" name="pid" value="${p.id}"><div class="form-grid">
         <div class="field"><label>Phase</label><select name="phase"><option>Entretien</option><option>Induction</option><option>Ré-induction</option><option>Hors protocole</option></select></div>
         <div class="field"><label>Date</label><input type="date" name="date" value="${date}" required data-change="creneauVerifier"></div><div class="field"><label>Heure</label><input type="time" name="heure" value="${R.hdj().ouverture}" data-change="creneauVerifier"></div>
@@ -381,11 +381,11 @@
       renumeroter(p); recalcStatut(p); R.journal(`Séance ajoutée le ${R.fmtDate(date)} — ${R.nomComplet(p)}`); R.touch(); R.closeModal(); R.toast('Séance ajoutée', 'good'); R.render();
     },
     posologieModifier(el) {
-      const p = R.patient(el.dataset.pid), pr = R.proto(p.protocoleId), next = p.cures.find(c => c.statut === 'prevue' && c.phase === 'Entretien') || R.prochaineCure(p); const dtE = (pr.entretien && pr.entretien.doseType) || pr.doseType;
+      const p = R.patient(el.dataset.pid), pr = R.proto(p.protocoleId), next = p.cures.find(c => c.statut === 'prevue' && c.phase === 'Entretien') || R.prochaineCure(p); const e = R.schemaPatient(p).actuel || pr.entretien || {}, dtE = e.doseType || (pr.entretien && pr.entretien.doseType) || pr.doseType; /* posologie réelle du patient (type et valeur), pas celle du protocole */
       R.modal({ title: `Modifier la posologie — ${esc(R.nomComplet(p))}`, form: 'posologieSave', body: `<input type="hidden" name="pid" value="${p.id}"><div class="callout">Protocole : ${esc(pr.dci)} — ${esc(pr.entretien?.label || '')}. ${esc(pr.optimisation || '')}</div>
         <div class="form-grid"><div class="field"><label>Type de dose</label><select name="type"><option value="mgkg"${dtE === 'mgkg' ? ' selected' : ''}>mg/kg</option><option value="mg"${dtE !== 'mgkg' ? ' selected' : ''}>mg (dose fixe)</option></select></div>
-        <div class="field"><label>Valeur</label><input type="number" step="0.5" min="0.5" name="valeur" value="${dtE === 'mgkg' ? (pr.entretien?.dose ?? pr.doseRef) : dtE === 'palier' ? (next?.dose ?? '') : (pr.entretien?.dose ?? '')}" required></div>
-        <div class="field"><label>Intervalle (jours)</label><input type="number" min="7" max="365" name="intervalle" value="${(cycleCourant(p) || {}).intervalle || pr.entretien?.intervalleJours || 56}" required><span class="hint">56 j = 8 sem · 42 j = 6 sem · 28 j = 4 sem</span></div>
+        <div class="field"><label>Valeur</label><input type="number" step="any" min="0.5" name="valeur" value="${dtE === 'palier' ? (next?.dose ?? '') : (e.dose ?? pr.doseRef ?? '')}" required></div>
+        <div class="field"><label>Intervalle (jours)</label><input type="number" min="7" max="365" name="intervalle" value="${(cycleCourant(p) || {}).intervalle || e.intervalleJours || 56}" required><span class="hint">56 j = 8 sem · 42 j = 6 sem · 28 j = 4 sem</span></div>
         <div class="field"><label>À partir de la séance n°</label><input type="number" name="depuis" value="${next ? next.n : p.cures.length}" min="1" required></div>
         <div class="field span3"><label>Justification (tracée dans l’historique et le carnet)</label><input type="text" name="motif" placeholder="ex. taux résiduel 1,8 µg/mL, calprotectine 620 µg/g → optimisation" required></div></div>`, foot: `<button type="button" class="btn" data-action="closeModal">Annuler</button><button type="submit" class="btn primary">Appliquer aux séances à venir</button>` });
     },

@@ -392,7 +392,7 @@ window.RYZE = window.RYZE || {};
     p.surveillance = p.surveillance.filter(s => s.mode !== 'cure'); p.surveillance.push(...R.genererSurveillanceCfg(cfgN, o.dateDebut, 1, cyc + 1).filter(s => s.mode === 'cure'), ...ajouts);
     p.protocoleId = proto.id; p.cycleCourant = cyc + 1; p.poids = o.poids || p.poids;
     p.statut = tmp.induction.length ? 'induction' : 'entretien'; p.motifSuspension = '';
-    p.historiqueProtocoles.push({ cycle: cyc + 1, protocoleId: proto.id, dateDebut: o.dateDebut, poids: o.poids || p.poids, statut: 'en cours', motif: o.motif, par: o.par, debut: o.debut || 'induction', posologie: o.variante ? o.variante.nom : 'Posologie standard', modifications: [], planifieJusqua: nouvelles.length ? nouvelles[nouvelles.length - 1].label : '—' });
+    p.historiqueProtocoles.push({ cycle: cyc + 1, protocoleId: proto.id, dateDebut: o.dateDebut, poids: o.poids || p.poids, statut: 'en cours', motif: o.motif, par: o.par, debut: o.debut || 'induction', posologie: o.variante ? o.variante.nom : 'Posologie standard', intervalle: tmp.entretien ? Math.max(7, +tmp.entretien.intervalleJours || 56) : undefined, modifications: [], planifieJusqua: nouvelles.length ? nouvelles[nouvelles.length - 1].label : '—' });
     p.notes = p.notes || []; p.notes.unshift({ date: o.dateDebut <= R.today() ? o.dateDebut : R.today(), par: o.par, txt: `Changement de protocole (cycle ${cyc + 1}) : ${proto.dci} à partir du ${R.fmtDate(o.dateDebut)} — ${o.motif}` });
     return nouvelles;
   };
@@ -471,7 +471,10 @@ window.RYZE = window.RYZE || {};
         cures = tmpP.cures; historique = tmpP.historiqueProtocoles; dateDebutDossier = debutAncien; cycleCourant = 2;
         cures.filter(c => c.cycle === 2).forEach(c => { c.heure = s.heure; c.fauteuil = s.fauteuil; });
       }
-      if (s.optimisation) cures.forEach(c => { if (c.phase === 'Entretien' && c.n >= 4) { c.dose = Math.round(s.optimisation * s.poids); c.flacons = Math.ceil(c.dose / 100); c.doseTexte = `${s.optimisation} mg/kg → ${c.dose} mg (optimisation)`; } });
+      if (s.optimisation) { cures.forEach(c => { if (c.phase === 'Entretien' && c.n >= 4) { c.dose = Math.round(s.optimisation * s.poids); c.flacons = Math.ceil(c.dose / 100); c.doseTexte = `${s.optimisation} mg/kg → ${c.dose} mg (optimisation)`; } });
+        /* tracée dans l'historique comme une modification de posologie (carnet, dossier) */
+        const c0 = cures.find(c => c.phase === 'Entretien' && c.n >= 4), hc = historique[historique.length - 1], inter = proto.entretien.intervalleJours;
+        if (c0) Object.assign(hc, { intervalle: inter, doseCourante: { type: 'mgkg', val: s.optimisation }, modifications: [{ date: c0.datePrevue, txt: `Posologie modifiée à partir de la séance n°${c0.n} : ${s.optimisation} mg/kg tous les ${inter} j — optimisation` }] }); }
       cures.forEach((c, k) => {
         if (c.voie === 'IV') { c.heure = s.heure || '09:00'; c.fauteuil = s.fauteuil || 1; }
         if (c.datePrevue < today && (c.statut === 'prevue' || (c.statut === 'realisee' && !c.dateReelle))) {
