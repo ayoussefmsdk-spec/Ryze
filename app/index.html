@@ -17,7 +17,7 @@
   --grid:#E6EBE9; --axis:#C3CCC8; --c1:#1BAF7A; --c2:#2A78D6;
   --doc-bg:#FFFFFF; --doc-ink:#141B19; --doc-line:#B9C2BE;
 }
-@media (prefers-color-scheme: dark){
+@media screen and (prefers-color-scheme: dark){ /* à l'impression, toujours le thème clair : encre sombre sur papier blanc */
   :root:not([data-theme="light"]){
     color-scheme:dark;
     --bg:#0F1614; --surface:#17201E; --surface-2:#1C2724; --hover:#22302C; --rail-bg:#131B19;
@@ -141,7 +141,8 @@ button{font:inherit;color:inherit}
 .card-head h2{font-size:14px;font-weight:600}
 .pli-titre{cursor:pointer;user-select:none} .pli-titre:hover{color:var(--accent-ink)}
 .plier{border:0;background:none;color:var(--muted);cursor:pointer;padding:4px;border-radius:6px;display:inline-flex;margin-left:auto;order:99} .plier svg{width:16px;height:16px;transition:transform .15s} .plier:hover{background:var(--hover);color:var(--ink)}
-.card.plie>:not(.card-head),.cycle-card.plie>:not(.row.between){display:none!important} .card.plie .plier svg,.cycle-card.plie .plier svg{transform:rotate(-90deg)} .card.plie>.card-head{border-bottom:0}
+@media screen{.card.plie>:not(.card-head),.cycle-card.plie>:not(.row.between){display:none!important} .card.plie>.card-head{border-bottom:0}} /* imprimée, une carte réduite reste complète */
+.card.plie .plier svg,.cycle-card.plie .plier svg{transform:rotate(-90deg)}
 .phase-block{border-left:3px solid var(--line-strong);padding:10px 12px;border-radius:8px;background:var(--surface-2)} .phase-block.ind{border-left-color:var(--info);background:var(--info-tint)} .phase-block.ent{border-left-color:var(--good);background:var(--good-tint)}
 .field:has(>input[required])>label::after,.field:has(>select[required])>label::after,.field:has(>textarea[required])>label::after,.field.req>label::after{content:" *";color:var(--crit);font-weight:600}
 .req-note{margin-right:auto;align-self:center}
@@ -426,6 +427,7 @@ input[readonly]{background:var(--surface-2);color:var(--ink-2)}
 .doc-kv div{display:grid;grid-template-columns:130px 1fr;gap:8px;border-bottom:1px dotted var(--doc-line);padding:3px 0}
 .doc-kv dt{color:#4E5E59;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:9pt;padding-top:2px}
 .doc-kv dd{margin:0;font-weight:600}
+.carnet-page table{color:inherit} /* sans doctype, un tableau n'hérite pas la couleur : il prendrait l'encre claire du thème sombre */
 .doc-table{width:100%;border-collapse:collapse;font-size:9.5pt;font-family:'IBM Plex Sans',system-ui,sans-serif}
 .doc-table th{border:1px solid var(--doc-ink);padding:5px 6px;text-align:left;font-size:8.5pt;text-transform:uppercase;letter-spacing:.05em;background:#EEF2F0;font-weight:700}
 .doc-table td{border:1px solid var(--doc-line);padding:5px 6px;vertical-align:top;height:26px}
@@ -483,14 +485,14 @@ div.cr-edit{display:block;min-height:60px;padding:6px 8px} .cr-bloc{font-size:10
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media print{
   body{background:#fff}
-  .rail,.topbar,.no-print,.toasts,#modal-root{display:none!important}
+  .rail,.topbar,.no-print,.plier,.toasts,#modal-root{display:none!important}
   .shell{display:block}
   .content{padding:0;max-width:none}
   .carnet-wrap{background:#fff;padding:0}
   .carnet-page{box-shadow:none;margin:0;width:auto;min-height:auto;padding:0 14mm;page-break-after:always;color:#000}
   .cr-edit{outline:0!important;background:none!important} .cr-edit.vide{display:none!important} .cr-sec:not(:has(li)):has(.cr-edit.vide){display:none}
   .cr .doc-kv{grid-template-columns:1fr 1fr} /* A4 < 860 px : on garde les deux colonnes de l'écran */
-  .carnet-page .doc-foot{position:static;margin-top:8mm} .carnet-page .doc-foot span:last-child{display:none}
+  .carnet-page .doc-foot{position:static;margin-top:8mm;break-before:avoid} .carnet-page .doc-foot span:last-child{display:none} /* pied jamais seul sur une feuille */
   .carnet-page thead{display:table-header-group} .carnet-page tr,.carnet-page .doc-box{break-inside:avoid}
   .carnet-page:last-child{page-break-after:auto}
   @page{size:A4;margin:12mm 0 14mm;@bottom-center{content:"Page " counter(page) " / " counter(pages);font:8pt 'IBM Plex Sans',sans-serif;color:#7E8C88}}

@@ -470,7 +470,7 @@
       for (let d = debut; d <= fin; d = R.addDays(d, nbJ > 45 ? 7 : 1)) { const f = nbJ > 45 ? R.addDays(d, 6) : d; let n = 0; for (let x = d; x <= f && x <= fin; x = R.addDays(x, 1)) n += st.parJour[x] || 0; semaines.push({ label: nbJ > 45 ? R.fmtDate(d, { day: 'numeric', month: 'short' }) : R.fmtDate(d, { day: 'numeric' }), n }); }
       const chart = R.columnChart({ labels: semaines.map(s => s.label), series: [{ name: 'Séances réalisées', color: 'var(--s1)', values: semaines.map(s => s.n) }], height: 200 });
       const tile = (label, val, sub, cls) => `<div class="kpi${cls ? ' ' + cls : ''}"><div class="label">${label}</div><div class="value">${val}</div><div class="sub">${sub || ''}</div></div>`;
-      return `<div class="page-head"><div><h1>Activité & rapports</h1><p>Performance de l’hôpital de jour sur la période choisie</p></div><div class="page-actions">${R.boutonsDoc('Imprimer le rapport')}</div></div>
+      return `<div class="page-head no-print"><div><h1>Activité & rapports</h1><p>Performance de l’hôpital de jour sur la période choisie</p></div><div class="page-actions">${R.boutonsDoc('Imprimer le rapport')}</div></div>
       <section class="card mb16 no-print"><div class="card-body"><div class="row" style="gap:6px;flex-wrap:wrap">${presets.map(x => `<button type="button" class="btn sm${r.preset === x[0] ? ' primary' : ''}" data-action="rapportPreset" data-v="${x[0]}">${x[1]}</button>`).join('')}<span class="grow"></span><span class="badge accent">${R.fmtDateLong(debut)} → ${R.fmtDateLong(fin)} · ${nbJ} j</span></div>
         ${r.preset === 'perso' ? `<div class="mt16">${R.rangePicker({ debut, fin, mois: r.mois || debut.slice(0, 7) })}</div>` : ''}</div></section>
       <div class="rapport">
@@ -519,7 +519,7 @@
 .export .rapport .print-only{display:flex!important}
 @media print{.export-rapport{margin:0;padding:0}}`;
   const sansAccents = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-  /* fichier HTML autonome du document affiché : styles de l'application, thème clair, zones modifiables figées */
+  /* fichier HTML autonome du document affiché : styles et mode de rendu de l'application (sans doctype = même pagination), thème clair, zones modifiables figées */
   R.docExport = () => {
     const r = S.route || {}, par = r.params || {}; const p = par.id ? R.patient(par.id) : null;
     const type = r.page === 'impression' ? (par.quoi === 'seances' ? ['Seances', 'Historique des séances'] : ['Bilans', 'Bilans et contrôles']) : { carnet: ['Carnet', 'Carnet de suivi biothérapique'], compteRendu: ['Compte-rendu', 'Compte rendu de suivi'], activite: ['Rapport-activite', 'Rapport d’activité'] }[r.page];
@@ -530,7 +530,7 @@
     doc.querySelectorAll('*').forEach(x => { [...x.attributes].forEach(a => { if (/^data-|^(contenteditable|spellcheck|tabindex|title)$/.test(a.name) || (a.name === 'role' && /^(button|link)$/.test(a.value))) x.removeAttribute(a.name); }); x.classList.remove('cr-edit', 'vide', 'plie', 'pli-titre'); if (x.getAttribute('class') === '') x.removeAttribute('class'); });
     const titre = type[1] + (p ? ' — ' + R.nomComplet(p) : ''); const css = [...document.querySelectorAll('style')].map(s => s.textContent).join('\n');
     const polices = [...document.querySelectorAll('link[href*="fonts.googleapis.com"], link[href*="fonts.gstatic.com"]')].map(l => l.outerHTML).join('');
-    const html = `<!doctype html><html lang="fr" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${R.esc(titre)}</title>${polices}<style>${css}\n${CSS_EXPORT}</style></head><body class="export"><div class="export-barre no-print"><button type="button" onclick="window.print()">Imprimer</button><span>${R.esc(titre)} — exporté de Ryze le ${R.fmtDate(R.today())}. Ctrl+P (ou Cmd+P) : imprimante ou « Enregistrer en PDF ».</span></div>${r.page === 'activite' ? `<div class="export-rapport">${doc.outerHTML}</div>` : doc.outerHTML}</body></html>`;
+    const html = `${document.compatMode === 'CSS1Compat' ? '<!doctype html>' : ''}<html lang="fr" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${R.esc(titre)}</title>${polices}<style>${css}\n${CSS_EXPORT}</style></head><body class="export"><div class="export-barre no-print"><button type="button" onclick="window.print()">Imprimer</button><span>${R.esc(titre)} — exporté de Ryze le ${R.fmtDate(R.today())}. Ctrl+P (ou Cmd+P) : imprimante ou « Enregistrer en PDF ».</span></div>${r.page === 'activite' ? `<div class="export-rapport">${doc.outerHTML}</div>` : doc.outerHTML}</body></html>`;
     return { html, nom: ['Ryze', type[0], p && sansAccents(p.nom), p && sansAccents(p.prenom), R.today()].filter(Boolean).join('_') + '.html', droit: r.page === 'activite' ? 'dashboard' : 'carnet' };
   };
   /* dernier recours si le téléchargement est impossible ou peut-être bloqué : le contenu à copier dans un fichier */
