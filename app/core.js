@@ -171,12 +171,12 @@
   R.prolonger = (p, mois) => {
     const pr0 = R.proto(p.protocoleId); if (!pr0 || !pr0.entretien) return 0;
     const cyc = p.cycleCourant || 1; const hist = (p.historiqueProtocoles || []).find(x => x.cycle === cyc) || {}; const pr = R.appliquerVariante(pr0, hist.variante || null); const curesCyc = p.cures.filter(c => (c.cycle || 1) === cyc && c.statut !== 'annulee');
-    const derniere = curesCyc[curesCyc.length - 1]; if (!derniere) return 0;
+    const derniere = curesCyc[curesCyc.length - 1]; const heure = (derniere || p.cures.filter(c => (c.cycle || 1) === cyc).slice(-1)[0] || {}).heure; /* dossier rouvert sans séance active : l'entretien repart de J0 ou de demain */
     let ref = curesCyc.filter(c => c.phase === 'Entretien').slice(-1)[0];
-    if (!ref) { const d0 = R.doseEtape(pr, { dose: pr.entretien.dose, doseType: pr.entretien.doseType, texte: pr.entretien.texte }, p.poids, 'entretien'); ref = { voie: pr.entretien.voie, dose: d0.dose, doseTexte: d0.texte, flacons: d0.flacons, articleId: d0.articleId || pr.articleEntretienId || pr.articleId, heure: derniere.heure }; } /* aucune séance d'entretien active : dose et voie d'entretien du protocole, jamais celles de l'induction */
+    if (!ref) { const d0 = R.doseEtape(pr, { dose: pr.entretien.dose, doseType: pr.entretien.doseType, texte: pr.entretien.texte }, p.poids, 'entretien'); ref = { voie: pr.entretien.voie, dose: d0.dose, doseTexte: d0.texte, flacons: d0.flacons, articleId: d0.articleId || pr.articleEntretienId || pr.articleId, heure }; } /* aucune séance d'entretien active : dose et voie d'entretien du protocole, jamais celles de l'induction */
     const inter = Math.max(7, +hist.intervalle || +pr.entretien.intervalleJours || 56); const t = R.today();
-    const base = derniere.datePrevue > t ? derniere.datePrevue : t; const fin = R.addDays(base, Math.round((mois || 12) * 30.4)); const j0 = R.j0(p, cyc); const nouvelles = [];
-    let debut = R.addDays(derniere.datePrevue, inter); if (debut <= t) debut = R.jourOuvre(R.addDays(t, 1)); /* un plan échu reprend demain, jamais dans le passé */
+    const base = derniere && derniere.datePrevue > t ? derniere.datePrevue : t; const fin = R.addDays(base, Math.round((mois || 12) * 30.4)); const j0 = R.j0(p, cyc); const nouvelles = [];
+    let debut = derniere ? R.addDays(derniere.datePrevue, inter) : (j0 > t ? j0 : t); if (debut <= t) debut = R.jourOuvre(R.addDays(t, 1)); /* un plan échu reprend demain, jamais dans le passé */
     for (let d = debut; d <= fin; d = R.addDays(d, inter)) { const dd = R.jourOuvre(d); nouvelles.push({ n: 0, cycle: cyc, protocoleId: pr.id, phase: 'Entretien', label: R.libelleJour(R.diffDays(j0, dd)), jour: R.diffDays(j0, dd), datePrevue: dd, voie: ref.voie, dose: ref.dose, doseTexte: ref.doseTexte, flacons: ref.flacons, articleId: ref.articleId, statut: 'prevue' }); }
     R.reserverCures(nouvelles, ref.heure); p.cures.push(...nouvelles); p.cures.sort((a, b) => a.datePrevue.localeCompare(b.datePrevue)); p.cures.forEach((c, i) => c.n = i + 1);
     /* contrôles périodiques selon le plan de surveillance du dossier */
