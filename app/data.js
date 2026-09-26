@@ -166,7 +166,10 @@ window.RYZE = window.RYZE || {};
   R.dernierPoids = p => { const c = (p.cures || []).filter(x => x.statut === 'realisee' && +x.poids > 0 && x.dateReelle).sort((a, b) => b.dateReelle.localeCompare(a.dateReelle))[0]; return c ? { poids: +c.poids, date: c.dateReelle } : null; };
   /* flacons (ou unités SC) réellement utilisés pour une séance réalisée, sinon prévus */
   R.flaconsCure = c => c.statut === 'realisee' && c.flaconsUtilises != null && c.flaconsUtilises !== '' ? +c.flaconsUtilises : (+c.flacons || 0);
-  R.BILAN_STATUTS = { fait_normal: 'Fait — normal', fait_anormal: 'Fait — anormal', attente: 'En attente', na: 'Non applicable' };
+  R.BILAN_STATUTS = { attente: 'En attente', demande: 'Demandé — résultat attendu', fait_normal: 'Fait — normal', fait_anormal: 'Fait — anormal', na: 'Non applicable' };
+  R.bilanEnCours = b => !b || b.statut === 'attente' || b.statut === 'demande'; /* pas encore de résultat */
+  /* libellé d'un examen demandé : prélèvement prévu (date future) ou fait, résultat attendu */
+  R.bilanDemandeTxt = b => b.date ? (b.date > R.today() ? 'prévu le ' + R.fmtDate(b.date) : 'demandé le ' + R.fmtDate(b.date) + ', résultat attendu') : 'demandé, résultat attendu';
 
   /* ---------- Catalogue des éléments de surveillance ---------- */
   /* mode : 'cure' = à chaque cure ; 'echeances' = dates fixes (jours après J0) ; 'periodique' = tous les N jours */
