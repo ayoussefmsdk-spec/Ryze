@@ -155,7 +155,7 @@ window.RYZE = window.RYZE || {};
     { id: 'clostr',  cat: 'Référence', label: 'Recherche de C. difficile / coproculture (si poussée)' }
   ];
   /* complète un bilan enregistré avec les examens ajoutés au catalogue depuis sa création */
-  R.completerBilan = bilan => { bilan = bilan || []; R.BILAN_PRE.forEach(b => { if (bilan.some(x => x.id === b.id)) return; const src = { cmv: 'sero2', renal: 'iono' }[b.id]; const o = src && bilan.find(x => x.id === src); bilan.push(o && o.statut !== 'attente' ? { id: b.id, statut: o.statut, date: o.date || '', commentaire: o.commentaire ? o.commentaire + ' (repris de l’ancien libellé groupé)' : '' } : { id: b.id, statut: 'attente', date: '', commentaire: '' }); }); return bilan; };
+  R.completerBilan = bilan => { bilan = bilan || []; bilan.forEach(b => { if (b.statut === 'demande') b.statut = 'attente'; if (!R.BILAN_STATUTS[b.statut]) b.statut = 'attente'; }); R.BILAN_PRE.forEach(b => { if (bilan.some(x => x.id === b.id)) return; const src = { cmv: 'sero2', renal: 'iono' }[b.id]; const o = src && bilan.find(x => x.id === src); bilan.push(o && o.statut !== 'attente' ? { id: b.id, statut: o.statut, date: o.date || '', commentaire: o.commentaire ? o.commentaire + ' (repris de l’ancien libellé groupé)' : '' } : { id: b.id, statut: 'attente', date: '', commentaire: '' }); }); return bilan; };
   R.bilanFait = b => !!b && String(b.statut).startsWith('fait');
   /* définitions des examens d'un bilan : catalogue puis examens personnalisés (id « libre-… », libellé porté par l'entrée) */
   R.bilanDefs = bilan => R.BILAN_PRE.concat((bilan || []).filter(b => b.label && !R.BILAN_PRE.some(x => x.id === b.id)).map(b => ({ id: b.id, cat: b.cat || 'Personnalisé', label: b.label, libre: true })));
@@ -166,10 +166,9 @@ window.RYZE = window.RYZE || {};
   R.dernierPoids = p => { const c = (p.cures || []).filter(x => x.statut === 'realisee' && +x.poids > 0 && x.dateReelle).sort((a, b) => b.dateReelle.localeCompare(a.dateReelle))[0]; return c ? { poids: +c.poids, date: c.dateReelle } : null; };
   /* flacons (ou unités SC) réellement utilisés pour une séance réalisée, sinon prévus */
   R.flaconsCure = c => c.statut === 'realisee' && c.flaconsUtilises != null && c.flaconsUtilises !== '' ? +c.flaconsUtilises : (+c.flacons || 0);
-  R.BILAN_STATUTS = { attente: 'En attente', demande: 'Demandé — résultat attendu', fait_normal: 'Fait — normal', fait_anormal: 'Fait — anormal', na: 'Non applicable' };
-  R.bilanEnCours = b => !b || b.statut === 'attente' || b.statut === 'demande'; /* pas encore de résultat */
-  /* libellé d'un examen demandé : prélèvement prévu (date future) ou fait, résultat attendu */
-  R.bilanDemandeTxt = b => b.date ? (b.date > R.today() ? 'prévu le ' + R.fmtDate(b.date) : 'demandé le ' + R.fmtDate(b.date) + ', résultat attendu') : 'demandé, résultat attendu';
+  R.BILAN_STATUTS = { attente: 'En attente', fait_normal: 'Fait — normal', fait_anormal: 'Fait — anormal', na: 'Non applicable' };
+  R.bilanEnCours = b => !b || b.statut === 'attente'; /* pas encore de résultat ; la date, facultative, est celle du prélèvement prévu ou demandé */
+  R.bilanDemandeTxt = b => b.date ? (b.date > R.today() ? 'prévu le ' + R.fmtDate(b.date) : 'demandé le ' + R.fmtDate(b.date) + ', résultat attendu') : '';
 
   /* ---------- Catalogue des éléments de surveillance ---------- */
   /* mode : 'cure' = à chaque cure ; 'echeances' = dates fixes (jours après J0) ; 'periodique' = tous les N jours */
