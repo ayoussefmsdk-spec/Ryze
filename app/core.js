@@ -68,7 +68,7 @@
   R.esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   R.user = () => S.users.find(u => u.id === S.user);
   R.userById = id => S.users.find(u => u.id === id);
-  R.userName = id => { const u = R.userById(id); return u ? `${u.titre ? u.titre + ' ' : ''}${u.prenom ? u.prenom[0] + '. ' : ''}${u.nom}` : '—'; };
+  R.userName = id => { const u = R.userById(id); return u ? `${u.titre ? u.titre + ' ' : ''}${u.prenom ? u.prenom[0] + '. ' : ''}${u.nom || '—'}` : '—'; };
   R.initials = (p, n) => (((p || '')[0] || '') + ((n || '')[0] || '')).toUpperCase();
   R.can = (mod, lvl) => { const u = R.user(); if (!u) return false; const p = (R.PERMS[u.role] || {})[mod] || '-'; if (lvl === 'w') return p === 'rw'; return p !== '-'; };
   R.patient = id => S.patients.find(p => p.id === id);
@@ -77,9 +77,10 @@
   /* date par défaut d'un examen du bilan marqué fait : la date de saisie du dossier */
   R.dateBilanDefaut = p => (p && p.creeLe && p.creeLe <= R.today()) ? p.creeLe : R.today();
   /* poids initial et dernier poids mesuré en séance, côte à côte */
-  R.poidsHTML = p => { const i = R.poidsInitial(p), d = R.dernierPoids(p), f = v => String(+v).replace('.', ','); if (!d || !i) return `${f(i || p.poids)} kg`; const ec = Math.round((d.poids - i) * 10) / 10; return `<span title="Poids à l’inclusion">initial ${f(i)} kg</span> · <span title="Dernier poids mesuré en séance"><b>dernier ${f(d.poids)} kg</b> <span class="muted">(${R.fmtDate(d.date)}${ec ? `, ${ec > 0 ? '+' : ''}${f(ec)} kg` : ''})</span></span>`; };
+  R.poidsHTML = p => { const i = R.poidsInitial(p), d = R.dernierPoids(p), f = v => String(+v).replace('.', ','); if (!d && !i && !(+p.poids > 0)) return '— kg'; if (!d || !i) return `${f(i || p.poids)} kg`; const ec = Math.round((d.poids - i) * 10) / 10; return `<span title="Poids à l’inclusion">initial ${f(i)} kg</span> · <span title="Dernier poids mesuré en séance"><b>dernier ${f(d.poids)} kg</b> <span class="muted">(${R.fmtDate(d.date)}${ec ? `, ${ec > 0 ? '+' : ''}${f(ec)} kg` : ''})</span></span>`; };
   R.uid = (pfx) => pfx + Math.random().toString(36).slice(2, 8);
-  R.nomComplet = p => `${p.nom} ${p.prenom}`;
+  R.nomComplet = p => `${p.nom || '—'} ${p.prenom || '—'}`;
+  R.ageTxt = ddn => { const a = R.age(ddn); return a === '—' ? '—' : a + ' ans'; };
   R.params = obj => R.esc(JSON.stringify(obj || {}));
   R.prochaineCure = p => p.cures.find(c => c.statut === 'reportee' || c.statut === 'manquee') || p.cures.find(c => c.statut === 'prevue') || null;
   R.derniereCure = p => [...p.cures].reverse().find(c => c.statut === 'realisee') || null;
@@ -262,7 +263,7 @@
     if (!document.querySelector('#modal-root .modal')) { R.ui.modalSale = false; R.ui.focusAvant = document.activeElement; }
     document.getElementById('modal-root').innerHTML = `<div class="modal-overlay"><form class="modal${wide ? ' wide' : ''}" role="dialog" aria-modal="true" aria-labelledby="modal-titre" ${form ? `data-form="${form}"` : ''}>
       <div class="modal-head"><h3 id="modal-titre">${title}</h3><button type="button" class="x-btn" data-action="closeModal" aria-label="Fermer">${R.icon('x')}</button></div>
-      <div class="modal-body">${body}</div>${foot ? `<div class="modal-foot">${/required/.test(body) ? '<span class="req-note small muted">* champ obligatoire</span>' : ''}${foot}</div>` : ''}</form></div>`;
+      <div class="modal-body">${body}</div>${foot ? `<div class="modal-foot">${foot}</div>` : ''}</form></div>`;
     R.pliables(document.getElementById('modal-root')); R.accessibilite(document.getElementById('modal-root'));
     const first = document.querySelector('#modal-root input:not([readonly]):not([type=hidden]), #modal-root select, #modal-root textarea'); if (first) first.focus();
   };
@@ -377,7 +378,7 @@
       <div class="login-right">
         <form data-form="loginCode" class="stack">
           <div class="caps">Connexion</div>
-          <div class="field"><label for="login-code">Code d’accès personnel</label><input type="text" id="login-code" name="code" class="mono" style="font-size:18px;letter-spacing:.12em;text-transform:uppercase" placeholder="ex. MED001" autocomplete="off" autofocus required></div>
+          <div class="field"><label for="login-code">Code d’accès personnel</label><input type="text" id="login-code" name="code" class="mono" style="font-size:18px;letter-spacing:.12em;text-transform:uppercase" placeholder="ex. MED001" autocomplete="off" autofocus></div>
           <button type="submit" class="btn primary" style="justify-content:center">Entrer</button>
         </form>
         ${S.dirty ? '' : `<div class="subtle mt24"><div class="caps mb8">Codes de démonstration (cliquer pour entrer)</div>

@@ -155,7 +155,7 @@
     if (s.type === 'clinique' || it.type === 'clinique') return R.formClinique(s.clinique, { avecPoids: true, sous: Array.isArray(s.sous) ? s.sous : null });
     if (s.type === 'composite' || it.type === 'composite') { const sous = (s.sous && s.sous.length ? s.sous : (it.sous || []).map(x => x.id)); return `<div class="form-grid">${sous.map(sid => { const d = (it.sous || []).find(x => x.id === sid) || { id: sid, label: sid, unite: '' }; return `<div class="field"><label>${esc(d.label)}${d.unite ? ` <span class="muted">(${esc(d.unite)})</span>` : ''}</label><input type="text" name="val_${sid}" value="${esc((s.valeurs || {})[sid] || '')}" placeholder="${d.unite ? 'valeur' : 'résultat'}"></div>`; }).join('')}</div>
       <div class="field"><label>Remarques (interprétation, conduite à tenir)</label><textarea name="note" placeholder="ex. anémie ferriprive → supplémentation ; CRP normale">${esc(s.note || '')}</textarea></div>`; }
-    return `<div class="form-grid"><div class="field span2"><label>Résultat${s.unite ? ` <span class="muted">(${esc(s.unite)})</span>` : ''}</label><input type="text" name="resultat" value="${esc(s.resultat || '')}" required placeholder="${esc(s.cible ? 'cible : ' + s.cible : 'résultat, conclusion')}"></div></div><div class="field"><label>Remarques (visibles dans l’historique et le carnet)</label><textarea name="note" placeholder="ex. cicatrisation muqueuse partielle → maintien du traitement">${esc(s.note || '')}</textarea></div>`;
+    return `<div class="form-grid"><div class="field span2"><label>Résultat${s.unite ? ` <span class="muted">(${esc(s.unite)})</span>` : ''}</label><input type="text" name="resultat" value="${esc(s.resultat || '')}" placeholder="${esc(s.cible ? 'cible : ' + s.cible : 'résultat, conclusion')}"></div></div><div class="field"><label>Remarques (visibles dans l’historique et le carnet)</label><textarea name="note" placeholder="ex. cicatrisation muqueuse partielle → maintien du traitement">${esc(s.note || '')}</textarea></div>`;
   };
   R.lireSaisieControle = (s, fd) => {
     const it = R.itemBilan(s.id) || {};
@@ -198,8 +198,8 @@
   /* lit le formulaire « Ajouter un examen » et renvoie l'entrée à ajouter au bilan, ou null avec un message */
   R.lireAjoutBilan = dateDefaut => {
     const v = id => (document.getElementById(id) || {}).value || ''; const label = v('bp-add-label').trim(), statut = v('bp-add-statut') || 'attente', date = v('bp-add-date') || (statut !== 'attente' ? dateDefaut : '');
-    if (!label) { R.toast('Indiquez le nom de l’examen', 'crit'); return null; } if (date && isNaN(R.parse(date))) { R.toast('Date invalide', 'crit'); return null; } if (date && date > R.today() && statut.startsWith('fait')) { R.toast('Un examen fait ne peut pas être daté dans le futur : laissez-le « En attente » avec la date prévue', 'crit'); return null; }
-    return { id: R.uid('libre-'), label, cat: v('bp-add-cat') || 'Personnalisé', statut, date: statut === 'attente' ? (v('bp-add-date') || '') : date, commentaire: v('bp-add-com').trim() };
+    if (date && isNaN(R.parse(date))) { R.toast('Date invalide', 'crit'); return null; } if (date && date > R.today() && statut.startsWith('fait')) { R.toast('Un examen fait ne peut pas être daté dans le futur : laissez-le « En attente » avec la date prévue', 'crit'); return null; }
+    return { id: R.uid('libre-'), label: label || 'Examen à préciser', cat: v('bp-add-cat') || 'Personnalisé', statut, date: statut === 'attente' ? (v('bp-add-date') || '') : date, commentaire: v('bp-add-com').trim() };
   };
   /* lignes du bilan pré-biothérapie pour les documents imprimés : anomalies et commentaires en évidence */
   R.bilanPreDoc = bilan => {
@@ -253,7 +253,7 @@
   R.formTdm = (s, p) => {
     const t = R.tdmDe(s, p) || { molecule: R.moleculeCycle(p, s.cycle), taux: null, ac: 'nd', titre: '' }; const i = R.interpTdm(t);
     return `<div class="form-grid"><div class="field"><label>Molécule dosée</label><select name="tdm_mol" data-change="tdmInterp">${R.TDM_MOLECULES.map(m => `<option${m === t.molecule ? ' selected' : ''}>${m}</option>`).join('')}</select></div>
-      <div class="field"><label>Taux résiduel (µg/mL)</label><input type="number" step="0.1" min="0" name="tdm_taux" value="${t.taux ?? ''}" data-input="tdmInterp" required></div>
+      <div class="field"><label>Taux résiduel (µg/mL)</label><input type="number" step="0.1" min="0" name="tdm_taux" value="${t.taux ?? ''}" data-input="tdmInterp"></div>
       <div class="field"><label>Anticorps anti-médicament</label><select name="tdm_ac" data-change="tdmInterp"><option value="nd"${t.ac === 'nd' ? ' selected' : ''}>non dosés</option><option value="neg"${t.ac === 'neg' ? ' selected' : ''}>négatifs</option><option value="pos"${t.ac === 'pos' ? ' selected' : ''}>positifs</option></select></div>
       <div class="field"><label>Titre des anticorps</label><input type="text" name="tdm_titre" value="${esc(t.titre || '')}" placeholder="si positifs, ex. 45 ng/mL"></div></div>
       <div id="tdm-interp">${R.interpTdmHTML(i)}</div>

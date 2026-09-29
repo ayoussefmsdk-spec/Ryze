@@ -26,7 +26,7 @@ window.RYZE = window.RYZE || {};
   R.libelleSem = j => { j = +j || 0; if (!j) return '—'; if (j % 7 === 0) return `${j / 7} semaine${j / 7 > 1 ? 's' : ''}`; return `${j} jours (${R.semaines(j)} sem.)`; };
   /* identité normalisée (accents, espaces, casse) pour repérer un dossier en double */
   R.normTexte = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
-  R.doublonsPatient = (d, excludeId) => { const nom = R.normTexte(d.nom), pre = R.normTexte(d.prenom), ipp = String(d.ipp || '').trim(); if (!nom && !ipp) return []; return (R.S.patients || []).filter(p => p.id !== excludeId).map(p => { const motifs = []; if (ipp && p.ipp === ipp) motifs.push('même n° de dossier'); if (nom && R.normTexte(p.nom) === nom) { if (pre && R.normTexte(p.prenom) === pre) motifs.push('même nom et prénom'); if (d.ddn && p.ddn === d.ddn) motifs.push('même nom et date de naissance'); } return motifs.length ? { p, motifs, ipp: !!ipp && p.ipp === ipp } : null; }).filter(Boolean); };
+  R.doublonsPatient = (d, excludeId) => { const nom = R.normTexte(d.nom || ''), pre = R.normTexte(d.prenom || ''), ipp = String(d.ipp || '').trim(); if (!nom && !ipp) return []; return (R.S.patients || []).filter(p => p.id !== excludeId).map(p => { const motifs = []; if (ipp && p.ipp === ipp) motifs.push('même n° de dossier'); if (nom && R.normTexte(p.nom) === nom) { if (pre && R.normTexte(p.prenom) === pre) motifs.push('même nom et prénom'); if (d.ddn && p.ddn === d.ddn) motifs.push('même nom et date de naissance'); } return motifs.length ? { p, motifs, ipp: !!ipp && p.ipp === ipp } : null; }).filter(Boolean); };
   R.libelleJour = j => j === 0 ? 'S0' : j < 0 ? `J${j}` : (j % 7 === 0 ? `S${j / 7}` : `S${Math.floor(j / 7)}+${j % 7}j`);
   /* Libellé d'un contrôle : J14, M1, M3, M6, M12… (mois arrondis), semaines sinon */
   R.libelleControle = j => { if (!j) return 'J0'; if (j < 28) return `J${j}`; const m = j / 30.4; return Math.abs(m - Math.round(m)) < 0.12 ? `M${Math.round(m)}` : R.libelleJour(j); };
@@ -169,6 +169,15 @@ window.RYZE = window.RYZE || {};
   R.BILAN_CATS = () => [...new Set(R.BILAN_PRE.map(b => b.cat))].concat('Personnalisé');
   /* poids : initial (à l'inclusion) et dernier poids mesuré lors d'une séance */
   R.poidsInitial = p => +p.poidsInitial || +((p.historiqueProtocoles || [])[0] || {}).poids || +p.poids || null;
+  /* séances prévues laissées « poids à renseigner » à la création : dose calculée dès qu'un poids est connu */
+  R.completerDoses = p => {
+    const poids = +p.poids; if (!(poids > 0) || !R.schemaPatient) return 0;
+    const att = (p.cures || []).filter(c => c.statut === 'prevue' && c.dose == null && /poids/.test(c.doseTexte || '')); if (!att.length) return 0;
+    const sch = R.schemaPatient(p); let n = 0;
+    att.forEach(c => { const ind = c.phase === 'Induction'; const et = ind ? (sch.induction || []).find(x => +x.jour === +c.jour) || (sch.induction || []).find(x => x.label === c.label) : sch.actuel; if (!et || !sch.pr) return;
+      const d = R.doseEtape(sch.pr, et, poids, ind ? 'induction' : 'entretien'); if (d.dose == null) return; c.dose = d.dose; c.flacons = d.flacons; c.doseTexte = d.texte; if (d.articleId) c.articleId = d.articleId; n++; });
+    return n;
+  };
   R.dernierPoids = p => { const c = (p.cures || []).filter(x => x.statut === 'realisee' && +x.poids > 0 && x.dateReelle).sort((a, b) => b.dateReelle.localeCompare(a.dateReelle))[0]; return c ? { poids: +c.poids, date: c.dateReelle } : null; };
   /* flacons (ou unités SC) réellement utilisés pour une séance réalisée, sinon prévus */
   R.flaconsCure = c => c.statut === 'realisee' && c.flaconsUtilises != null && c.flaconsUtilises !== '' ? +c.flaconsUtilises : (+c.flacons || 0);
