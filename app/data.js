@@ -21,6 +21,12 @@ window.RYZE = window.RYZE || {};
   R.fmtDateLong = s => s ? R.parse(s).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : '—';
   R.fmtMois = s => R.parse(s).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
   R.age = ddn => { const d = R.parse(ddn), t = new Date(); let a = t.getFullYear() - d.getFullYear(); const m = t.getMonth() - d.getMonth(); if (m < 0 || (m === 0 && t.getDate() < d.getDate())) a--; return a; };
+  /* jours ↔ semaines : 14 → 2, 45 → 6,4 (affichage) */
+  R.semaines = j => j == null || j === '' ? '' : (+j % 7 === 0 ? +j / 7 : Math.round(+j / 7 * 10) / 10);
+  R.libelleSem = j => { j = +j || 0; if (!j) return '—'; if (j % 7 === 0) return `${j / 7} semaine${j / 7 > 1 ? 's' : ''}`; return `${j} jours (${R.semaines(j)} sem.)`; };
+  /* identité normalisée (accents, espaces, casse) pour repérer un dossier en double */
+  R.normTexte = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
+  R.doublonsPatient = (d, excludeId) => { const nom = R.normTexte(d.nom), pre = R.normTexte(d.prenom), ipp = String(d.ipp || '').trim(); if (!nom && !ipp) return []; return (R.S.patients || []).filter(p => p.id !== excludeId).map(p => { const motifs = []; if (ipp && p.ipp === ipp) motifs.push('même n° de dossier'); if (nom && R.normTexte(p.nom) === nom) { if (pre && R.normTexte(p.prenom) === pre) motifs.push('même nom et prénom'); if (d.ddn && p.ddn === d.ddn) motifs.push('même nom et date de naissance'); } return motifs.length ? { p, motifs, ipp: !!ipp && p.ipp === ipp } : null; }).filter(Boolean); };
   R.libelleJour = j => j === 0 ? 'S0' : j < 0 ? `J${j}` : (j % 7 === 0 ? `S${j / 7}` : `S${Math.floor(j / 7)}+${j % 7}j`);
   /* Libellé d'un contrôle : J14, M1, M3, M6, M12… (mois arrondis), semaines sinon */
   R.libelleControle = j => { if (!j) return 'J0'; if (j < 28) return `J${j}`; const m = j / 30.4; return Math.abs(m - Math.round(m)) < 0.12 ? `M${Math.round(m)}` : R.libelleJour(j); };
