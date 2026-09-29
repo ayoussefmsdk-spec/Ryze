@@ -86,3 +86,21 @@ test('posts tracked in another campaign are separated with their location', () =
   assert.equal(reused.elsewhere, 'ClientB · September');
   assert.equal(reject.find((r) => r.key === 'tiktok:mine').reason, 'duplicate');
 });
+
+test('deleted-before posts are separated from real already-ins', () => {
+  const { accept, reject } = selectScanCandidates({
+    candidates: [
+      { key: 'yt:live', url: 'u1', hashtags: [], postedAt: '2026-09-05T00:00:00Z' },
+      { key: 'yt:tombstone', url: 'u2', hashtags: [], postedAt: '2026-09-05T00:00:00Z' },
+      { key: 'yt:fresh', url: 'u3', hashtags: [], postedAt: '2026-09-05T00:00:00Z' },
+      { key: 'yt:both', url: 'u4', hashtags: [], postedAt: '2026-09-05T00:00:00Z' },
+    ],
+    requiredHashtags: [], enforceWindow: false,
+    existingKeys: new Set(['yt:live', 'yt:both']),      // actually in the cycle
+    deletedKeys: new Set(['yt:tombstone']),             // removed by the manager
+  });
+  assert.deepEqual(accept.map((c) => c.key), ['yt:fresh']);
+  assert.equal(reject.find((r) => r.key === 'yt:live').reason, 'duplicate');
+  assert.equal(reject.find((r) => r.key === 'yt:both').reason, 'duplicate'); // in-cycle wins
+  assert.equal(reject.find((r) => r.key === 'yt:tombstone').reason, 'deleted_before');
+});

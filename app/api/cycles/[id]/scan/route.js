@@ -9,6 +9,28 @@ export async function POST(req, { params }) {
   const b = await req.json().catch(() => ({}));
   if (!b.clipperId) return NextResponse.json({ ok: false, error: 'clipperId required' }, { status: 400 });
 
+  // Rescue MANY skipped posts in one request (the "+ all …" buttons) — one
+  // round-trip instead of hundreds; each still reuses its scan-fetched stats.
+  if (b.action === 'addSkippedBatch') {
+    const candidates = (Array.isArray(b.candidates) ? b.candidates : []).slice(0, 400);
+    let added = 0;
+    const failed = [];
+    for (const candidate of candidates) {
+      try {
+        const r = await ingestScannedClip({
+          cycleId: params.id,
+          clipperId: b.clipperId,
+          candidate,
+          autoApprove: Boolean(b.autoApprove),
+        });
+        if (r.ok) added++; else failed.push(candidate.url);
+      } catch {
+        failed.push(candidate.url);
+      }
+    }
+    return NextResponse.json({ ok: true, added, failed });
+  }
+
   // Rescue one skipped post from a previous scan (uses its already-fetched stats).
   if (b.action === 'addSkipped') {
     try {

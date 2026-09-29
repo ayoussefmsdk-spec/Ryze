@@ -18,6 +18,7 @@ export function selectScanCandidates({
   endsOn = null,
   enforceWindow = false,
   existingKeys = new Set(),
+  deletedKeys = new Set(), // tombstones: manager deleted these from this cycle
   otherCycleKeys = new Map(), // key -> 'Campaign · Cycle' label
 }) {
   const accept = [];
@@ -31,6 +32,9 @@ export function selectScanCandidates({
     if (!c || !c.key) { reject.push({ key: c?.key ?? null, reason: 'invalid' }); continue; }
     if (existingKeys.has(c.key) || seen.has(c.key)) { reject.push({ ...c, reason: 'duplicate' }); continue; }
     seen.add(c.key);
+    // Deleted-before is its own bucket: "already in" must mean IN — a post the
+    // manager deleted from Pending is not in, it's remembered-as-removed.
+    if (deletedKeys.has(c.key)) { reject.push({ ...c, reason: 'deleted_before' }); continue; }
     if (otherCycleKeys.has(c.key)) {
       reject.push({ ...c, reason: 'in_other_campaign', elsewhere: otherCycleKeys.get(c.key) });
       continue;

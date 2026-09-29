@@ -2,6 +2,20 @@ import { NextResponse } from 'next/server';
 import { hasSession } from '../../../../../lib/auth.mjs';
 import { query } from '../../../../../lib/db.mjs';
 
+/** PATCH — bulk-approve the cycle's pending queue. Body: { scope: 'all' | 'scan' }
+ *  ('scan' = only clips a scan ingested). The mirror image of DELETE below. */
+export async function PATCH(req, { params }) {
+  if (!hasSession()) return NextResponse.json({ ok: false }, { status: 401 });
+  const b = await req.json().catch(() => ({}));
+  const scanOnly = b.scope === 'scan';
+  const { rowCount } = await query(
+    `update clips set status = 'approved'
+      where cycle_id = $1 and status = 'pending'${scanOnly ? ` and added_via = 'scan'` : ''}`,
+    [params.id],
+  );
+  return NextResponse.json({ ok: true, approved: rowCount });
+}
+
 /** DELETE — bulk-clear the cycle's pending queue. Body: { scope: 'all' | 'scan' }
  *  ('scan' = only clips a scan ingested; hand-added and submitted ones stay).
  *  Every deleted clip leaves a tombstone, so a re-scan won't bring it back —

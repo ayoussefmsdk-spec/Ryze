@@ -38,6 +38,21 @@ export default function TriageQueue({ clips, cycleId }) {
     router.refresh();
   }
 
+  async function approveAll(scope) {
+    if (busy) return;
+    const n = scope === 'scan' ? scanCount : clips.length;
+    const what = scope === 'scan' ? `all ${n} scan-found pending clips` : `all ${n} pending clips`;
+    if (!window.confirm(`Approve ${what}? They start counting toward views and payouts immediately.`)) return;
+    setBusy(true);
+    await fetch(`/api/cycles/${cycleId}/pending`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ scope }),
+    }).catch(() => {});
+    setBusy(false);
+    router.refresh();
+  }
+
   const idx = Math.min(cursor, clips.length - 1);
 
   async function decide(clip, action) {
@@ -83,6 +98,18 @@ export default function TriageQueue({ clips, cycleId }) {
       </div>
       {cycleId && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {scanCount > 0 && scanCount < clips.length && (
+            <button className="btn secondary" disabled={busy} onClick={() => approveAll('scan')}
+              style={{ color: 'var(--good)', fontSize: 12.5, padding: '4px 11px' }}
+              title="Approves only the pending clips a scan brought in.">
+              ✓ Approve scan finds ({scanCount})
+            </button>
+          )}
+          <button className="btn secondary" disabled={busy} onClick={() => approveAll('all')}
+            style={{ color: 'var(--good)', fontSize: 12.5, padding: '4px 11px' }}
+            title="Approves every pending clip — they start counting toward views and payouts.">
+            ✓ Approve all pending ({clips.length})
+          </button>
           {scanCount > 0 && scanCount < clips.length && (
             <button className="btn secondary" disabled={busy} onClick={() => deleteAll('scan')}
               style={{ color: 'var(--crit)', fontSize: 12.5, padding: '4px 11px' }}

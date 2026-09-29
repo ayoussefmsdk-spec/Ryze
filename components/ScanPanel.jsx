@@ -84,6 +84,7 @@ export default function ScanPanel({ cycleId, members, accountsByClipper = {} }) 
     rej.missing_hashtag ? `${rej.missing_hashtag} missing hashtag` : null,
     rej.outside_dates ? `${rej.outside_dates} outside dates` : null,
     rej.duplicate ? `${rej.duplicate} already in` : null,
+    rej.deleted_before ? `${rej.deleted_before} deleted before` : null,
     rej.in_other_campaign ? `${rej.in_other_campaign} in another campaign` : null,
     rej.invalid ? `${rej.invalid} unreadable links` : null,
   ].filter(Boolean).join(' · ');
@@ -225,6 +226,7 @@ const REASON_META = {
   duplicate: { label: 'already in', color: 'var(--warn, #f6a64b)' },
   outside_dates: { label: 'outside dates', color: 'var(--crit)' },
   missing_hashtag: { label: 'missing hashtag', color: 'var(--crit)' },
+  deleted_before: { label: 'you deleted this', color: '#64b5f6' },
   in_other_campaign: { label: 'other campaign', color: 'var(--violet, #a78bfa)' },
 };
 const nfc = (n) => new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(n || 0));
@@ -242,16 +244,32 @@ function SkippedList({ skipped, cycleId, clipperId, autoApprove, onAdded }) {
     if (r.ok) onAdded();
   }
 
+  // Bulk rescue in ONE request — a wide scan can skip hundreds; per-clip
+  // requests took forever and made the browser the bottleneck.
   async function addAll(reason) {
-    for (const c of skipped) {
-      if (c.reason === reason && !added[c.url]) await addOne(c); // sequential, gentle
-    }
+    const todo = skipped.filter((c) => c.reason === reason && !added[c.url]);
+    if (!todo.length) return;
+    setAdded((m) => ({ ...m, ...Object.fromEntries(todo.map((c) => [c.url, 'busy'])) }));
+    const r = await fetch(`/api/cycles/${cycleId}/scan`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'addSkippedBatch', clipperId, candidates: todo, autoApprove }),
+    }).catch(() => null);
+    const d = r && r.ok ? await r.json().catch(() => ({})) : {};
+    const failedSet = new Set(d.failed || (r && r.ok ? [] : todo.map((c) => c.url)));
+    setAdded((m) => ({
+      ...m,
+      ...Object.fromEntries(todo.map((c) => [c.url, failedSet.has(c.url) ? 'error' : 'done'])),
+    }));
+    onAdded();
   }
 
-  // Posts already tracked under ANOTHER client's campaign get their own
-  // section — they're not "new finds", they're the same clippers reusing work.
+  // Posts already tracked under ANOTHER client's campaign, and posts the
+  // manager DELETED from this cycle before, each get their own section —
+  // neither is a "new find", and mixing them with real already-ins is how
+  // "wait, where did my clips go" confusion starts.
   const elsewhere = skipped.filter((c) => c.reason === 'in_other_campaign');
-  const regular = skipped.filter((c) => c.reason !== 'in_other_campaign');
+  const deletedBefore = skipped.filter((c) => c.reason === 'deleted_before');
+  const regular = skipped.filter((c) => c.reason !== 'in_other_campaign' && c.reason !== 'deleted_before');
   const reasons = [...new Set(regular.map((c) => c.reason))];
 
   const row = (c, i) => {
@@ -296,6 +314,25 @@ function SkippedList({ skipped, cycleId, clipperId, autoApprove, onAdded }) {
           </div>
           <div className="grid" style={{ gap: 2, maxHeight: 340, overflowY: 'auto' }}>
             {regular.map(row)}
+          </div>
+        </>
+      )}
+      {deletedBefore.length > 0 && (
+        <>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: regular.length ? 6 : 0 }}>
+            <span className="eyebrow" style={{ letterSpacing: '0.08em', color: '#64b5f6' }}>
+              Deleted from this cycle before ({deletedBefore.length}) — bring any back
+            </span>
+            <button className="btn secondary" style={{ marginLeft: 'auto', padding: '3px 10px', fontSize: 12 }} onClick={() => addAll('deleted_before')}>
+              + bring ALL back
+            </button>
+          </div>
+          <div className="muted" style={{ fontSize: 12 }}>
+            These are posts YOU removed from this cycle (e.g. with “Delete all pending”). Re-scans remember
+            the deletion and never re-add them on their own — bring back the ones you actually want.
+          </div>
+          <div className="grid" style={{ gap: 2, maxHeight: 240, overflowY: 'auto' }}>
+            {deletedBefore.map(row)}
           </div>
         </>
       )}
