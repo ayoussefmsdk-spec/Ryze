@@ -56,6 +56,9 @@ window.RYZE = window.RYZE || {};
   };
 
   /* ---------- Pathologies ---------- */
+  /* consanguinité des parents : renseignée avec la pathologie (formes précoces, MICI monogéniques) */
+  R.CONSANG = { '': 'Non renseignée', non: 'Non', oui1: 'Oui — 1er degré (parents cousins germains)', oui2: 'Oui — 2e degré ou plus éloignée', inconnue: 'Inconnue' };
+  R.consangTxt = p => R.CONSANG[(p || {}).consanguinite || ''] || '—';
   R.PATHOS = {
     MC:  { label: 'Maladie de Crohn', court: 'MC' },
     RCH: { label: 'Rectocolite hémorragique', court: 'RCH' }
@@ -143,6 +146,8 @@ window.RYZE = window.RYZE || {};
     { id: 'sero2', cat: 'Sérologies', label: 'Autres sérologies : VHA, rougeole (statut immunitaire)' },
     { id: 'nfs',   cat: 'Bilan biologique', label: 'NFS-plaquettes' },
     { id: 'crp',   cat: 'Bilan biologique', label: 'CRP' },
+    { id: 'vs',    cat: 'Bilan biologique', label: 'VS (vitesse de sédimentation)' },
+    { id: 'ferr',  cat: 'Bilan biologique', label: 'Ferritine (bilan martial : fer sérique, coefficient de saturation de la transferrine)' },
     { id: 'bh',    cat: 'Bilan biologique', label: 'ASAT, ALAT (bilan hépatique : GGT, PAL, bilirubine)' },
     { id: 'alb',   cat: 'Bilan biologique', label: 'Albumine' },
     { id: 'renal', cat: 'Fonction rénale et bilan hydrique', label: 'Fonction rénale : créatinine, DFG, urée' },
@@ -150,6 +155,7 @@ window.RYZE = window.RYZE || {};
     { id: 'lip',   cat: 'Bilan lipidique', label: 'Bilan lipidique : cholestérol total, HDL, LDL, triglycérides (indispensable sous inhibiteurs de JAK et modulateurs S1P)' },
     { id: 'sinus', cat: 'Imagerie et foyers infectieux', label: 'Radiographie des sinus (foyer ORL)' },
     { id: 'foyer', cat: 'Imagerie et foyers infectieux', label: 'Recherche de foyer infectieux (dentaire, urinaire, cutané)' },
+    { id: 'croiss', cat: 'Clinique', label: 'Croissance : taille, poids, courbe de croissance et stade pubertaire (retard de croissance)' },
     { id: 'hcg',   cat: 'Clinique', label: 'β-hCG (femme en âge de procréer)' },
     { id: 'derm',  cat: 'Clinique', label: 'Examen dermatologique (lésions suspectes, antécédent de cancer cutané)' },
     { id: 'ecg',   cat: 'Clinique', label: 'ECG (inhibiteurs de JAK, modulateurs S1P)' },
@@ -158,6 +164,7 @@ window.RYZE = window.RYZE || {};
     { id: 'fcu',   cat: 'Vaccinal', label: 'Frottis cervico-utérin à jour' },
     { id: 'calpro0', cat: 'Référence', label: 'Calprotectine fécale de référence' },
     { id: 'endo0',   cat: 'Référence', label: 'Endoscopie de référence avec score (SES-CD / Mayo endoscopique)' },
+    { id: 'colohisto', cat: 'Référence', label: 'Coloscopie avec biopsies étagées et histologie' },
     { id: 'clostr',  cat: 'Référence', label: 'Recherche de C. difficile / coproculture (si poussée)' }
   ];
   /* complète un bilan enregistré avec les examens ajoutés au catalogue depuis sa création */
