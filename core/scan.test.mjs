@@ -104,3 +104,29 @@ test('deleted-before posts are separated from real already-ins', () => {
   assert.equal(reject.find((r) => r.key === 'yt:both').reason, 'duplicate'); // in-cycle wins
   assert.equal(reject.find((r) => r.key === 'yt:tombstone').reason, 'deleted_before');
 });
+
+test('a repeated tombstoned key gets ONE deleted_before row, never a fake "already in"', () => {
+  const { accept, reject } = selectScanCandidates({
+    candidates: [
+      { key: 'yt:gone', url: 'u1', hashtags: [], postedAt: '2026-09-05T00:00:00Z' },
+      { key: 'yt:gone', url: 'u1', hashtags: [], postedAt: '2026-09-05T00:00:00Z' }, // same channel linked twice
+    ],
+    requiredHashtags: [], enforceWindow: false,
+    existingKeys: new Set(),
+    deletedKeys: new Set(['yt:gone']),
+  });
+  assert.equal(accept.length, 0);
+  assert.deepEqual(reject.map((r) => r.reason), ['deleted_before']); // exactly one row, honest reason
+});
+
+test('cross-campaign warning outranks this cycle\'s tombstone', () => {
+  const { reject } = selectScanCandidates({
+    candidates: [{ key: 'tt:v', url: 'u', hashtags: [], postedAt: '2026-09-05T00:00:00Z' }],
+    requiredHashtags: [], enforceWindow: false,
+    existingKeys: new Set(),
+    deletedKeys: new Set(['tt:v']),
+    otherCycleKeys: new Map([['tt:v', 'ClientB · September']]),
+  });
+  assert.equal(reject[0].reason, 'in_other_campaign');
+  assert.equal(reject[0].elsewhere, 'ClientB · September');
+});

@@ -30,15 +30,23 @@ export function selectScanCandidates({
 
   for (const c of candidates) {
     if (!c || !c.key) { reject.push({ key: c?.key ?? null, reason: 'invalid' }); continue; }
-    if (existingKeys.has(c.key) || seen.has(c.key)) { reject.push({ ...c, reason: 'duplicate' }); continue; }
+    // The same post pulled twice in one scan (e.g. one channel linked under two
+    // spellings) is ONE candidate — later copies are dropped silently. Giving
+    // them a reject row would relabel the key with a contradictory reason
+    // ("already in" for a post that isn't) and double it in the skipped list.
+    if (seen.has(c.key)) continue;
     seen.add(c.key);
-    // Deleted-before is its own bucket: "already in" must mean IN — a post the
-    // manager deleted from Pending is not in, it's remembered-as-removed.
-    if (deletedKeys.has(c.key)) { reject.push({ ...c, reason: 'deleted_before' }); continue; }
+    if (existingKeys.has(c.key)) { reject.push({ ...c, reason: 'duplicate' }); continue; }
+    // Cross-campaign wins over this cycle's tombstone: the money-affecting
+    // warning ("this already counts for another client") must never be
+    // swallowed by the friendlier "you deleted this, bring it back" bucket.
     if (otherCycleKeys.has(c.key)) {
       reject.push({ ...c, reason: 'in_other_campaign', elsewhere: otherCycleKeys.get(c.key) });
       continue;
     }
+    // Deleted-before is its own bucket: "already in" must mean IN — a post the
+    // manager deleted from Pending is not in, it's remembered-as-removed.
+    if (deletedKeys.has(c.key)) { reject.push({ ...c, reason: 'deleted_before' }); continue; }
 
     if (need.length) {
       const have = new Set((c.hashtags || []).map((h) => String(h).toLowerCase()));

@@ -209,9 +209,16 @@ export default function ScanPanel({ cycleId, members, accountsByClipper = {} }) 
       )}
 
       {/* Skipped posts — rescue any of them individually */}
+      {result?.ok && result.skippedTotal > (result.skipped?.length || 0) && (
+        <div className="muted" style={{ fontSize: 12 }}>
+          ℹ Showing the first {result.skipped.length} of {result.skippedTotal} skipped posts — the “+ all”
+          buttons cover only what's listed. Rescue these, then re-scan to get the next batch.
+        </div>
+      )}
       {result?.ok && result.skipped?.length > 0 && (
         <SkippedList
           skipped={result.skipped}
+          skippedTotal={result.skippedTotal}
           cycleId={cycleId}
           clipperId={clipperId}
           autoApprove={autoApprove}
@@ -231,8 +238,9 @@ const REASON_META = {
 };
 const nfc = (n) => new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(n || 0));
 
-function SkippedList({ skipped, cycleId, clipperId, autoApprove, onAdded }) {
+function SkippedList({ skipped, skippedTotal, cycleId, clipperId, autoApprove, onAdded }) {
   const [added, setAdded] = useState({});   // url -> 'busy' | 'done' | 'error'
+  const [batchErr, setBatchErr] = useState('');
 
   async function addOne(c) {
     setAdded((m) => ({ ...m, [c.url]: 'busy' }));
@@ -249,17 +257,36 @@ function SkippedList({ skipped, cycleId, clipperId, autoApprove, onAdded }) {
   async function addAll(reason) {
     const todo = skipped.filter((c) => c.reason === reason && !added[c.url]);
     if (!todo.length) return;
+    setBatchErr('');
     setAdded((m) => ({ ...m, ...Object.fromEntries(todo.map((c) => [c.url, 'busy'])) }));
-    const r = await fetch(`/api/cycles/${cycleId}/scan`, {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ action: 'addSkippedBatch', clipperId, candidates: todo, autoApprove }),
-    }).catch(() => null);
-    const d = r && r.ok ? await r.json().catch(() => ({})) : {};
-    const failedSet = new Set(d.failed || (r && r.ok ? [] : todo.map((c) => c.url)));
+    let d = null;
+    try {
+      const r = await fetch(`/api/cycles/${cycleId}/scan`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'addSkippedBatch', clipperId, candidates: todo, autoApprove }),
+      });
+      if (r.ok) d = await r.json();
+    } catch { /* transport failure — handled below as unknown outcome */ }
+    if (!d || !d.ok || !Array.isArray(d.failed)) {
+      // UNKNOWN outcome (timeout, dropped connection, bad response). Never
+      // invent per-clip results from transport state: clear the rows back to
+      // retryable and say so. Retrying is safe — the server skips posts that
+      // are already in instead of duplicating them.
+      setAdded((m) => {
+        const next = { ...m };
+        for (const c of todo) delete next[c.url];
+        return next;
+      });
+      setBatchErr('Lost the connection mid-add — some may have made it in anyway. Clicking again is SAFE: posts already in the cycle are skipped, never duplicated.');
+      onAdded();
+      return;
+    }
+    const failedSet = new Set(d.failed);
     setAdded((m) => ({
       ...m,
       ...Object.fromEntries(todo.map((c) => [c.url, failedSet.has(c.url) ? 'error' : 'done'])),
     }));
+    if (failedSet.size) setBatchErr(`${failedSet.size} of ${todo.length} couldn't be added — their rows show "failed".`);
     onAdded();
   }
 
@@ -355,6 +382,7 @@ function SkippedList({ skipped, cycleId, clipperId, autoApprove, onAdded }) {
           </div>
         </>
       )}
+      {batchErr && <div style={{ fontSize: 12.5, color: 'var(--warn, #f6a64b)' }}>⚠ {batchErr}</div>}
       <div className="muted" style={{ fontSize: 11.5 }}>
         Added clips keep their skip reason as a flag so you remember why they were held. No extra API cost — the scan's numbers are reused.
       </div>
