@@ -81,6 +81,13 @@ window.RYZE = window.RYZE || {};
   R.ageAuDiag = (ddn, dateDiag) => { if (!ddn || !dateDiag) return null; const a = R.parse(ddn), b = R.parse(String(dateDiag).length === 7 ? dateDiag + '-01' : dateDiag); if (isNaN(a) || isNaN(b)) return null; let n = b.getFullYear() - a.getFullYear(); if (b.getMonth() < a.getMonth() || (b.getMonth() === a.getMonth() && b.getDate() < a.getDate())) n--; return n >= 0 ? n : null; };
   R.parisAuto = (ddn, dateDiag) => { const n = R.ageAuDiag(ddn, dateDiag); if (n == null) return null; return n < 10 ? 'A1a' : n < 17 ? 'A1b' : n <= 40 ? 'A2' : 'A3'; };
   R.parisAVerifier = c => (c && c.aVerifier || []).join(' · ');
+  /* poussées sévères (MC et RCH) : jamais / une / plusieurs (nombre si connu) ; pour la RCH, synchronisé avec le S de Paris */
+  R.SEV = [['jamais', 'Jamais de poussée sévère'], ['une', 'Une poussée sévère'], ['plusieurs', 'Plusieurs poussées sévères']];
+  R.sevTxt = c => { if (!c || !c.sev) return ''; if (c.sev === 'jamais') return 'jamais de poussée sévère'; if (c.sev === 'une') return 'une poussée sévère'; return `plusieurs poussées sévères${+c.sevN > 0 ? ' (' + c.sevN + ')' : ''}`; };
+  R.sevSync = (c, patho) => { if (!c) return c; if (patho === 'RCH' && c.sev) c.S = c.sev === 'jamais' ? 'S0' : 'S1'; if (c.sev !== 'plusieurs') delete c.sevN; return c; };
+  /* date de naissance estimée d'après un âge (1er juillet de l'année de naissance) */
+  R.ddnDepuisAge = age => { const a = Math.round(+age); if (!(a >= 0 && a < 130)) return ''; return `${new Date().getFullYear() - a}-07-01`; };
+  R.ddnTxt = p => !p || !p.ddn ? '—' : p.ddnEstimee ? 'date inconnue, âge estimé' : R.fmtDate(p.ddn);
   R.parisCode = (c, patho) => { if (!c) return ''; if (patho === 'RCH') return [c.E, c.S].filter(Boolean).join(' '); return [c.A, c.L, c.L4a ? 'L4a' : '', c.L4b ? 'L4b' : '', (c.B || '') + (c.p ? 'p' : ''), c.G].filter(Boolean).join(' '); };
   /* lit un code écrit en texte (Paris, ou Montréal si montreal = true pour les anciens dossiers) */
   R.parisDepuisTexte = (txt, patho, ddn, dateDiag, montreal) => {
@@ -98,15 +105,16 @@ window.RYZE = window.RYZE || {};
   };
   /* sélecteur structuré : mode 'w' (assistant, data-change) ou 'f' (formulaire, name=) */
   R.formParis = (c, patho, mode, autoA) => {
-    c = Object.assign({}, c || {}); if (patho !== 'RCH' && !c.A && autoA) c.A = autoA;
+    c = Object.assign({}, c || {}); if (patho !== 'RCH' && !c.A && autoA) c.A = autoA; c['sev_' + patho] = c.sev; /* nom distinct par pathologie dans la fenêtre « Modifier » */
     const at = k => mode === 'w' ? `data-change="wParis" data-k="${k}"` : `name="paris_${k}"`; const e = s => R.esc(s);
     const sel = (k, opts, label, hint) => `<div class="field"><label>${label}</label><select ${at(k)}><option value="">— non précisé —</option>${opts.map(o => `<option value="${o[0]}"${c[k] === o[0] ? ' selected' : ''}>${e(o[1])}</option>`).join('')}</select>${hint ? `<span class="hint">${e(hint)}</span>` : ''}</div>`;
     const chk = (k, label) => `<label class="check" style="padding:6px 10px"><input type="checkbox" ${at(k)} value="1"${c[k] ? ' checked' : ''}> ${e(label)}</label>`;
     const P = R.PARIS; const verif = c.aVerifier && c.aVerifier.length ? `<div class="callout warn" style="grid-column:1/-1"><b>À vérifier</b> — reprise d’un ancien code Montréal : ${e(c.aVerifier.join(' · '))}. Choisissez la valeur exacte ci-dessous.</div>` : '';
-    if (patho === 'RCH') return `<div class="form-grid">${verif}${sel('E', P.RCH.E, 'Étendue (E)')}${sel('S', P.RCH.S, 'Sévérité (S)', 'S1 dès qu’une poussée a atteint un PUCAI ≥ 65')}</div>`;
-    return `<div class="form-grid">${verif}${sel('A', P.MC.A, 'Âge au diagnostic (A)', autoA ? 'proposé d’après la date de naissance et la date du diagnostic' : 'renseignez la date du diagnostic pour une proposition automatique')}${sel('L', P.MC.L, 'Localisation (L)')}<div class="field"><label>Atteinte haute (L4, en plus de L1 à L3)</label><div class="row" style="gap:6px">${chk('L4a', 'L4a — en amont de l’angle de Treitz')}${chk('L4b', 'L4b — en aval de Treitz, en amont du tiers distal de l’iléon')}</div></div>${sel('B', P.MC.B, 'Phénotype (B)')}<div class="field"><label>Périnée (p)</label>${chk('p', 'p — atteinte périnéale')}</div>${sel('G', P.MC.G, 'Croissance (G)')}</div>`;
+    const sev = `${sel(mode === 'w' ? 'sev' : 'sev_' + patho, R.SEV, 'Poussées sévères', patho === 'RCH' ? 'renseigne aussi le S de Paris (S0 si jamais, sinon S1)' : 'hospitalisation, corticoïdes IV ou poussée grave')}<div class="field"><label>Nombre de poussées sévères (si connu)</label><input type="number" min="1" max="99" ${mode === 'w' ? 'data-change="wParis" data-k="sevN"' : 'name="paris_sevN_' + patho + '"'} value="${c.sevN || ''}"${c.sev === 'plusieurs' ? '' : ' disabled'} placeholder="si « plusieurs »"></div>`;
+    if (patho === 'RCH') return `<div class="form-grid">${verif}${sel('E', P.RCH.E, 'Étendue (E)')}${sev}${sel('S', P.RCH.S, 'Sévérité (S)', 'S1 dès qu’une poussée a atteint un PUCAI ≥ 65')}</div>`;
+    return `<div class="form-grid">${verif}${sel('A', P.MC.A, 'Âge au diagnostic (A)', autoA ? 'proposé d’après la date de naissance et la date du diagnostic' : 'renseignez la date du diagnostic pour une proposition automatique')}${sel('L', P.MC.L, 'Localisation (L)')}${sev}<div class="field"><label>Atteinte haute (L4, en plus de L1 à L3)</label><div class="row" style="gap:6px">${chk('L4a', 'L4a — en amont de l’angle de Treitz')}${chk('L4b', 'L4b — en aval de Treitz, en amont du tiers distal de l’iléon')}</div></div>${sel('B', P.MC.B, 'Phénotype (B)')}<div class="field"><label>Périnée (p)</label>${chk('p', 'p — atteinte périnéale')}</div>${sel('G', P.MC.G, 'Croissance (G)')}</div>`;
   };
-  R.lireParis = (fd, patho) => { const g = k => fd.get('paris_' + k) || undefined; if (patho === 'RCH') return { E: g('E'), S: g('S') }; return { A: g('A'), L: g('L'), L4a: !!fd.get('paris_L4a'), L4b: !!fd.get('paris_L4b'), B: g('B'), p: !!fd.get('paris_p'), G: g('G') }; };
+  R.lireParis = (fd, patho) => { const g = k => fd.get('paris_' + k) || undefined; const sev = { sev: g('sev_' + patho), sevN: g('sevN_' + patho) ? +g('sevN_' + patho) : undefined }; if (patho === 'RCH') return R.sevSync(Object.assign({ E: g('E'), S: g('S') }, sev), patho); return R.sevSync(Object.assign({ A: g('A'), L: g('L'), L4a: !!fd.get('paris_L4a'), L4b: !!fd.get('paris_L4b'), B: g('B'), p: !!fd.get('paris_p'), G: g('G') }, sev), patho); };
 
   /* ---------- Catalogue des molécules / articles de stock ---------- */
   R.ARTICLES = [
@@ -163,8 +171,7 @@ window.RYZE = window.RYZE || {};
     { id: 'derm',  cat: 'Clinique', label: 'Examen dermatologique (lésions suspectes, antécédent de cancer cutané)' },
     { id: 'ecg',   cat: 'Clinique', label: 'ECG (inhibiteurs de JAK, modulateurs S1P)' },
     { id: 'oph',   cat: 'Clinique', label: 'Examen ophtalmologique — œdème maculaire (ozanimod, étrasimod)' },
-    { id: 'vacc',  cat: 'Vaccinal', label: 'Statut vaccinal : dTP-coq, grippe annuelle, pneumocoque (VPC20), VHB, HPV, zona recombinant (Shingrix® 2 doses) — vaccins vivants ≥ 3–4 sem. avant' },
-    { id: 'fcu',   cat: 'Vaccinal', label: 'Frottis cervico-utérin à jour' },
+    { id: 'pni',   cat: 'Vaccinal', label: 'Vacciné selon le PNI (Programme national d’immunisation) — calendrier vaccinal à jour' },
     { id: 'calpro0', cat: 'Référence', label: 'Calprotectine fécale de référence' },
     { id: 'endo0',   cat: 'Référence', label: 'Endoscopie de référence avec score (SES-CD / Mayo endoscopique)' },
     { id: 'colohisto', cat: 'Référence', label: 'Coloscopie avec biopsies étagées et histologie' },
@@ -554,7 +561,7 @@ window.RYZE = window.RYZE || {};
         if (['lip', 'ecg', 'oph'].includes(b.id)) statut = 'na'; if (b.id === 'ebv' && !/Azathioprine/.test(s.tt)) statut = 'na';
         if (b.id === 'clostr') statut = 'na'; if (b.id === 'vzv' && rand() > 0.5) statut = 'na';
         if (i === 12 && b.id === 'rxt') statut = 'attente';
-        return { id: b.id, statut, date: statut.startsWith('fait') ? R.addDays(debut, -Math.floor(10 + rand() * 20)) : '', commentaire: (b.id === 'vacc' && statut === 'fait_normal') ? 'Grippe + pneumocoque (VPC20) faits ; VHB immunisé' : (b.id === 'endo0' ? (s.patho === 'MC' ? 'SES-CD 14' : 'Mayo endoscopique 2') : '') };
+        return { id: b.id, statut, date: statut.startsWith('fait') ? R.addDays(debut, -Math.floor(10 + rand() * 20)) : '', commentaire: (b.id === 'pni' && statut === 'fait_normal') ? 'Calendrier PNI à jour ; grippe + pneumocoque faits ; VHB immunisé' : (b.id === 'endo0' ? (s.patho === 'MC' ? 'SES-CD 14' : 'Mayo endoscopique 2') : '') };
       });
       const derniere = cures.filter(c => c.statut === 'realisee').slice(-1)[0];
       return {

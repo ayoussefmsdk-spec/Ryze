@@ -4,7 +4,7 @@
    ===================================================================== */
 'use strict';
 (function (R) {
-  const KEY = 'ryze-hdj-v1', VERSION = 10;
+  const KEY = 'ryze-hdj-v1', VERSION = 11;
   const S = {};
   R.S = S; R.ui = { filtres: {}, semaineOffset: 0, cal: {}, plies: {} };
   let uiInit = {}; try { uiInit = JSON.parse(localStorage.getItem('ryze-hdj-ui') || '{}') || {}; } catch (e) {} R.ui.plies = uiInit.plies || {};
@@ -34,6 +34,8 @@
     if (s.version === 9) { /* base réelle : seuls les codes créés par le service restent ; les codes de démonstration sont retirés dès qu'un accès complet propre (BEN SABBAHIA) existe */
       const propres = (s.users || []).filter(u => !R.SEED_USER_IDS.includes(u.id)); const ref = propres.find(u => /SABBAHIA/i.test((u.nom || '') + ' ' + (u.prenom || '')));
       if (ref) { ref.actif = true; ref.role = 'complet'; s.users = propres; } s.version = 10; }
+    if (s.version === 10) { /* section vaccinale du bilan pré-biothérapie : un seul examen « vacciné selon le PNI » */
+      const purge = b => Array.isArray(b) ? b.filter(x => x.id !== 'vacc' && x.id !== 'fcu') : b; (s.patients || []).forEach(p => { p.bilan = purge(p.bilan || []); }); Object.values(s.brouillons || {}).forEach(w => { if (w && Array.isArray(w.bilan)) w.bilan = purge(w.bilan); }); s.version = 11; }
     if (s.brouillon) { s.brouillons = s.brouillons || {}; if (s.user && s.brouillon.d) s.brouillons[s.user] = s.brouillon; delete s.brouillon; }
     if (!s.rdv) s.rdv = []; if (!s.journal) s.journal = []; (s.patients || []).forEach(p => { p.notes = p.notes || []; p.surveillance = p.surveillance || []; p.bilan = R.completerBilan(p.bilan || []); p.cures = p.cures || []; });
     Object.values(s.brouillons || {}).forEach(w => { if (w && Array.isArray(w.bilan)) R.completerBilan(w.bilan); });
