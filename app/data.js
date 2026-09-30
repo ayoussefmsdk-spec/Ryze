@@ -174,7 +174,8 @@ window.RYZE = window.RYZE || {};
     { id: 'pni',   cat: 'Vaccinal', label: 'Vacciné selon le PNI (Programme national d’immunisation) — calendrier vaccinal à jour' },
     { id: 'calpro0', cat: 'Référence', label: 'Calprotectine fécale de référence' },
     { id: 'endo0',   cat: 'Référence', label: 'Endoscopie de référence avec score (SES-CD / Mayo endoscopique)' },
-    { id: 'colohisto', cat: 'Référence', label: 'Coloscopie avec biopsies étagées et histologie' },
+    { id: 'colo0',   cat: 'Référence', label: 'Coloscopie de référence avec biopsies étagées' },
+    { id: 'histo0',  cat: 'Référence', label: 'Histologie des biopsies (activité histologique de référence)' },
     { id: 'clostr',  cat: 'Référence', label: 'Recherche de C. difficile / coproculture (si poussée)' }
   ];
   /* repères pédiatriques affichés sous chaque examen du bilan pré-biothérapie : ce qui est attendu « normal » chez l'enfant, pour statuer sans chercher les normes (valeurs usuelles ; le laboratoire local prime) */
@@ -208,7 +209,8 @@ window.RYZE = window.RYZE || {};
     pni: 'Normal = calendrier du PNI à jour pour l’âge (BCG, hépatite B, DTC-Hib-polio, pneumocoque, rotavirus, RR/ROR, rappels). Les vaccins vivants (ROR, BCG, varicelle, fièvre jaune) doivent être faits ≥ 4 semaines avant le début ; grippe annuelle et pneumocoque recommandés.',
     calpro0: 'Enfant > 4 ans : < 50 µg/g normal ; 50–250 zone grise ; > 250 µg/g = activité inflammatoire. Nourrisson et < 4 ans : valeurs physiologiquement plus élevées (souvent < 150–200 µg/g).',
     endo0: 'Rémission endoscopique = SES-CD 0–2 (Crohn) ou sous-score Mayo endoscopique 0–1 (RCH). Toute valeur au-dessus = activité, à noter comme référence.',
-    colohisto: 'Histologie normale = pas d’activité (pas d’infiltrat à polynucléaires, cryptite ni abcès cryptique) ; noter le score d’activité histologique de référence. Coloscopie : cf. SES-CD / Mayo.',
+    colo0: 'Coloscopie normale = muqueuse sans érosion, ulcération, friabilité ni sténose (SES-CD 0–2 / Mayo endoscopique 0–1) ; biopsies étagées systématiques, même en muqueuse saine.',
+    histo0: 'Histologie normale = pas d’activité (pas d’infiltrat à polynucléaires, cryptite ni abcès cryptique), architecture conservée ; noter le score d’activité histologique de référence (Nancy, Geboes, GHAS).',
     clostr: 'Normal = toxine C. difficile négative, coproculture négative (pas de Salmonella, Shigella, Campylobacter, Yersinia), parasitologie négative.'
   };
   R.normeBilan = id => R.BILAN_NORMES[id] || '';
