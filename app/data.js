@@ -177,6 +177,41 @@ window.RYZE = window.RYZE || {};
     { id: 'colohisto', cat: 'Référence', label: 'Coloscopie avec biopsies étagées et histologie' },
     { id: 'clostr',  cat: 'Référence', label: 'Recherche de C. difficile / coproculture (si poussée)' }
   ];
+  /* repères pédiatriques affichés sous chaque examen du bilan pré-biothérapie : ce qui est attendu « normal » chez l'enfant, pour statuer sans chercher les normes (valeurs usuelles ; le laboratoire local prime) */
+  R.BILAN_NORMES = {
+    igra: 'Normal = IGRA négatif. IDR : < 5 mm ; positive si ≥ 10 mm (≥ 5 mm chez l’enfant immunodéprimé ou contact d’un cas) — le BCG ne modifie pas l’IGRA.',
+    rxt: 'Normal = pas d’infiltrat, de nodule, d’adénopathie hilaire ni de séquelle calcifiée.',
+    vhb: 'Normal = Ag HBs négatif, Ac anti-HBc négatif ; Ac anti-HBs ≥ 10 UI/L = vacciné protégé (< 10 : rappel avant le traitement).',
+    vhc: 'Normal = Ac anti-VHC négatif (si positif : ARN VHC).',
+    vih: 'Normal = sérologie VIH négative.',
+    ebv: 'IgG anti-VCA positives = immunisé. Séronégatif (fréquent avant 10 ans) : éviter les thiopurines (risque de lymphome post-EBV), surveiller.',
+    cmv: 'IgG positives = immunisé ; IgM positives = infection récente (différer si active).',
+    vzv: 'IgG VZV positives = immunisé. Négatives : vacciner (vaccin vivant) au moins 4 semaines avant le début de la biothérapie.',
+    sero2: 'VHA IgG et rougeole IgG positives = immunisé ; sinon vacciner (vaccins vivants ≥ 4 semaines avant).',
+    hb: 'Hémoglobine (g/dL) : 6 mois–5 ans ≥ 11 ; 5–11 ans ≥ 11,5 ; 12–14 ans ≥ 12 ; ≥ 15 ans : fille ≥ 12, garçon ≥ 13 (seuils OMS de l’anémie). VGM 75–95 fL selon l’âge.',
+    nfs: 'Leucocytes 2–6 ans 5–15 G/L ; 6–12 ans 4,5–13,5 ; > 12 ans 4,5–13. Neutrophiles ≥ 1,5 G/L ; lymphocytes ≥ 1,5 G/L (nourrisson 4–10). Plaquettes 150–450 G/L (thrombocytose fréquente en poussée).',
+    crp: 'Normal < 5 mg/L (certains laboratoires < 10).',
+    vs: 'Normal < 10–13 mm à la 1re heure chez l’enfant (jusqu’à 20 chez l’adolescente).',
+    bh: 'ALAT ≤ 25 UI/L (garçon) / ≤ 22 UI/L (fille) — seuils pédiatriques ; ASAT < 40 UI/L (jusqu’à 60 avant 3 ans) ; GGT < 25 UI/L ; PAL physiologiquement élevées en croissance (jusqu’à 350–400 UI/L) ; bilirubine totale < 12 mg/L (< 20 µmol/L).',
+    alb: 'Albumine 35–50 g/L après 1 an ; hypoalbuminémie < 35 g/L (dénutrition, entéropathie exsudative).',
+    ferr: 'Ferritine : carence martiale si < 15 ng/mL (< 30 ng/mL si CRP élevée) ; valeurs usuelles enfant 10–140 ng/mL. Fer sérique 50–120 µg/dL ; coefficient de saturation 20–40 %.',
+    renal: 'Créatinine : 1–3 ans 2–4 mg/L (20–35 µmol/L) ; 4–7 ans 3–5 (25–45) ; 8–10 ans 3–6 (30–55) ; 11–14 ans 4–8 (35–70) ; ≥ 15 ans 5–10 (45–90). DFG (Schwartz) ≥ 90 mL/min/1,73 m². Urée 0,15–0,40 g/L (2,5–6,5 mmol/L).',
+    iono: 'Na 135–145 mmol/L ; K 3,5–5 (jusqu’à 5,5 chez le nourrisson) ; Cl 98–107 ; bicarbonates 22–28 mmol/L.',
+    lip: 'Enfant/adolescent : cholestérol total < 1,70 g/L ; LDL < 1,10 g/L ; HDL > 0,45 g/L ; triglycérides < 0,75 g/L (0–9 ans) / < 0,90 g/L (10–19 ans), à jeun.',
+    sinus: 'Normal = sinus clairs, pas de niveau liquide ni d’opacité (sinus maxillaires visibles dès 3–4 ans, frontaux après 6–8 ans).',
+    foyer: 'Normal = pas de foyer dentaire (carie profonde, abcès), ECBU stérile, peau saine ; ORL sans infection en cours.',
+    croiss: 'Normal = taille et poids entre −2 et +2 DS sur les courbes de référence, vitesse de croissance ≥ 4–5 cm/an avant la puberté, IMC dans les courbes. Retard de croissance = taille < −2 DS ou ralentissement de la vitesse (passage de couloir) ; noter le stade de Tanner (puberté retardée si > 13 ans fille / > 14 ans garçon sans signe).',
+    hcg: 'Normal = β-hCG négative (< 5 UI/L) chez l’adolescente réglée.',
+    derm: 'Normal = pas de lésion suspecte, pas d’infection cutanée en cours (impétigo, herpès, verrues étendues), pas d’antécédent de cancer cutané.',
+    ecg: 'Normal = rythme sinusal, QTc < 450 ms (< 460 ms chez la fille), pas de trouble de conduction ; FC selon l’âge (6–12 ans 70–110/min, adolescent 55–100/min).',
+    oph: 'Normal = fond d’œil sans œdème maculaire (OCT normale si réalisée) ; avant modulateur S1P.',
+    pni: 'Normal = calendrier du PNI à jour pour l’âge (BCG, hépatite B, DTC-Hib-polio, pneumocoque, rotavirus, RR/ROR, rappels). Les vaccins vivants (ROR, BCG, varicelle, fièvre jaune) doivent être faits ≥ 4 semaines avant le début ; grippe annuelle et pneumocoque recommandés.',
+    calpro0: 'Enfant > 4 ans : < 50 µg/g normal ; 50–250 zone grise ; > 250 µg/g = activité inflammatoire. Nourrisson et < 4 ans : valeurs physiologiquement plus élevées (souvent < 150–200 µg/g).',
+    endo0: 'Rémission endoscopique = SES-CD 0–2 (Crohn) ou sous-score Mayo endoscopique 0–1 (RCH). Toute valeur au-dessus = activité, à noter comme référence.',
+    colohisto: 'Histologie normale = pas d’activité (pas d’infiltrat à polynucléaires, cryptite ni abcès cryptique) ; noter le score d’activité histologique de référence. Coloscopie : cf. SES-CD / Mayo.',
+    clostr: 'Normal = toxine C. difficile négative, coproculture négative (pas de Salmonella, Shigella, Campylobacter, Yersinia), parasitologie négative.'
+  };
+  R.normeBilan = id => R.BILAN_NORMES[id] || '';
   /* complète un bilan enregistré avec les examens ajoutés au catalogue depuis sa création */
   R.completerBilan = bilan => { bilan = bilan || []; bilan.forEach(b => { if (b.statut === 'demande') b.statut = 'attente'; if (!R.BILAN_STATUTS[b.statut]) b.statut = 'attente'; }); R.BILAN_PRE.forEach(b => { if (bilan.some(x => x.id === b.id)) return; const src = { cmv: 'sero2', renal: 'iono' }[b.id]; const o = src && bilan.find(x => x.id === src); bilan.push(o && o.statut !== 'attente' ? { id: b.id, statut: o.statut, date: o.date || '', commentaire: o.commentaire ? o.commentaire + ' (repris de l’ancien libellé groupé)' : '' } : { id: b.id, statut: 'attente', date: '', commentaire: '' }); }); return bilan; };
   R.bilanFait = b => !!b && String(b.statut).startsWith('fait');
