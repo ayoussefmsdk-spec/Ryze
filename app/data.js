@@ -144,6 +144,7 @@ window.RYZE = window.RYZE || {};
     { id: 'cmv',   cat: 'Sérologies', label: 'CMV — cytomégalovirus' },
     { id: 'vzv',   cat: 'Sérologies', label: 'Varicelle — VZV (si pas d’antécédent certain de varicelle)' },
     { id: 'sero2', cat: 'Sérologies', label: 'Autres sérologies : VHA, rougeole (statut immunitaire)' },
+    { id: 'hb',    cat: 'Bilan biologique', label: 'Hémoglobine (taux d’Hb, recherche d’anémie)' },
     { id: 'nfs',   cat: 'Bilan biologique', label: 'NFS-plaquettes' },
     { id: 'crp',   cat: 'Bilan biologique', label: 'CRP' },
     { id: 'vs',    cat: 'Bilan biologique', label: 'VS (vitesse de sédimentation)' },
