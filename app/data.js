@@ -402,6 +402,11 @@ window.RYZE = window.RYZE || {};
 
   /* ---------- Changement de protocole (nouveau cycle) ---------- */
   R.j0 = (p, cycle) => { const h = (p.historiqueProtocoles || []).find(x => x.cycle === (cycle || p.cycleCourant || 1)); return h ? h.dateDebut : p.dateDebut; };
+  /* spécialités (marques) listées dans un protocole : « Remicade®, Remsima®, Inflectra®… » → tableau */
+  R.specialitesDe = pr => String((pr || {}).specialites || '').split(/\s*[,;/]\s*/).map(s => s.replace(/…$/, '').trim()).filter(Boolean);
+  /* spécialité affichée pour un patient : celle choisie, sinon la liste du protocole */
+  R.specialiteTxt = (p, pr) => (p && p.specialite) || (pr && pr.specialites) || '';
+  R.specialiteOptions = (pr, sel) => `<option value="">Non précisée${pr && R.specialitesDe(pr).length ? ' (' + R.esc(pr.specialites) + ')' : ''}</option>` + R.specialitesDe(pr).map(s => `<option value="${R.esc(s)}"${s === sel ? ' selected' : ''}>${R.esc(s)}</option>`).join('');
   R.changerProtocole = function (p, o) {
     /* o : { protocoleId, dateDebut, poids, motif, par, debut: 'induction'|'entretien', horizonJours } */
     const proto = R.proto ? R.proto(o.protocoleId) : R.PROTOCOLES_DEFAUT.find(x => x.id === o.protocoleId);
@@ -430,9 +435,9 @@ window.RYZE = window.RYZE || {};
     const ajouts = R.genererSurveillanceCfg(cfgN, o.dateDebut, o.horizonJours || 365, cyc + 1)
       .filter(s => s.mode === 'echeance' && !p.surveillance.some(x => x.id === s.id && (x.nom || '') === (s.nom || '') && x.statut === 'prevue' && x.echeance && Math.abs(R.diffDays(x.echeance, s.echeance)) < 21));
     p.surveillance = p.surveillance.filter(s => s.mode !== 'cure'); p.surveillance.push(...R.genererSurveillanceCfg(cfgN, o.dateDebut, 1, cyc + 1).filter(s => s.mode === 'cure'), ...ajouts);
-    p.protocoleId = proto.id; p.cycleCourant = cyc + 1; p.poids = o.poids || p.poids;
+    p.protocoleId = proto.id; p.cycleCourant = cyc + 1; p.poids = o.poids || p.poids; p.specialite = o.specialite || '';
     p.statut = tmp.induction.length ? 'induction' : 'entretien'; p.motifSuspension = '';
-    p.historiqueProtocoles.push({ cycle: cyc + 1, protocoleId: proto.id, dateDebut: o.dateDebut, poids: o.poids || p.poids, statut: 'en cours', motif: o.motif, par: o.par, debut: o.debut || 'induction', posologie: o.variante ? o.variante.nom : 'Posologie standard', intervalle: tmp.entretien ? Math.max(7, +tmp.entretien.intervalleJours || 56) : undefined, modifications: [], planifieJusqua: nouvelles.length ? nouvelles[nouvelles.length - 1].label : '—' });
+    p.historiqueProtocoles.push({ cycle: cyc + 1, protocoleId: proto.id, specialite: o.specialite || '', dateDebut: o.dateDebut, poids: o.poids || p.poids, statut: 'en cours', motif: o.motif, par: o.par, debut: o.debut || 'induction', posologie: o.variante ? o.variante.nom : 'Posologie standard', intervalle: tmp.entretien ? Math.max(7, +tmp.entretien.intervalleJours || 56) : undefined, modifications: [], planifieJusqua: nouvelles.length ? nouvelles[nouvelles.length - 1].label : '—' });
     p.notes = p.notes || []; p.notes.unshift({ date: o.dateDebut <= R.today() ? o.dateDebut : R.today(), par: o.par, txt: `Changement de protocole (cycle ${cyc + 1}) : ${proto.dci} à partir du ${R.fmtDate(o.dateDebut)} — ${o.motif}` });
     return nouvelles;
   };
