@@ -21,6 +21,7 @@ import { cycleIntel } from '../../../lib/intel.mjs';
 import CycleSettings from '../../../components/CycleSettings.jsx';
 import { gmtLabel } from '../../../lib/tz.mjs';
 import ClipGallery from '../../../components/ClipGallery.jsx';
+import ClearAllFlags from '../../../components/ClearAllFlags.jsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -209,7 +210,12 @@ export default async function CyclePage({ params }) {
               </span>
             )}
             {pending.length > 0 && <span style={{ fontSize: 14 }}>◔ {pending.length} clip{pending.length > 1 ? 's' : ''} waiting for review</span>}
-            {flagged.length > 0 && <span style={{ fontSize: 14, color: 'var(--crit)' }}>⚑ {flagged.length} flagged clip{flagged.length > 1 ? 's' : ''}</span>}
+            {flagged.length > 0 && (
+              <span style={{ fontSize: 14, color: 'var(--crit)', display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+                ⚑ {flagged.length} flagged clip{flagged.length > 1 ? 's' : ''}
+                <ClearAllFlags cycleId={cycleRow.id} count={flagged.length} />
+              </span>
+            )}
           </div>
         )}
 
