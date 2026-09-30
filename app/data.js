@@ -59,6 +59,8 @@ window.RYZE = window.RYZE || {};
   /* consanguinité des parents : renseignée avec la pathologie (formes précoces, MICI monogéniques) */
   R.CONSANG = { '': 'Non renseignée', non: 'Non', oui1: 'Oui — 1er degré (parents cousins germains)', oui2: 'Oui — 2e degré ou plus éloignée', inconnue: 'Inconnue' };
   R.consangTxt = p => R.CONSANG[(p || {}).consanguinite || ''] || '—';
+  /* codes d'accès de démonstration (retirés des bases réelles par la migration v10) */
+  R.SEED_USER_IDS = ['u-chef', 'u-med1', 'u-med2', 'u-pha1', 'u-int', 'u-ide1', 'u-ide2', 'u-sec'];
   R.PATHOS = {
     MC:  { label: 'Maladie de Crohn', court: 'MC' },
     RCH: { label: 'Rectocolite hémorragique', court: 'RCH' }
