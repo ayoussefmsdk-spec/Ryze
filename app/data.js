@@ -91,6 +91,8 @@ window.RYZE = window.RYZE || {};
   R.scoreTxt = p => { const v = R.scoreVal(p); if (v == null) return ''; const d = R.scoreDef(p.pathologie); const s = d.seuils.find(x => v < x[0]) || d.seuils[d.seuils.length - 1]; return `${d.nom} ${v} — ${s[1]}`; };
   R.ATCD_TYPES = ['Maladie de Crohn', 'Rectocolite hémorragique', 'MICI non classée', 'Autre maladie auto-immune'];
   R.atcdTxt = p => { const a = (p || {}).atcdFam; if (!a || !a.oui) return ''; return [a.type || 'MICI', a.qui].filter(Boolean).join(' — '); };
+  /* causes usuelles d'un changement de protocole (liste proposée, précision libre à côté) */
+  R.CAUSES_CHG = ['Non-réponse primaire', 'Perte de réponse secondaire', 'Immunisation (anticorps anti-médicament)', 'Intolérance ou effet indésirable', 'Infection ou contre-indication', 'Rémission : allègement du traitement', 'Passage IV → SC (même molécule)', 'Grossesse ou projet de grossesse', 'Rupture de stock, disponibilité', 'Choix du patient ou de la famille', 'Autre'];
   R.SEV = [['jamais', 'Jamais de poussée sévère'], ['une', 'Une poussée sévère'], ['plusieurs', 'Plusieurs poussées sévères']];
   R.sevTxt = c => { if (!c || !c.sev) return ''; if (c.sev === 'jamais') return 'jamais de poussée sévère'; if (c.sev === 'une') return 'une poussée sévère'; return `plusieurs poussées sévères${+c.sevN > 0 ? ' (' + c.sevN + ')' : ''}`; };
   R.sevSync = (c, patho) => { if (!c) return c; if (patho === 'RCH' && c.sev) c.S = c.sev === 'jamais' ? 'S0' : 'S1'; if (c.sev !== 'plusieurs') delete c.sevN; return c; };
@@ -479,7 +481,8 @@ window.RYZE = window.RYZE || {};
     planifiees.forEach(c => { c.statut = 'annulee'; c.motif = 'Changement de protocole : ' + o.motif; });
     const tmp = R.appliquerVariante(proto, o.variante);
     if (o.debut === 'entretien' && tmp.entretien) { tmp.induction = []; tmp.entretien = Object.assign({}, tmp.entretien, { debutJour: 0 }); }
-    const nouvelles = R.genererCures(tmp, o.dateDebut, o.poids || p.poids, o.horizonJours || 365).map(c => Object.assign(c, { cycle: cyc + 1, protocoleId: proto.id }));
+    if (o.snapshot) { tmp.induction = o.snapshot.induction || []; tmp.entretien = o.snapshot.entretien || tmp.entretien; } /* schéma personnalisé dans l'assistant de changement */
+    const nouvelles = (typeof o.cures === 'function' ? o.cures() : o.cures || R.genererCures(tmp, o.dateDebut, o.poids || p.poids || 70, o.horizonJours || 365)).map(c => Object.assign(c, { cycle: cyc + 1, protocoleId: proto.id }));
     p.cures.push(...nouvelles);
     p.cures.sort((a, b) => a.datePrevue.localeCompare(b.datePrevue)); p.cures.forEach((c, i) => c.n = i + 1);
     /* surveillance : les contrôles prévus restent, on ajoute ceux propres au nouveau protocole s'ils n'existent pas déjà */
@@ -493,7 +496,7 @@ window.RYZE = window.RYZE || {};
     p.surveillance = p.surveillance.filter(s => s.mode !== 'cure'); p.surveillance.push(...R.genererSurveillanceCfg(cfgN, o.dateDebut, 1, cyc + 1).filter(s => s.mode === 'cure'), ...ajouts);
     p.protocoleId = proto.id; p.cycleCourant = cyc + 1; p.poids = o.poids || p.poids; p.specialite = o.specialite || '';
     p.statut = tmp.induction.length ? 'induction' : 'entretien'; p.motifSuspension = '';
-    p.historiqueProtocoles.push({ cycle: cyc + 1, protocoleId: proto.id, specialite: o.specialite || '', dateDebut: o.dateDebut, poids: o.poids || p.poids, statut: 'en cours', motif: o.motif, par: o.par, debut: o.debut || 'induction', posologie: o.variante ? o.variante.nom : 'Posologie standard', intervalle: tmp.entretien ? Math.max(7, +tmp.entretien.intervalleJours || 56) : undefined, modifications: [], planifieJusqua: nouvelles.length ? nouvelles[nouvelles.length - 1].label : '—' });
+    p.historiqueProtocoles.push({ cycle: cyc + 1, protocoleId: proto.id, specialite: o.specialite || '', dateDebut: o.dateDebut, poids: o.poids || p.poids, statut: 'en cours', motif: o.motif, par: o.par, debut: o.debut || 'induction', posologie: o.posologie || (o.variante ? o.variante.nom : 'Posologie standard'), intervalle: tmp.entretien ? Math.max(7, +tmp.entretien.intervalleJours || 56) : undefined, snapshot: o.snapshot || undefined, modifications: [], planifieJusqua: nouvelles.length ? nouvelles[nouvelles.length - 1].label : '—' });
     p.notes = p.notes || []; p.notes.unshift({ date: o.dateDebut <= R.today() ? o.dateDebut : R.today(), par: o.par, txt: `Changement de protocole (cycle ${cyc + 1}) : ${proto.dci} à partir du ${R.fmtDate(o.dateDebut)} — ${o.motif}` });
     return nouvelles;
   };

@@ -415,7 +415,8 @@
       const cc = cycleCourant(p); if (cc) { cc.modifications = cc.modifications || []; cc.modifications.push({ date: R.today(), txt }); cc.intervalle = inter; cc.doseCourante = { type, val }; cc.planifieJusqua = modif.length ? modif[modif.length - 1].label : cc.planifieJusqua; }
       p.notes.unshift({ date: R.today(), par: S.user, txt }); renumeroter(p); R.journal(`Posologie modifiée — ${R.nomComplet(p)}`); R.alignerTdm(p); R.touch(); R.closeModal(); R.toast('Posologie mise à jour', 'good'); R.render();
     },
-    protoChanger(el) {
+    protoChanger(el) { R.ui.wc = null; R.go('changement', { id: el.dataset.pid }); },
+    protoChangerAncien(el) {
       const p = R.patient(el.dataset.pid); const cc = cycleCourant(p); const pr = R.proto(p.protocoleId);
       R.modal({ title: `Changer de protocole — ${esc(R.nomComplet(p))}`, form: 'protoChangerSave', wide: true, body: `<input type="hidden" name="pid" value="${p.id}">
         <div class="callout warn">Cycle ${p.cycleCourant || 1} en cours : <b>${esc(pr.dci)}</b> depuis le ${R.fmtDate(cc ? cc.dateDebut : p.dateDebut)}, planifié jusqu’à ${esc(cc?.planifieJusqua || '—')}. Les séances à venir de ce cycle seront annulées et conservées dans l’historique.</div>
