@@ -61,6 +61,9 @@ window.RYZE = window.RYZE || {};
   R.consangTxt = p => R.CONSANG[(p || {}).consanguinite || ''] || '—';
   /* codes d'accès de démonstration (retirés des bases réelles par la migration v10) */
   R.SEED_USER_IDS = ['u-chef', 'u-med1', 'u-med2', 'u-pha1', 'u-int', 'u-ide1', 'u-ide2', 'u-sec'];
+  /* transition vers le service adulte : en rouge dès 16 ans révolus, en jaune dans les 3 mois qui précèdent ; levée quand le dossier est clôturé */
+  R.AGE_TRANSITION = 16;
+  R.transition = p => { if (!p || !p.ddn || isNaN(R.parse(p.ddn)) || p.statut === 'termine') return null; const incl = ((p.historiqueProtocoles || [])[0] || {}).dateDebut || p.dateDebut || p.creeLe; if (incl && R.ageAuDiag(p.ddn, incl) >= R.AGE_TRANSITION) return null; /* concerne les enfants suivis dans le service : un patient inclus adulte (démonstration) n'est pas signalé */ const a = R.age(p.ddn); if (typeof a !== 'number') return null; const d16 = `${+p.ddn.slice(0, 4) + R.AGE_TRANSITION}${p.ddn.slice(4)}`; if (a >= R.AGE_TRANSITION) return { etat: 'due', date16: d16, age: a }; const j = R.diffDays(R.today(), d16); return j <= 92 ? { etat: 'bientot', date16: d16, jours: j, age: a } : null; };
   R.PATHOS = {
     MC:  { label: 'Maladie de Crohn', court: 'MC' },
     RCH: { label: 'Rectocolite hémorragique', court: 'RCH' }
