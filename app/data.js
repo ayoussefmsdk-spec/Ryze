@@ -63,7 +63,7 @@ window.RYZE = window.RYZE || {};
   R.SEED_USER_IDS = ['u-chef', 'u-med1', 'u-med2', 'u-pha1', 'u-int', 'u-ide1', 'u-ide2', 'u-sec'];
   /* transition vers le service adulte : en rouge dès 16 ans révolus, en jaune dans les 3 mois qui précèdent ; levée quand le dossier est clôturé */
   R.AGE_TRANSITION = 16;
-  R.transition = p => { if (!p || !p.ddn || isNaN(R.parse(p.ddn)) || p.statut === 'termine') return null; const incl = ((p.historiqueProtocoles || [])[0] || {}).dateDebut || p.dateDebut || p.creeLe; if (incl && R.ageAuDiag(p.ddn, incl) >= R.AGE_TRANSITION) return null; /* concerne les enfants suivis dans le service : un patient inclus adulte (démonstration) n'est pas signalé */ const a = R.age(p.ddn); if (typeof a !== 'number') return null; const d16 = `${+p.ddn.slice(0, 4) + R.AGE_TRANSITION}${p.ddn.slice(4)}`; if (a >= R.AGE_TRANSITION) return { etat: 'due', date16: d16, age: a }; const j = R.diffDays(R.today(), d16); return j <= 92 ? { etat: 'bientot', date16: d16, jours: j, age: a } : null; };
+  R.transition = p => { if (!p || !p.ddn || isNaN(R.parse(p.ddn)) || p.statut === 'termine') return null; const incl = ((p.historiqueProtocoles || []).find(h => !h.retro) || {}).dateDebut || p.dateDebut || p.creeLe; if (incl && R.ageAuDiag(p.ddn, incl) >= R.AGE_TRANSITION) return null; /* concerne les enfants suivis dans le service : un patient inclus adulte (démonstration) n'est pas signalé */ const a = R.age(p.ddn); if (typeof a !== 'number') return null; const d16 = `${+p.ddn.slice(0, 4) + R.AGE_TRANSITION}${p.ddn.slice(4)}`; if (a >= R.AGE_TRANSITION) return { etat: 'due', date16: d16, age: a }; const j = R.diffDays(R.today(), d16); return j <= 92 ? { etat: 'bientot', date16: d16, jours: j, age: a } : null; };
   /* informations importantes du dossier (anciennement obligatoires) : rappelées tant qu'elles manquent, dans le dossier et à chaque séance */
   R.MANQUES = [
     { k: 'nom', label: 'Nom', test: p => !p.nom },
@@ -76,7 +76,7 @@ window.RYZE = window.RYZE || {};
     { k: 'score', label: p => `Score ${R.scoreDef(p.pathologie).nom}`, test: p => R.scoreVal(p) == null, doux: true },
     { k: 'specialite', label: 'Spécialité (marque)', test: p => !p.specialite && R.specialitesDe(R.proto(p.protocoleId)).length > 1, doux: true },
     { k: 'consanguinite', label: 'Consanguinité', test: p => !p.consanguinite, doux: true },
-    { k: 'allergies', label: 'Allergies', test: p => !String(p.allergies || '').trim(), doux: true }
+    { k: 'allergies', label: 'Allergies', test: p => { const a = String(p.allergies || '').trim(); return !a || a === '—'; }, doux: true }
   ];
   R.manques = p => p ? R.MANQUES.filter(m => { try { return m.test(p); } catch (e) { return false; } }).map(m => ({ k: m.k, label: typeof m.label === 'function' ? m.label(p) : m.label, doux: !!m.doux })) : [];
   R.PATHOS = {
@@ -112,13 +112,13 @@ window.RYZE = window.RYZE || {};
   R.retroCycles = p => ((p && p.historiqueProtocoles) || []).filter(h => h.retro).sort((a, b) => String(a.dateDebut || '').localeCompare(String(b.dateDebut || '')));
   R.curesRetroDe = (p, cycle) => ((p && p.curesRetro) || []).filter(c => c.cycle === cycle).sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
   R.retroResume = p => R.retroCycles(p).map(h => { const pr = R.proto ? R.proto(h.protocoleId) : null; const n = h.mode === 'resume' ? (+h.nbSeances || 0) : R.curesRetroDe(p, h.cycle).filter(c => c.statut !== 'manquee').length; return `${pr ? pr.dci : h.protocoleId}${h.specialite ? ' (' + h.specialite + ')' : ''} du ${R.fmtDate(h.dateDebut)}${h.dateFin ? ' au ' + R.fmtDate(h.dateFin) : ''}${n ? `, ${n} séance(s)` : ''}${h.motifFin ? ', arrêt : ' + h.motifFin : ''}`; }).join(' ; ');
-  R.antecedentsBioTxt = p => R.retroResume(p) || (p && p.antecedentsBio && p.antecedentsBio !== '—' ? p.antecedentsBio : '') || '—';
+  R.antecedentsBioTxt = p => { const brut = p && p.antecedentsBio ? String(p.antecedentsBio).trim() : ''; const libre = brut && !/^(—|Aucune biothérapie antérieure\.?)$/i.test(brut) ? brut : ''; return [R.retroResume(p), libre].filter(Boolean).join(' ; ') || (brut && brut !== '—' ? brut : '—'); };
   /* séances d'un cycle antérieur générées depuis le protocole entre deux dates : intervalles bruts du protocole, modifiables ensuite ligne par ligne */
   R.genererSeancesRetro = (protocoleId, variante, dateDebut, dateFin, poids) => { const pr0 = R.proto ? R.proto(protocoleId) : null; if (!pr0 || !dateDebut || isNaN(R.parse(dateDebut))) return []; const pr = R.appliquerVariante(pr0, variante || null); const fin = dateFin && !isNaN(R.parse(dateFin)) ? dateFin : R.today(); const hor = Math.max(0, R.diffDays(dateDebut, fin)); const avecPoids = +poids > 0; return R.genererCures(pr, dateDebut, avecPoids ? +poids : 70, hor).filter(c => c.jour <= hor).map(c => ({ id: R.uid('r'), label: c.label, phase: c.phase, date: R.addDays(dateDebut, c.jour), voie: c.voie, dose: avecPoids ? c.dose : null, doseTexte: avecPoids ? c.doseTexte : (/→|poids|palier/i.test(c.doseTexte || '') ? '' : (c.doseTexte || '')), poids: '', remarque: '', statut: 'realisee' })); };
   /* enregistre (ou remplace) un cycle antérieur : entrée d'historique « retro » + séances dans p.curesRetro (jamais dans p.cures : ni activité, ni fauteuils, ni alertes) */
   R.ajouterCycleRetro = (p, c, cycleId) => {
     p.historiqueProtocoles = p.historiqueProtocoles || [{ cycle: 1, protocoleId: p.protocoleId, dateDebut: p.dateDebut, poids: p.poids, statut: 'en cours', modifications: [] }];
-    const nouveau = cycleId == null; const id = nouveau ? -(p.historiqueProtocoles.filter(h => h.retro).length + 1) : cycleId; const pr = R.proto ? R.proto(c.protocoleId) : null;
+    const nouveau = cycleId == null; const id = nouveau ? -(Math.max(0, ...p.historiqueProtocoles.filter(h => h.retro).map(h => -h.cycle)) + 1) : cycleId; const pr = R.proto ? R.proto(c.protocoleId) : null;
     const vIdx = c.variante === '' || c.variante == null ? null : +c.variante; const vNom = pr && pr.variantes && vIdx != null && pr.variantes[vIdx] ? pr.variantes[vIdx].nom : 'Posologie standard';
     const h = { cycle: id, retro: true, protocoleId: c.protocoleId, specialite: c.specialite || '', dateDebut: c.dateDebut, dateFin: c.dateFin || '', statut: 'terminé', motifFin: [c.cause, String(c.motif || '').trim()].filter(Boolean).join(' : '), remarques: String(c.remarques || '').trim(), mode: c.mode === 'resume' ? 'resume' : 'detail', nbSeances: c.mode === 'resume' ? (+c.nbSeances || null) : null, posologie: vNom, variante: vIdx, poids: +c.poids || null, modifications: [], saisiLe: R.today(), par: R.S ? R.S.user : null };
     const autres = p.historiqueProtocoles.filter(x => !(x.retro && x.cycle === id)); const retro = autres.filter(x => x.retro).concat([h]).sort((a, b) => String(a.dateDebut || '').localeCompare(String(b.dateDebut || ''))); p.historiqueProtocoles = retro.concat(autres.filter(x => !x.retro));
@@ -269,7 +269,7 @@ window.RYZE = window.RYZE || {};
   R.defBilan = (id, bilan) => R.bilanDefs(bilan).find(x => x.id === id) || { id, cat: 'Personnalisé', label: id };
   R.BILAN_CATS = () => [...new Set(R.BILAN_PRE.map(b => b.cat))].concat('Personnalisé');
   /* poids : initial (à l'inclusion) et dernier poids mesuré lors d'une séance */
-  R.poidsInitial = p => +p.poidsInitial || +((p.historiqueProtocoles || [])[0] || {}).poids || +p.poids || null;
+  R.poidsInitial = p => +p.poidsInitial || +((p.historiqueProtocoles || []).find(h => !h.retro) || {}).poids || +p.poids || null;
   /* séances prévues laissées « poids à renseigner » à la création : dose calculée dès qu'un poids est connu */
   R.completerDoses = p => {
     const poids = +p.poids; if (!(poids > 0) || !R.schemaPatient) return 0;
