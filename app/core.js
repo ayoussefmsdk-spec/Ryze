@@ -544,7 +544,7 @@
   /* fichier HTML autonome du document affiché : styles et mode de rendu de l'application (sans doctype = même pagination), thème clair, zones modifiables figées */
   R.docExport = () => {
     const r = S.route || {}, par = r.params || {}; const p = par.id ? R.patient(par.id) : null;
-    const type = r.page === 'impression' ? (par.quoi === 'seances' ? ['Seances', 'Historique des séances'] : ['Bilans', 'Bilans et contrôles']) : { carnet: ['Carnet', 'Carnet de suivi biothérapique'], compteRendu: ['Compte-rendu', 'Compte rendu de suivi'], activite: ['Rapport-activite', 'Rapport d’activité'] }[r.page];
+    const type = r.page === 'impression' ? (par.quoi === 'seances' ? ['Seances', 'Historique des séances'] : ['Bilans', 'Bilans et contrôles']) : { carnet: ['Carnet', 'Carnet de suivi biothérapique'], carnetPatient: ['Carnet-patient', 'Carnet patient (français / arabe)'], compteRendu: ['Compte-rendu', 'Compte rendu de suivi'], activite: ['Rapport-activite', 'Rapport d’activité'] }[r.page];
     const root = type && document.querySelector(r.page === 'activite' ? '#app .rapport' : '#app .carnet-wrap'); if (!root) return null;
     const doc = root.cloneNode(true);
     doc.querySelectorAll('.no-print, button, script').forEach(x => x.remove());
