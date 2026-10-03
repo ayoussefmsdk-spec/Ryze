@@ -299,7 +299,7 @@
 
   /* lignes cliniques : une par séance réalisée ou consultation faite */
   R.lignesCliniques = p => {
-    const rows = [...p.cures.filter(c => c.statut === 'realisee' && c.dateReelle).map(c => ({ date: c.dateReelle, src: `Séance ${c.label}`, poids: c.poids || null, taille: (c.clinique && c.clinique.taille) || null, temp: R.num(c.constantes && c.constantes.temp) ?? (c.clinique && c.clinique.temperature) ?? null, fc: R.num(c.constantes && c.constantes.fc), ta: (c.constantes && c.constantes.ta) || '', d: c.clinique || null, tolerance: c.tolerance || '' })),
+    const rows = [...(p.curesRetro || []).filter(c => c.statut === 'realisee' && c.date && c.poids).map(c => ({ date: c.date, src: `Séance antérieure ${c.label || ''}`.trim(), poids: c.poids, taille: null, temp: null, fc: null, ta: '', d: null, tolerance: '' })), ...p.cures.filter(c => c.statut === 'realisee' && c.dateReelle).map(c => ({ date: c.dateReelle, src: `Séance ${c.label}`, poids: c.poids || null, taille: (c.clinique && c.clinique.taille) || null, temp: R.num(c.constantes && c.constantes.temp) ?? (c.clinique && c.clinique.temperature) ?? null, fc: R.num(c.constantes && c.constantes.fc), ta: (c.constantes && c.constantes.ta) || '', d: c.clinique || null, tolerance: c.tolerance || '' })),
       ...p.surveillance.filter(s => s.statut === 'faite' && s.dateFaite && s.clinique).map(s => ({ date: s.dateFaite, src: s.label, poids: s.clinique.poids || null, taille: s.clinique.taille || null, temp: s.clinique.temperature || null, fc: null, ta: '', d: s.clinique, tolerance: '' }))];
     return rows.sort((a, b) => a.date.localeCompare(b.date));
   };
