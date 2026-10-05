@@ -275,7 +275,7 @@ window.RYZE = window.RYZE || {};
     const poids = +p.poids; if (!(poids > 0) || !R.schemaPatient) return 0;
     const att = (p.cures || []).filter(c => c.statut === 'prevue' && c.dose == null && /poids/.test(c.doseTexte || '')); if (!att.length) return 0;
     const sch = R.schemaPatient(p); let n = 0;
-    att.forEach(c => { const ind = c.phase === 'Induction'; const et = ind ? (sch.induction || []).find(x => +x.jour === +c.jour) || (sch.induction || []).find(x => x.label === c.label) : sch.actuel; if (!et || !sch.pr) return;
+    att.forEach(c => { if (c.mgkg > 0) { const art = R.article(c.articleId || sch.pr && sch.pr.articleId); const dose = Math.round(c.mgkg * poids); c.dose = dose; c.flacons = art ? Math.ceil(dose / art.unite) : 0; c.doseTexte = `${String(c.mgkg).replace('.', ',')} mg/kg → ${dose} mg`; n++; return; } /* séance ajoutée à la main avec sa propre dose en mg/kg */ const ind = c.phase === 'Induction'; const et = ind ? (sch.induction || []).find(x => +x.jour === +c.jour) || (sch.induction || []).find(x => x.label === c.label) : sch.actuel; if (!et || !sch.pr) return;
       const d = R.doseEtape(sch.pr, et, poids, ind ? 'induction' : 'entretien'); if (d.dose == null) return; c.dose = d.dose; c.flacons = d.flacons; c.doseTexte = d.texte; if (d.articleId) c.articleId = d.articleId; n++; });
     return n;
   };
