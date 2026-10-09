@@ -17,9 +17,12 @@ window.RYZE = window.RYZE || {};
   R.lundi = (s) => { const d = R.parse(s); const k = (d.getDay() + 6) % 7; d.setDate(d.getDate() - k); return R.iso(d); };
   /* Semaine de référence de l'HDJ : semaine en cours du lundi au vendredi ; le week-end, la semaine à venir */
   R.semaineRef = () => { const t = R.today(); const wd = R.parse(t).getDay(); return (wd === 0 || wd === 6) ? R.addDays(R.lundi(t), 7) : R.lundi(t); };
-  R.fmtDate = (s, opts) => s ? R.parse(s).toLocaleDateString('fr-FR', opts || { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
-  R.fmtDateLong = s => s ? R.parse(s).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : '—';
-  R.fmtMois = s => R.parse(s).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
+  /* un Intl.DateTimeFormat par jeu d'options (toLocaleDateString en recrée un à chaque appel) ; 'Invalid Date' reproduit l'ancien comportement */
+  const FMT = new Map();
+  const fmtFr = (s, o) => { const d = R.parse(s); if (isNaN(d)) return 'Invalid Date'; const k = JSON.stringify(o); let f = FMT.get(k); if (!f) FMT.set(k, f = new Intl.DateTimeFormat('fr-FR', o)); return f.format(d); };
+  R.fmtDate = (s, opts) => s ? fmtFr(s, opts || { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+  R.fmtDateLong = s => s ? fmtFr(s, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+  R.fmtMois = s => fmtFr(s, { month: 'short', year: '2-digit' });
   R.age = ddn => { const d = R.parse(ddn), t = new Date(); let a = t.getFullYear() - d.getFullYear(); const m = t.getMonth() - d.getMonth(); if (m < 0 || (m === 0 && t.getDate() < d.getDate())) a--; return a; };
   /* jours ↔ semaines : 14 → 2, 45 → 6,4 (affichage) */
   R.semaines = j => j == null || j === '' ? '' : (+j % 7 === 0 ? +j / 7 : Math.round(+j / 7 * 10) / 10);
@@ -38,18 +41,7 @@ window.RYZE = window.RYZE || {};
     complet: { label: 'Accès complet', court: 'COMPLET', desc: 'Dossiers et prescriptions, protocoles, stock, planning, équipe et codes d’accès.' },
     hdj:     { label: 'Accès hôpital de jour', court: 'HDJ', desc: 'Marquer les cures réalisées, gérer le planning et les rendez-vous, ajouter du stock, imprimer le carnet. Pas de modification des protocoles, des dossiers ni de l’équipe.' }
   };
-  R.MODULES = [
-    { id: 'dashboard',  label: 'Tableau de bord' },
-    { id: 'patients',   label: 'Patients (consultation)' },
-    { id: 'dossier',    label: 'Dossier & prescription' },
-    { id: 'cures',      label: 'Cures (marquer réalisée, reporter)' },
-    { id: 'planning',   label: 'Planning HDJ' },
-    { id: 'protocoles', label: 'Protocoles' },
-    { id: 'stock',      label: 'Stock & pharmacie' },
-    { id: 'equipe',     label: 'Équipe & codes d’accès' },
-    { id: 'carnet',     label: 'Carnet de suivi' }
-  ];
-  /* rw = lecture/écriture, r = lecture, - = aucun accès */
+  /* rw = lecture/écriture, r = lecture, - = aucun accès — modules : dashboard, patients, dossier, cures, planning, protocoles, stock, equipe, carnet */
   R.PERMS = {
     complet: { dashboard: 'rw', patients: 'rw', dossier: 'rw', cures: 'rw', planning: 'rw', protocoles: 'rw', stock: 'rw', equipe: 'rw', carnet: 'rw' },
     hdj:     { dashboard: 'r',  patients: 'r',  dossier: 'r',  cures: 'rw', planning: 'rw', protocoles: 'r',  stock: 'rw', equipe: '-',  carnet: 'r'  }
@@ -114,7 +106,7 @@ window.RYZE = window.RYZE || {};
   R.retroResume = p => R.retroCycles(p).map(h => { const pr = R.proto ? R.proto(h.protocoleId) : null; const n = h.mode === 'resume' ? (+h.nbSeances || 0) : R.curesRetroDe(p, h.cycle).filter(c => c.statut !== 'manquee').length; return `${pr ? pr.dci : h.protocoleId}${h.specialite ? ' (' + h.specialite + ')' : ''} du ${R.fmtDate(h.dateDebut)}${h.dateFin ? ' au ' + R.fmtDate(h.dateFin) : ''}${n ? `, ${n} séance(s)` : ''}${h.motifFin ? ', arrêt : ' + h.motifFin : ''}`; }).join(' ; ');
   R.antecedentsBioTxt = p => { const brut = p && p.antecedentsBio ? String(p.antecedentsBio).trim() : ''; const libre = brut && !/^(—|Aucune biothérapie antérieure\.?)$/i.test(brut) ? brut : ''; return [R.retroResume(p), libre].filter(Boolean).join(' ; ') || (brut && brut !== '—' ? brut : '—'); };
   /* séances d'un cycle antérieur générées depuis le protocole entre deux dates : intervalles bruts du protocole, modifiables ensuite ligne par ligne */
-  R.genererSeancesRetro = (protocoleId, variante, dateDebut, dateFin, poids) => { const pr0 = R.proto ? R.proto(protocoleId) : null; if (!pr0 || !dateDebut || isNaN(R.parse(dateDebut))) return []; const pr = R.appliquerVariante(pr0, variante || null); const fin = dateFin && !isNaN(R.parse(dateFin)) ? dateFin : R.today(); const hor = Math.max(0, R.diffDays(dateDebut, fin)); const avecPoids = +poids > 0; return R.genererCures(pr, dateDebut, avecPoids ? +poids : 70, hor).filter(c => c.jour <= hor).map(c => ({ id: R.uid('r'), label: c.label, phase: c.phase, date: R.addDays(dateDebut, c.jour), voie: c.voie, dose: avecPoids ? c.dose : null, doseTexte: avecPoids ? c.doseTexte : (/→|poids|palier/i.test(c.doseTexte || '') ? '' : (c.doseTexte || '')), poids: '', remarque: '', statut: 'realisee' })); };
+  R.genererSeancesRetro = (protocoleId, variante, dateDebut, dateFin, poids) => { const pr0 = R.proto ? R.proto(protocoleId) : null; if (!pr0 || !dateDebut || isNaN(R.parse(dateDebut))) return []; const pr = R.appliquerVariante(pr0, variante || null); const fin = dateFin && !isNaN(R.parse(dateFin)) ? dateFin : R.today(); const hor = Math.max(0, R.diffDays(dateDebut, fin)); const avecPoids = +poids > 0; const gen = w => R.genererCures(pr, dateDebut, w, hor).filter(c => c.jour <= hor); const lo = avecPoids ? null : gen(1), hi = avecPoids ? null : gen(1000); /* sans poids : on ne garde que les textes de dose identiques quel que soit le poids (dose fixe, voie orale) ; mg/kg et paliers restent vides */ return gen(avecPoids ? +poids : 70).map((c, i) => ({ id: R.uid('r'), label: c.label, phase: c.phase, date: R.addDays(dateDebut, c.jour), voie: c.voie, dose: avecPoids ? c.dose : null, doseTexte: avecPoids ? c.doseTexte : (c.doseTexte === lo[i].doseTexte && c.doseTexte === hi[i].doseTexte ? (c.doseTexte || '') : ''), poids: '', remarque: '', statut: 'realisee' })); };
   /* enregistre (ou remplace) un cycle antérieur : entrée d'historique « retro » + séances dans p.curesRetro (jamais dans p.cures : ni activité, ni fauteuils, ni alertes) */
   R.ajouterCycleRetro = (p, c, cycleId) => {
     p.historiqueProtocoles = p.historiqueProtocoles || [{ cycle: 1, protocoleId: p.protocoleId, dateDebut: p.dateDebut, poids: p.poids, statut: 'en cours', modifications: [] }];
@@ -132,7 +124,7 @@ window.RYZE = window.RYZE || {};
   R.sevTxt = c => { if (!c || !c.sev) return ''; if (c.sev === 'jamais') return 'jamais de poussée sévère'; if (c.sev === 'une') return 'une poussée sévère'; return `plusieurs poussées sévères${+c.sevN > 0 ? ' (' + c.sevN + ')' : ''}`; };
   R.sevSync = (c, patho) => { if (!c) return c; if (patho === 'RCH' && c.sev) c.S = c.sev === 'jamais' ? 'S0' : 'S1'; if (c.sev !== 'plusieurs') delete c.sevN; return c; };
   /* date de naissance estimée d'après un âge (1er juillet de l'année de naissance) */
-  R.ddnDepuisAge = age => { const a = Math.round(+age); if (!(a >= 0 && a < 130)) return ''; return `${new Date().getFullYear() - a}-07-01`; };
+  R.ddnDepuisAge = age => { const a = Math.round(+age); if (!(a >= 0 && a < 130)) return ''; const t = new Date(); return `${t.getFullYear() - a - (t.getMonth() < 6 ? 1 : 0)}-07-01`; }; /* avant le 1er juillet, l'anniversaire de l'année n'est pas encore passé */
   R.ddnTxt = p => !p || !p.ddn ? '—' : p.ddnEstimee ? 'date inconnue, âge estimé' : R.fmtDate(p.ddn);
   R.parisCode = (c, patho) => { if (!c) return ''; if (patho === 'RCH') return [c.E, c.S].filter(Boolean).join(' '); return [c.A, c.L, c.L4a ? 'L4a' : '', c.L4b ? 'L4b' : '', (c.B || '') + (c.p ? 'p' : ''), c.G].filter(Boolean).join(' '); };
   /* lit un code écrit en texte (Paris, ou Montréal si montreal = true pour les anciens dossiers) */
@@ -156,9 +148,9 @@ window.RYZE = window.RYZE || {};
     const sel = (k, opts, label, hint) => `<div class="field"><label>${label}</label><select ${at(k)}><option value="">— non précisé —</option>${opts.map(o => `<option value="${o[0]}"${c[k] === o[0] ? ' selected' : ''}>${e(o[1])}</option>`).join('')}</select>${hint ? `<span class="hint">${e(hint)}</span>` : ''}</div>`;
     const chk = (k, label) => `<label class="check" style="padding:6px 10px"><input type="checkbox" ${at(k)} value="1"${c[k] ? ' checked' : ''}> ${e(label)}</label>`;
     const P = R.PARIS; const verif = c.aVerifier && c.aVerifier.length ? `<div class="callout warn" style="grid-column:1/-1"><b>À vérifier</b> — reprise d’un ancien code Montréal : ${e(c.aVerifier.join(' · '))}. Choisissez la valeur exacte ci-dessous.</div>` : '';
-    const sev = `${sel(mode === 'w' ? 'sev' : 'sev_' + patho, R.SEV, 'Poussées sévères', patho === 'RCH' ? 'renseigne aussi le S de Paris (S0 si jamais, sinon S1)' : 'hospitalisation, corticoïdes IV ou poussée grave')}<div class="field"><label>Nombre de poussées sévères (si connu)</label><input type="number" min="1" max="99" ${mode === 'w' ? 'data-change="wParis" data-k="sevN"' : 'name="paris_sevN_' + patho + '"'} value="${c.sevN || ''}"${c.sev === 'plusieurs' ? '' : ' disabled'} placeholder="si « plusieurs »"></div>`;
-    const sd = R.scoreDef(patho); const score = `<div class="field"><label>Score d’activité — ${sd.nom} (0–${sd.max})</label><input type="number" min="0" max="${sd.max}" step="0.5" ${mode === 'w' ? 'data-change="wParis" data-k="score"' : 'name="paris_score_' + patho + '"'} value="${c.score ?? ''}" placeholder="${sd.nom}"><span class="hint">${sd.aide}</span></div>`;
-    if (patho === 'RCH') return `<div class="form-grid">${verif}${score}${sel('E', P.RCH.E, 'Étendue (E)')}${sev}</div>`;
+    const sev = `${sel(mode === 'w' ? 'sev' : 'sev_' + patho, R.SEV, 'Poussées sévères', patho === 'RCH' ? 'renseigne aussi le S de Paris (S0 si jamais, sinon S1)' : 'hospitalisation, corticoïdes IV ou poussée grave')}<div class="field"><label>Nombre de poussées sévères (si connu)</label><input type="number" min="1" max="99" ${mode === 'w' ? 'data-change="wParis" data-k="sevN"' : 'name="paris_sevN_' + patho + '"'} value="${e(c.sevN || '')}"${mode === 'f' || c.sev === 'plusieurs' ? '' : ' disabled'} placeholder="si « plusieurs »"></div>`;
+    const sd = R.scoreDef(patho); const score = `<div class="field"><label>Score d’activité — ${sd.nom} (0–${sd.max})</label><input type="number" min="0" max="${sd.max}" step="0.5" ${mode === 'w' ? 'data-change="wParis" data-k="score"' : 'name="paris_score_' + patho + '"'} value="${e(c.score ?? '')}" placeholder="${sd.nom}"><span class="hint">${sd.aide}</span></div>`;
+    if (patho === 'RCH') return `<div class="form-grid">${mode !== 'w' && c.S ? `<input type="hidden" name="paris_S" value="${e(c.S)}">` : ''}${verif}${score}${sel('E', P.RCH.E, 'Étendue (E)')}${sev}</div>`;
     return `<div class="form-grid">${verif}${score}${sel('A', P.MC.A, 'Âge au diagnostic (A)', autoA ? 'proposé d’après la date de naissance et la date du diagnostic' : 'renseignez la date du diagnostic pour une proposition automatique')}${sel('L', P.MC.L, 'Localisation (L)')}${sev}<div class="field"><label>Atteinte haute (L4, en plus de L1 à L3)</label><div class="row" style="gap:6px">${chk('L4a', 'L4a — en amont de l’angle de Treitz')}${chk('L4b', 'L4b — en aval de Treitz, en amont du tiers distal de l’iléon')}</div></div>${sel('B', P.MC.B, 'Phénotype (B)')}<div class="field"><label>Périnée (p)</label>${chk('p', 'p — atteinte périnéale')}</div>${sel('G', P.MC.G, 'Croissance (G)')}</div>`;
   };
   R.lireParis = (fd, patho) => { const g = k => fd.get('paris_' + k) || undefined; const sev = { sev: g('sev_' + patho), sevN: g('sevN_' + patho) ? +g('sevN_' + patho) : undefined, score: g('score_' + patho) !== undefined && g('score_' + patho) !== '' ? +g('score_' + patho) : undefined }; if (patho === 'RCH') return R.sevSync(Object.assign({ E: g('E'), S: g('S') }, sev), patho); return R.sevSync(Object.assign({ A: g('A'), L: g('L'), L4a: !!fd.get('paris_L4a'), L4b: !!fd.get('paris_L4b'), B: g('B'), p: !!fd.get('paris_p'), G: g('G') }, sev), patho); };
@@ -196,7 +188,7 @@ window.RYZE = window.RYZE || {};
     { id: 'rxt',   cat: 'Tuberculose', label: 'Radiographie thoracique' },
     { id: 'vhb',   cat: 'Sérologies', label: 'Hépatite B — VHB (Ag HBs, Ac anti-HBc, Ac anti-HBs)' },
     { id: 'vhc',   cat: 'Sérologies', label: 'Hépatite C — VHC' },
-    { id: 'vih',   cat: 'Sérologies', label: 'VIH — HIV (avec accord du patient)' },
+    { id: 'vih',   cat: 'Sérologies', label: 'VIH (avec accord des parents et du patient)' },
     { id: 'ebv',   cat: 'Sérologies', label: 'EBV — virus d’Epstein-Barr (important si thiopurine associée)' },
     { id: 'cmv',   cat: 'Sérologies', label: 'CMV — cytomégalovirus' },
     { id: 'vzv',   cat: 'Sérologies', label: 'Varicelle — VZV (si pas d’antécédent certain de varicelle)' },
@@ -214,7 +206,7 @@ window.RYZE = window.RYZE || {};
     { id: 'sinus', cat: 'Imagerie et foyers infectieux', label: 'Radiographie des sinus (foyer ORL)' },
     { id: 'foyer', cat: 'Imagerie et foyers infectieux', label: 'Recherche de foyer infectieux (dentaire, urinaire, cutané)' },
     { id: 'croiss', cat: 'Clinique', label: 'Croissance : taille, poids, courbe de croissance et stade pubertaire (retard de croissance)' },
-    { id: 'hcg',   cat: 'Clinique', label: 'β-hCG (femme en âge de procréer)' },
+    { id: 'hcg',   cat: 'Clinique', label: 'β-hCG (adolescente réglée)' },
     { id: 'derm',  cat: 'Clinique', label: 'Examen dermatologique (lésions suspectes, antécédent de cancer cutané)' },
     { id: 'ecg',   cat: 'Clinique', label: 'ECG (inhibiteurs de JAK, modulateurs S1P)' },
     { id: 'oph',   cat: 'Clinique', label: 'Examen ophtalmologique — œdème maculaire (ozanimod, étrasimod)' },
@@ -275,7 +267,7 @@ window.RYZE = window.RYZE || {};
     const poids = +p.poids; if (!(poids > 0) || !R.schemaPatient) return 0;
     const att = (p.cures || []).filter(c => c.statut === 'prevue' && c.dose == null && /poids/.test(c.doseTexte || '')); if (!att.length) return 0;
     const sch = R.schemaPatient(p); let n = 0;
-    att.forEach(c => { if (c.mgkg > 0) { const art = R.article(c.articleId || sch.pr && sch.pr.articleId); const dose = Math.round(c.mgkg * poids); c.dose = dose; c.flacons = art ? Math.ceil(dose / art.unite) : 0; c.doseTexte = `${String(c.mgkg).replace('.', ',')} mg/kg → ${dose} mg`; n++; return; } /* séance ajoutée à la main avec sa propre dose en mg/kg */ const ind = c.phase === 'Induction'; const et = ind ? (sch.induction || []).find(x => +x.jour === +c.jour) || (sch.induction || []).find(x => x.label === c.label) : sch.actuel; if (!et || !sch.pr) return;
+    att.forEach(c => { if (c.mgkg > 0) { if (c.voie !== 'IV' || c.mgkg > 20) return; const art = R.article(c.articleId || sch.pr && sch.pr.articleId); const dose = Math.round(c.mgkg * poids); c.dose = dose; c.flacons = art ? Math.ceil(dose / art.unite) : 0; c.doseTexte = `${String(c.mgkg).replace('.', ',')} mg/kg → ${dose} mg`; n++; return; } /* séance ajoutée à la main avec sa propre dose en mg/kg */ const ind = c.phase === 'Induction'; const et = ind ? (sch.induction || []).find(x => +x.jour === +c.jour) || (sch.induction || []).find(x => x.label === c.label) : sch.actuel; if (!et || !sch.pr) return;
       const d = R.doseEtape(sch.pr, et, poids, ind ? 'induction' : 'entretien'); if (d.dose == null) return; c.dose = d.dose; c.flacons = d.flacons; c.doseTexte = d.texte; if (d.articleId) c.articleId = d.articleId; n++; });
     return n;
   };
@@ -295,7 +287,7 @@ window.RYZE = window.RYZE || {};
     { id: 'bh',     cat: 'Biologie', label: 'Bilan hépatique (ASAT, ALAT, GGT, PAL)', mode: 'cure' },
     { id: 'creat',  cat: 'Biologie', label: 'Créatinine, ionogramme', mode: 'periodique', tousLes: 91 },
     { id: 'calpro', cat: 'Biologie', label: 'Calprotectine fécale', mode: 'echeances', jours: [98, 182, 365], cible: '< 150–250 µg/g' },
-    { id: 'tdm',    cat: 'Pharmacologie', label: 'Dosage pharmacologique — taux résiduel + anticorps anti-médicament', mode: 'echeances', jours: [98], cible: 'Infliximab résiduel ≥ 5 µg/mL (AGA 2017) / 3–7 µg/mL selon consensus ; adalimumab 8–12 µg/mL' },
+    { id: 'tdm',    cat: 'Pharmacologie', label: 'Dosage pharmacologique — taux résiduel + anticorps anti-médicament', mode: 'echeances', jours: [98], cible: 'Infliximab résiduel ≥ 5 µg/mL (AGA 2017) / 3–7 µg/mL selon consensus ; adalimumab 7,5–12 µg/mL' },
     { id: 'endo',   cat: 'Morphologie', label: 'Iléo-coloscopie de contrôle (cicatrisation muqueuse)', mode: 'echeances', jours: [182, 365] },
     { id: 'irm',    cat: 'Morphologie', label: 'Entéro-IRM (cicatrisation transmurale)', mode: 'echeances', jours: [365] },
     { id: 'echo',   cat: 'Morphologie', label: 'Échographie intestinale', mode: 'echeances', jours: [91, 182] },
@@ -404,7 +396,7 @@ window.RYZE = window.RYZE || {};
       entretien: { debutJour: 28, intervalleJours: 14, dose: 40, voie: 'SC', label: '40 mg SC toutes les 2 semaines dès S4' },
       dureePerfusion: '— (auto-injection, dispensation rétrocession)', preparation: '—',
       premedication: 'Aucune.', surveillancePerf: 'Éducation à l’auto-injection, rotation des sites.',
-      optimisation: 'Réponse insuffisante : 40 mg/semaine ou 80 mg toutes les 2 semaines (taux résiduel cible 8–12 µg/mL).',
+      optimisation: 'Réponse insuffisante : 40 mg/semaine ou 80 mg toutes les 2 semaines (taux résiduel cible 7,5–12 µg/mL).',
       surveillanceDefaut: ['clin', 'colo', 'recto', 'biostd', 'calpro', 'irm', 'echo', 'tdm', 'actnf'], remarque: 'MC : induction 80 mg S0 / 40 mg S2 possible (RCP) ; 160/80 mg = réponse plus rapide, plus d’effets indésirables.'
     },
     {
@@ -444,6 +436,7 @@ window.RYZE = window.RYZE || {};
   R.doseEtape = function (proto, etape, poids, phase) {
     const dt = etape.doseType || (phase === 'entretien' ? (proto.entretien.doseType || proto.doseType) : proto.doseType);
     if (dt === 'po') return { dose: null, texte: etape.texte || proto.entretien.texte || '', flacons: 0 };
+    if ((dt === 'mgkg' || dt === 'palier') && !(+poids > 0)) return { dose: null, flacons: 0, texte: 'poids à renseigner' }; /* même texte que l'assistant : completerDoses recalcule dès qu'un poids est saisi */
     if (dt === 'palier') {
       const p = (proto.paliers || []).find(x => poids <= x.max) || proto.paliers[proto.paliers.length - 1];
       return { dose: p.dose, flacons: p.flacons, articleId: p.articleId, texte: `${p.dose} mg (${p.flacons} ${p.lib || 'flacons'})` };
@@ -513,7 +506,7 @@ window.RYZE = window.RYZE || {};
     ancien.arreteA = R.libelleJour(Math.max(0, Math.round(R.diffDays(ancien.dateDebut, o.dateDebut) / 7) * 7));
     ancien.derniereCure = derniereFaite ? derniereFaite.label + ' le ' + R.fmtDate(derniereFaite.dateReelle || derniereFaite.datePrevue) : 'aucune';
     ancien.dateFin = o.dateDebut; ancien.motifFin = o.motif; ancien.statut = 'terminé'; ancien.parFin = o.par;
-    planifiees.forEach(c => { c.statut = 'annulee'; c.motif = 'Changement de protocole : ' + o.motif; });
+    planifiees.forEach(c => { c.statutAvantChg = c.statut; c.motifAvantChg = c.motif || ''; c.statut = 'annulee'; c.motif = 'Changement de protocole : ' + o.motif; }); /* restaurés si le nouveau cycle est supprimé */
     const tmp = R.appliquerVariante(proto, o.variante);
     if (o.debut === 'entretien' && tmp.entretien) { tmp.induction = []; tmp.entretien = Object.assign({}, tmp.entretien, { debutJour: 0 }); }
     if (o.snapshot) { tmp.induction = o.snapshot.induction || []; tmp.entretien = o.snapshot.entretien || tmp.entretien; } /* schéma personnalisé dans l'assistant de changement */
@@ -521,17 +514,18 @@ window.RYZE = window.RYZE || {};
     p.cures.push(...nouvelles);
     p.cures.sort((a, b) => a.datePrevue.localeCompare(b.datePrevue)); p.cures.forEach((c, i) => c.n = i + 1);
     /* surveillance : les contrôles prévus restent, on ajoute ceux propres au nouveau protocole s'ils n'existent pas déjà */
+    const planAvant = p.planSurveillance ? JSON.parse(JSON.stringify(p.planSurveillance)) : null;
     const cfgN = p.planSurveillance ? JSON.parse(JSON.stringify(p.planSurveillance)) : R.cfgDefaut(proto); const antiTNF = /TNF/.test(proto.classe || '');
     ['tdm', 'actnf'].forEach(id => { cfgN.items[id] = Object.assign(cfgN.items[id] || {}, { on: antiTNF }); if (id === 'tdm' && antiTNF) cfgN.items.tdm.periode = cfgN.items.tdm.periode || 91; });
-    if (!antiTNF) p.surveillance.forEach(s => { if ((s.id === 'tdm' || s.id === 'actnf') && s.statut === 'prevue' && s.echeance >= o.dateDebut) { s.statut = 'annulee'; s.annuleAuto = true; s.note = (s.note ? s.note + ' · ' : '') + 'Sans objet après changement de protocole'; } });
+    if (!antiTNF) p.surveillance.forEach(s => { if ((s.id === 'tdm' || s.id === 'actnf') && s.statut === 'prevue' && s.echeance >= o.dateDebut) { s.statut = 'annulee'; s.annuleAuto = true; s.annuleCycle = cyc + 1; s.note = (s.note ? s.note + ' · ' : '') + 'Sans objet après changement de protocole'; } });
     p.planSurveillance = cfgN;
-    p.surveillance = p.surveillance.filter(s => !(s.gen && s.statut === 'prevue' && s.mode === 'echeance' && s.echeance >= o.dateDebut && !(s.reports || []).length)); /* l'ancien plan s'arrête au nouveau J0 */
+    const retirees = p.surveillance.filter(s => s.gen && s.statut === 'prevue' && s.mode === 'echeance' && s.echeance >= o.dateDebut && !(s.reports || []).length); p.surveillance = p.surveillance.filter(s => !retirees.includes(s)); /* l'ancien plan s'arrête au nouveau J0 (conservé pour une éventuelle suppression du cycle) */
     const ajouts = R.genererSurveillanceCfg(cfgN, o.dateDebut, o.horizonJours || 365, cyc + 1)
       .filter(s => s.mode === 'echeance' && !p.surveillance.some(x => x.id === s.id && (x.nom || '') === (s.nom || '') && x.statut === 'prevue' && x.echeance && Math.abs(R.diffDays(x.echeance, s.echeance)) < 21));
     p.surveillance = p.surveillance.filter(s => s.mode !== 'cure'); p.surveillance.push(...R.genererSurveillanceCfg(cfgN, o.dateDebut, 1, cyc + 1).filter(s => s.mode === 'cure'), ...ajouts);
     p.protocoleId = proto.id; p.cycleCourant = cyc + 1; p.poids = o.poids || p.poids; p.specialite = o.specialite || '';
-    p.statut = tmp.induction.length ? 'induction' : 'entretien'; p.motifSuspension = '';
-    p.historiqueProtocoles.push({ cycle: cyc + 1, protocoleId: proto.id, specialite: o.specialite || '', dateDebut: o.dateDebut, poids: o.poids || p.poids, statut: 'en cours', motif: o.motif, par: o.par, debut: o.debut || 'induction', posologie: o.posologie || (o.variante ? o.variante.nom : 'Posologie standard'), intervalle: tmp.entretien ? Math.max(7, +tmp.entretien.intervalleJours || 56) : undefined, snapshot: o.snapshot || undefined, modifications: [], planifieJusqua: nouvelles.length ? nouvelles[nouvelles.length - 1].label : '—' });
+    p.statut = nouvelles.some(c => c.phase === 'Induction' && (c.statut === 'prevue' || c.statut === 'reportee')) ? 'induction' : 'entretien'; p.motifSuspension = '';
+    p.historiqueProtocoles.push({ cycle: cyc + 1, protocoleId: proto.id, specialite: o.specialite || '', dateDebut: o.dateDebut, poids: o.poids || p.poids, statut: 'en cours', motif: o.motif, par: o.par, debut: o.debut || 'induction', planAvant: planAvant || undefined, survRetirees: retirees.length ? retirees : undefined, posologie: o.posologie || (o.variante ? o.variante.nom : 'Posologie standard'), intervalle: tmp.entretien ? Math.max(7, +tmp.entretien.intervalleJours || 56) : undefined, snapshot: o.snapshot || undefined, modifications: [], planifieJusqua: nouvelles.length ? nouvelles[nouvelles.length - 1].label : '—' });
     p.notes = p.notes || []; p.notes.unshift({ date: o.dateDebut <= R.today() ? o.dateDebut : R.today(), par: o.par, txt: `Changement de protocole (cycle ${cyc + 1}) : ${proto.dci} à partir du ${R.fmtDate(o.dateDebut)} — ${o.motif}` });
     return nouvelles;
   };
@@ -624,19 +618,19 @@ window.RYZE = window.RYZE || {};
           c.validationPharma = { par: 'u-pha1', date: R.addDays(c.datePrevue, -1) };
           c.clinique = { taille: s.taille, puberte: 'Non applicable (adulte)', digestif: ['1–2 selles/j, formées, sans sang', '3 selles/j, pas de sang', 'transit normal'][k % 3], douleur: (i + k) % 4 === 1, douleurLoc: (i + k) % 4 === 1 ? [(i % 2) ? 'abdominale' : 'articulaire'] : [], douleurNote: (i + k) % 4 === 1 ? ((i % 2) ? 'fosse iliaque droite, modérée' : 'genoux, matinale') : '', fievre: false, temperature: null, fievreNote: '', perineal: (i === 7 && k % 2 === 0) ? ['fistule'] : [], cutaneNote: (i === 7 && k % 2 === 0) ? 'fistule périnéale connue, non productive' : '', remarques: '' };
           c.constantes = c.voie === 'IV' ? { ta: `${118 + Math.floor(rand() * 16)}/${70 + Math.floor(rand() * 12)}`, fc: 64 + Math.floor(rand() * 20), temp: (36.4 + rand() * 0.6).toFixed(1) } : null;
-          if (c.cycle === 1 && s.bascule && k === cures.filter(x => x.cycle === 1).length - 1) c.tolerance = 'Bonne — mais perte de réponse clinique (Mayo partiel 6)';
+          if (c.cycle === 1 && s.bascule && c === cures.filter(x => x.cycle === 1 && x.statut === 'realisee').slice(-1)[0]) c.tolerance = 'Bonne — mais perte de réponse clinique (Mayo partiel 6)';
           if (s.reaction === k) c.tolerance = 'Réaction à la perfusion (prurit, flush, à 40 min) — arrêt 15 min, dexchlorphéniramine 5 mg IV, reprise à débit réduit. Prémédication systématique ensuite.';
         }
         if (s.suspendu && c.datePrevue >= today && c.statut === 'prevue' && !cures.some(x => x.statut === 'reportee')) { c.statut = 'reportee'; c.motif = s.suspendu; c.reports = [{ date: R.addDays(today, -2), categorie: 'clinique', motif: s.suspendu, de: c.datePrevue, vers: null, par: 'u-med1' }]; }
         if (c.statut === 'realisee' && c.voie === 'IV' && k > 0 && (i + k) % 5 === 0 && R.diffDays(c.dateReelle, today) < 120) c.reports = [{ date: R.addDays(c.datePrevue, -3), categorie: ['stock', 'patient', 'capacite', 'clinique'][(Math.floor((i + k) / 5) + 3) % 4], motif: ['rupture de stock du flacon', 'patient indisponible (déplacement)', 'fauteuils complets ce jour', 'infection ORL en cours'][(Math.floor((i + k) / 5) + 3) % 4], de: R.addDays(c.datePrevue, -2), vers: c.datePrevue, par: 'u-ide1' }];
-        if (c.statut === 'realisee' && c.voie === 'IV' && (i * 7 + k) % 7 === 3 && R.diffDays(c.dateReelle, today) < 90 && R.diffDays(c.dateReelle, today) > 5) { c.statut = 'manquee'; c.motif = 'Patient non venu, injoignable'; c.dateManquee = c.datePrevue; delete c.dateReelle; delete c.lot; delete c.ide; delete c.reports; delete c.tolerance; delete c.constantes; delete c.clinique; }
+        if (c.statut === 'realisee' && c.voie === 'IV' && (i * 7 + k) % 7 === 3 && R.diffDays(c.dateReelle, today) < 90 && R.diffDays(c.dateReelle, today) > 5) { c.statut = 'manquee'; c.motif = 'Patient non venu, injoignable'; c.dateManquee = c.datePrevue; c.absences = [{ date: c.datePrevue, motif: c.motif, par: 'u-ide1' }]; delete c.dateReelle; delete c.lot; delete c.ide; delete c.reports; delete c.tolerance; delete c.constantes; delete c.clinique; }
         if (c.statut === 'prevue' && c.datePrevue <= R.addDays(lundi, 6) && c.voie === 'IV' && i % 3 !== 2) c.validationPharma = { par: 'u-pha1', date: R.addDays(today, -1) };
       });
       const cfgDemo = R.cfgDefaut(proto); if (i % 3 === 0) cfgDemo.items.vit = { on: true, entries: [{ nom: 'Vitamine D', periode: 182 }] };
       const surveillance = R.genererSurveillanceCfg(cfgDemo, dateDebutDossier, jourAncre + 400 + (s.bascule ? s.bascule.joursAvant : 0), 1).map(x => {
         if (x.echeance && x.echeance < today) {
           const enRetard = s.retard === x.id && R.diffDays(x.echeance, today) < 60;
-          if (!enRetard) { x.statut = 'faite'; x.dateFaite = R.addDays(x.echeance, Math.floor(rand() * 5)); x.par = s.medecin; if (x.id === 'biostd') { x.valeurs = {}; (x.sous || []).forEach(sid => x.valeurs[sid] = ({ nfs: 'Hb ' + (11.5 + rand() * 3).toFixed(1) + ' g/dL', crp: (1 + Math.floor(rand() * 12)) + '', transa: (18 + Math.floor(rand() * 20)) + ' / ' + (15 + Math.floor(rand() * 25)), b12: (250 + Math.floor(rand() * 300)) + '', alb: (36 + Math.floor(rand() * 8)) + '', ferr: (20 + Math.floor(rand() * 120)) + '' })[sid]); x.resultat = R.itemBilan('biostd').sous.filter(o => x.valeurs[o.id]).map(o => `${o.label} ${x.valeurs[o.id]}${o.unite ? ' ' + o.unite : ''}`).join(' · '); } else x.resultat = resultatDemo(x.id, rand); }
+          if (!enRetard) { x.statut = 'faite'; x.dateFaite = R.addDays(x.echeance, Math.floor(rand() * 5)); x.par = s.medecin; if (x.id === 'biostd') { x.valeurs = {}; (x.sous || []).forEach(sid => x.valeurs[sid] = ({ nfs: 'Hb ' + (11.5 + rand() * 3).toFixed(1) + ' g/dL', crp: (1 + Math.floor(rand() * 12)) + '', transa: (18 + Math.floor(rand() * 20)) + ' / ' + (15 + Math.floor(rand() * 25)), b12: (250 + Math.floor(rand() * 300)) + '', alb: (36 + Math.floor(rand() * 8)) + '', ferr: (20 + Math.floor(rand() * 120)) + '' })[sid]); x.resultat = R.itemBilan('biostd').sous.filter(o => x.valeurs[o.id]).map(o => `${o.label} ${x.valeurs[o.id]}${o.unite ? ' ' + o.unite : ''}`).join(' · '); } else x.resultat = resultatDemo(x.id, rand, s.patho); }
         }
         return x;
       });
@@ -644,7 +638,7 @@ window.RYZE = window.RYZE || {};
         let statut = 'fait_normal';
         if (b.id === 'hcg' && s.sexe === 'M') statut = 'na'; if (b.id === 'fcu' && s.sexe === 'M') statut = 'na';
         if (['lip', 'ecg', 'oph'].includes(b.id)) statut = 'na'; if (b.id === 'ebv' && !/Azathioprine/.test(s.tt)) statut = 'na';
-        if (b.id === 'clostr') statut = 'na'; if (b.id === 'vzv' && rand() > 0.5) statut = 'na';
+        if (b.id === 'clostr') statut = 'na'; if (b.id === 'endo0') statut = 'fait_anormal'; if (b.id === 'vzv' && rand() > 0.5) statut = 'na';
         if (i === 12 && b.id === 'rxt') statut = 'attente';
         return { id: b.id, statut, date: statut.startsWith('fait') ? R.addDays(debut, -Math.floor(10 + rand() * 20)) : '', commentaire: (b.id === 'pni' && statut === 'fait_normal') ? 'Calendrier PNI à jour ; grippe + pneumocoque faits ; VHB immunisé' : (b.id === 'endo0' ? (s.patho === 'MC' ? 'SES-CD 14' : 'Mayo endoscopique 2') : '') };
       });
@@ -693,24 +687,17 @@ window.RYZE = window.RYZE || {};
     return s;
   };
 
-  function resultatDemo(id, rand) {
+  function resultatDemo(id, rand, patho) {
     switch (id) {
-      case 'colo': return rand() > 0.4 ? 'Cicatrisation muqueuse (SES-CD 2), fibroscopie haute normale' : 'Amélioration endoscopique partielle, biopsies en cours';
+      case 'colo': return rand() > 0.4 ? (patho === 'RCH' ? 'Cicatrisation muqueuse (Mayo endoscopique 0)' : 'Cicatrisation muqueuse (SES-CD 2)') : 'Amélioration endoscopique partielle, biopsies en cours';
       case 'recto': return 'Muqueuse rectale cicatrisée';
       case 'vit': return `${18 + Math.floor(rand() * 25)} ng/mL`;
       case 'actnf': return 'Anticorps anti-TNF négatifs';
       case 'calpro': return `${60 + Math.floor(rand() * 120)} µg/g`;
       case 'tdm': return `Résiduel ${(3 + rand() * 5).toFixed(1)} µg/mL — ADA négatifs`;
-      case 'endo': return rand() > 0.4 ? 'Cicatrisation muqueuse (SES-CD 2)' : 'Amélioration endoscopique partielle';
       case 'irm': return 'Pas d’activité transmurale';
       case 'echo': return 'Épaisseur pariétale 2,5 mm — normale';
       case 'clin': return `HBI ${1 + Math.floor(rand() * 4)} — rémission clinique`;
-      case 'creat': return 'Créatinine 78 µmol/L';
-      case 'lip': return 'LDL 1,2 g/L';
-      case 'igra': return 'Négatif';
-      case 'derm': return 'RAS';
-      case 'fcu': return 'Normal';
-      case 'vacc': return 'Grippe faite';
       default: return 'Normal';
     }
   }

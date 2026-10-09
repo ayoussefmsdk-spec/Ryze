@@ -693,8 +693,8 @@ window.RYZE.LIVRET = {
     "ar": "تحليل الدم: الكوليسترول"
    },
    "colo": {
-    "fr": "Coloscopie (et fibroscopie de l’estomac)",
-    "ar": "تنظير القولون (مع تنظير المعدة)"
+    "fr": "Coloscopie",
+    "ar": "تنظير القولون"
    },
    "fibro": {
     "fr": "Fibroscopie de l’estomac",

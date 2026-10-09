@@ -29,7 +29,7 @@
   const telUrgTxt = v => v ? String(v).replace(/\s*\((?=[^)]*(?:urgence|24))[^)]*\)\s*$/i, '') : '………'; /* « 05 … (urgences 24 h/24) » : la parenthèse est déjà dans le texte du bloc */
   const telUrg = v => v ? ltr(telUrgTxt(v)) : '………';
   const suite = v => ({ fr: `${fr(v)} ${fr(L().suite)}`, ar: `${ar(v)} ${ar(L().suite)}` });
-  const joindre = (a, b, sep) => ({ fr: `${fr(a)} ${sep || '→'} ${fr(b)}`, ar: `${ar(a)} ${sep === '·' ? '·' : '←'} ${ar(b)}` });
+  const joindre = (a, b) => ({ fr: `${fr(a)} → ${fr(b)}`, ar: `${ar(a)} ← ${ar(b)}` });
   const vide = v => v == null || String(v).trim() === '' || String(v).trim() === '—';
   const nb = v => String(v == null ? '' : v).replace('.', ',');
   /* forme plurielle arabe : 1, 2, 3–10, 11 et plus */
@@ -40,7 +40,8 @@
     const pr = R.proto(p.protocoleId) || {}, t = R.today(), s = S.settings || {};
     const sch = R.schemaPatient(p);
     const voies = [...new Set(String(pr.voie || '').split(/\s*(?:puis|,|\/)\s*/).map(v => v.trim()).filter(Boolean))];
-    const prochaine = R.prochaineCure(p), derniere = R.derniereCure(p);
+    /* prochain rendez-vous du carnet : séance réellement prévue et à venir (pas la séance manquée ou reportée que R.prochaineCure met en tête pour les soignants) ; rien si le traitement est suspendu */
+    const prochaine = p.statut === 'suspendu' ? null : (p.cures || []).filter(x => x.statut === 'prevue' && x.datePrevue && x.datePrevue >= t).sort((a, b) => a.datePrevue.localeCompare(b.datePrevue))[0] || null, derniere = R.derniereCure(p);
     const voieCourante = (prochaine && prochaine.voie) || (sch.actuel && sch.actuel.voie) || voies[0] || 'IV';
     const classe = /TNF/i.test(pr.classe || '') ? 'antiTNF' : /int[ée]grine/i.test(pr.classe || '') ? 'vedolizumab' : /\bIL\b|interleukine|IL-/i.test(pr.classe || '') ? 'antiIL' : /JAK/i.test(pr.classe || '') ? 'JAK' : '';
     const tt = String(p.traitementsAssocies || ''); const associe = [];
@@ -58,12 +59,12 @@
     const dci = String(pr.dci || '').split(' — ')[0];
     const translit = (L().translit || {})[dci.toLowerCase().split(/\s/)[0].normalize('NFD').replace(/[̀-ͯ]/g, '')];
     const dciBi = { fr: dci, ar: translit || '' }; /* nom latin côté FR, translittération côté AR */
-    return { p, pr, t, s, sch, voies, voieCourante, prochaine, derniere, classe, associe, sexe, ageN, garde, filtreTexte, items, poids, dci, dciBi, maladie: (L().p1.maladies || {})[p.pathologie] || { fr: (R.PATHOS[p.pathologie] || {}).label || p.pathologie || '', ar: '' } };
+    return { p, pr, t, s, sch, horaires: horairesBi(), voies, voieCourante, prochaine, derniere, classe, associe, sexe, ageN, garde, filtreTexte, items, poids, dci, dciBi, maladie: (L().p1.maladies || {})[p.pathologie] || { fr: (R.PATHOS[p.pathologie] || {}).label || p.pathologie || '', ar: '' } };
   }
   /* rythme d'entretien actuel : « Toutes les N semaines », « Tous les N jours », « 1 fois par jour » */
   const rythmeBi = c => { const a = c.sch.actuel, T = L().p1.rythmes; if (!a || !T) return null; const po = (a.doseType || (c.sch.pr.entretien || {}).doseType || c.sch.pr.doseType) === 'po'; if (po) return /×\s*2|x\s*2|2\s*fois|\b2\/j/i.test(a.texte || '') ? T.po2 : T.po1; const j = +a.intervalleJours || 0; if (!j) return null; return j % 7 === 0 ? plur(T.semaines, j / 7) : plur(T.jours, j); };
   /* dose d'entretien : celle de la prochaine séance d'entretien planifiée (ce qui sera réellement donné), sinon calculée sur la posologie actuelle et le dernier poids, sinon celle de la prochaine ou dernière séance */
-  const doseTxt = c => { const pe = (c.p.cures || []).find(x => x.statut === 'prevue' && x.phase === 'Entretien' && x.doseTexte && !/poids|préciser/i.test(x.doseTexte)); if (pe) return pe.doseTexte; const a = c.sch.actuel; if (a && c.sch.pr && c.sch.pr.entretien) { try { const d = R.doseEtape(Object.assign({}, c.sch.pr, { entretien: a }), a, c.poids || 0, 'entretien'); if (d && d.texte && !/à préciser/.test(d.texte) && (c.poids || d.dose == null)) return d.texte; } catch (e) {} } return (c.prochaine && c.prochaine.doseTexte) || (c.derniere && c.derniere.doseTexte) || ''; };
+  const doseTxt = c => { const pe = (c.p.cures || []).find(x => x.statut === 'prevue' && x.phase === 'Entretien' && x.doseTexte && !/poids|préciser/i.test(x.doseTexte)); if (pe) return pe.doseTexte; const a = c.sch.actuel; if (a && c.sch.pr && c.sch.pr.entretien) { try { const d = R.doseEtape(Object.assign({}, c.sch.pr, { entretien: a }), a, c.poids || 0, 'entretien'); if (d && d.texte && !/poids|à préciser/.test(d.texte) && (c.poids || d.dose == null)) return d.texte; } catch (e) {} } return (c.prochaine && c.prochaine.doseTexte) || (c.derniere && c.derniere.doseTexte) || ''; };
   const commentBi = c => { const V = L().p1.voies || {}; const l = c.voies.map(v => V[v]).filter(Boolean); if (!l.length) return { fr: c.pr.voie || '', ar: '' }; return l.length === 1 ? l[0] : joindre(l[0], l[1]); };
   /* horaires de l'hôpital de jour : « Du lundi au vendredi, de 08:00 à 16:00 » (jours contigus) ou liste des jours */
   const horairesBi = () => { const h = R.hdj() || {}, J = L().p1.jours || {}; const ordre = [1, 2, 3, 4, 5, 6, 0]; const jours = [...new Set(h.jours || [])].sort((a, b) => ordre.indexOf(a) - ordre.indexOf(b)); const noms = jours.map(d => J[d]).filter(Boolean); if (!noms.length) return null;
@@ -82,10 +83,10 @@
     const sexeLib = c.sexe === 'F' ? (c.ageN != null && c.ageN < 18 ? P1.sexe.fille : P1.sexe.F) : (c.ageN != null && c.ageN < 18 ? P1.sexe.garcon : P1.sexe.M);
     const ddn = p.ddn ? `${R.ddnTxt(p)} (${R.ageTxt(p.ddn)})` : '';
     const pi = R.poidsInitial(p), pd = R.dernierPoids(p); const poidsTxt = pd && pi && pd.poids !== pi ? `${nb(pi)} kg · ${nb(pd.poids)} kg (${R.fmtDate(pd.date)})` : (pi || pd ? `${nb(pi || pd.poids)} kg` : '');
-    const allergies = vide(p.allergies) ? (p.allergies === '—' ? P1.allergiesAucune : '') : p.allergies;
+    const allergies = vide(p.allergies) ? '' : p.allergies; /* « — » = non renseigné (assistant) : ligne laissée à compléter, jamais « Aucune allergie connue » */
     const premed = p.premedication || (p.cures.filter(x => x.premedication && x.premedication !== 'Aucune').slice(-1)[0] || {}).premedication || '';
     const dateDiag = p.dateDiag && !isNaN(R.parse(p.dateDiag)) ? R.fmtDate(p.dateDiag, { month: '2-digit', year: 'numeric' }) : '';
-    const horaires = horairesBi(); const long = (String(allergies && allergies.fr ? '' : allergies || '').length + String(vide(p.traitementsAssocies) ? '' : p.traitementsAssocies).length + String(c.voies.includes('IV') ? premed : '').length + String(p.specialite || '').length) > 110; /* valeurs longues : l'encadré urgence (repris en dernière page) cède la place */
+    const horaires = c.horaires; const long = (String(allergies && allergies.fr ? '' : allergies || '').length + String(vide(p.traitementsAssocies) ? '' : p.traitementsAssocies).length + String(c.voies.includes('IV') ? premed : '').length + String(p.specialite || '').length) > 110; /* valeurs longues : l'encadré urgence (repris en dernière page) cède la place */
     return `<section class="page p1">
       <header class="band">
         <div class="band-l"><div class="titre">${bi(Lv.titre)}</div><div class="sous">${bi(Lv.sousTitre)}</div>
@@ -119,18 +120,22 @@
 
   /* ---------- lignes du planning ---------- */
   const SEANCES_PAR_PAGE = 14, EXAMENS_PAR_PAGE = 8;
+  /* hauteur estimée d'une ligne de séance (mm) : 7,4 mm contiennent deux lignes dans la colonne Dose (15 mm, ~9 caractères par ligne), 2,9 mm par ligne en plus */
+  const doseSeance = x => x.statut === 'realisee' ? (x.dose ? x.dose + ' mg' : x.doseTexte || '') : x.doseTexte || '';
+  const hauteurSeance = x => x ? 7.4 + Math.max(0, Math.ceil(String(doseSeance(x)).length / 9) - 2) * 2.9 : 7.4;
+  /* découpage par nombre ET par hauteur (doses longues sur plusieurs lignes) : cap1 lignes sur la 1re page, 14 ensuite */
+  const chunkSeances = (rows, cap1) => { const out = []; let cur = [], h = 0, cap = cap1; rows.forEach(x => { const hx = hauteurSeance(x); if (cur.length && (cur.length >= cap || h + hx > cap * 7.4 + 0.1)) { out.push(cur); cur = []; h = 0; cap = SEANCES_PAR_PAGE; } cur.push(x); h += hx; }); out.push(cur); return out; };
   function lignesSeances(c) {
     const cures = (c.p.cures || []).filter(x => x.statut !== 'annulee');
-    const faites = cures.filter(x => x.statut === 'realisee').sort((a, b) => String(a.dateReelle || a.datePrevue).localeCompare(String(b.dateReelle || b.datePrevue))).slice(-3);
+    const faites = cures.filter(x => x.statut === 'realisee' && (x.cycle || 1) === (c.p.cycleCourant || 1)).sort((a, b) => String(a.dateReelle || a.datePrevue).localeCompare(String(b.dateReelle || b.datePrevue))).slice(-3); /* cycle en cours seulement : l'en-tête des pages affiche le médicament actuel */
     const prevues = cures.filter(x => x.statut === 'prevue').sort((a, b) => String(a.datePrevue).localeCompare(String(b.datePrevue)));
     return [...faites, ...prevues];
   }
   const EXAMENS_IDS = { biostd: 'biostd', nfs: 'nfs', crp: 'crp', calpro: 'calpro', tdm: 'tdm', actnf: 'actnf', lip: 'lip', colo: 'colo', endo: 'colo', fogd: 'fibro', recto: 'recto', irm: 'irm', echo: 'echo', rxt: 'rxt', igra: 'igra', derm: 'peau', fcu: 'frottis', vacc: 'vacc', bh: 'foie', creat: 'reins' };
   const libelleExamen = x => { const E = L().p3.examens || {}; let id = EXAMENS_IDS[x.id]; if (x.id === 'vit' && /vitamine\s*D\b/i.test((x.nom || '') + ' ' + (x.label || ''))) id = 'vit'; return (id && E[id]) || { fr: x.label || x.id || '', ar: '' }; };
   function lignesExamens(c) {
-    return (c.p.surveillance || []).filter(x => x.mode === 'echeance' && x.statut === 'prevue' && x.echeance && x.echeance >= c.t).sort((a, b) => a.echeance.localeCompare(b.echeance));
+    return (c.p.surveillance || []).filter(x => x.mode === 'echeance' && x.statut === 'prevue' && x.echeance).sort((a, b) => a.echeance.localeCompare(b.echeance)); /* examens en retard (échéance passée, non faits) gardés, en tête */
   }
-  const chunk = (arr, taille) => { const out = []; for (let i = 0; i < arr.length; i += taille) out.push(arr.slice(i, i + taille)); return out; };
   /* hauteur estimée d'une ligne d'examen (mm) : libellé FR sur ~38 caractères par ligne, AR sur ~42, 7,4 mm au minimum */
   const hauteurExamen = x => { const l = libelleExamen(x); const nf = Math.ceil(fr(l).length / 38) || 1, na = Math.ceil(ar(l).length / 42); return Math.max(7.4, 1.4 + nf * 2.6 + na * 2.9); };
   const EXAMENS_HAUTEUR = 66; /* 8 lignes de 7,4 mm + marge */
@@ -149,10 +154,14 @@
   function pageSeances(c, rows, n, N, o) {
     const Lv = L(), P2 = Lv.p2, col = P2.cols, th = k => `<th>${bi(col[k])}</th>`; const mixte = c.voies.length > 1;
     const tr = x => x ? `<tr class="${x.statut === 'realisee' ? 'fait' : 'prevu'}"><td class="c">${esc(x.n)}<br><small>${esc(x.label || '')}</small></td><td class="c d">${ltr(R.fmtDate(x.datePrevue))}${x.voie === 'IV' && x.heure ? `<br><small>${ltr(x.heure)}</small>` : mixte && x.voie ? `<br><small>${esc(x.voie)}</small>` : ''}</td><td class="d">${x.statut === 'realisee' ? `<span class="pre">${ltr(R.fmtDate(x.dateReelle || x.datePrevue))}</span>` : ''}</td><td class="c">${x.statut === 'realisee' ? `<span class="pre">${esc(x.dose ? x.dose + ' mg' : x.doseTexte || '')}</span>` : `<span class="prevu-dose">${esc(x.doseTexte || '')}</span>`}</td><td>${x.statut === 'realisee' && x.poids ? `<span class="pre">${esc(nb(x.poids))} kg</span>` : ''}</td><td>${x.statut === 'realisee' ? `<span class="pre mono">${esc(x.lot || '')}</span>` : ''}</td><td class="c">${x.statut === 'realisee' ? '<span class="coche">✓</span>' : chk()}</td><td>${x.statut === 'realisee' && /^bonne tolérance/i.test(x.tolerance || '') ? '<span class="pre">Bonne tolérance</span>' : ''}</td><td class="sig">${x.statut === 'realisee' && x.ide ? `<span class="pre sig-pre">${esc(R.userName(x.ide))}</span>` : ''}</td></tr>` : `<tr class="blanc"><td class="c"></td><td></td><td></td><td></td><td></td><td></td><td class="c">${chk()}</td><td></td><td class="sig"></td></tr>`;
-    const liste = rows.slice(); while (liste.length < o.capacite) liste.push(null);
+    const liste = rows.slice(); let h = rows.reduce((a, x) => a + hauteurSeance(x), 0); while (liste.length < o.capacite && h + 7.4 <= o.capacite * 7.4 + 0.1) { liste.push(null); h += 7.4; } /* lignes vides dans la hauteur restante */
     const duree = dureeBi(c); const sc = c.voies.includes('SC'), iv = c.voies.includes('IV');
     /* trois rappels au plus : IV = temps sur place, retard ; SC = oubli, stylos au frais ; IV puis SC = temps sur place, oubli ; puis « Avant de venir » */
-    const avant = champ(P2.avantDeVenir.label, { fr: fr(P2.avantDeVenir.texte).replace(/page 4\b/, 'page ' + N), ar: ar(P2.avantDeVenir.texte).replace(/4(?=\))/, LRI + N + PDI) });
+    /* même règle que filtreTexte : « grossesse ? » seulement pour les filles de 10 ans et plus (ou d'âge inconnu) */
+    const sansG = !(c.sexe === 'F' && (c.ageN == null || c.ageN >= 10));
+    let avFr = fr(P2.avantDeVenir.texte).replace(/page 4\b/, 'page ' + N), avAr = ar(P2.avantDeVenir.texte).replace(/4(?=\))/, LRI + N + PDI);
+    if (sansG) { avFr = avFr.replace(/ grossesse \?/, ''); avAr = avAr.replace(/حمل؟ /, ''); }
+    const avant = champ(P2.avantDeVenir.label, { fr: avFr, ar: avAr });
     const infos = (iv && sc ? [champ(P2.injections.oubli.titre, P2.injections.oubli.texte)] : iv ? [duree ? champ(P2.dureeSurPlace, duree) : '', champ(P2.retard.label, P2.retard.texte)] : sc ? [champ(P2.injections.oubli.titre, P2.injections.oubli.texte), `<div class="f"><span class="val">${bi(P2.injections.frigo)}</span></div>`] : []).concat(avant).join('');
     return `<section class="page p2">${enTete(c, n, N, bi(P2.enTete))}
       <div class="titre-page"><h2>${bi(o.premiere ? P2.titre : suite(P2.titre))}</h2><span class="sous">${bi(P2.sousTitre)}</span></div>
@@ -160,7 +169,7 @@
       <div class="aide"><b>${bi(P2.aideCocher)}</b> <div class="legende">${bi(P2.legende)}</div></div>
       <table class="lv-tab seances"><thead><tr>${th('n')}${th('datePrevue')}${th('dateFaite')}${th('dose')}${th('poids')}${th('lot')}${th('fait')}${th('tolerance')}${th('visa')}</tr></thead><tbody>${liste.map(tr).join('')}</tbody></table>
       <div class="sous-tab">
-        <div class="callout-hdj"><b>${bi(P2.report.titre)}</b> ${bi2(P2.report.texte)}<div class="tel">${bi(P2.report.tel)} : <b>${tel(c.s.telHDJ)}</b>${horairesBi() ? ' · ' + bi(horairesBi()) : ''}</div></div>
+        <div class="callout-hdj"><b>${bi(P2.report.titre)}</b> ${bi2(P2.report.texte)}<div class="tel">${bi(P2.report.tel)} : <b>${tel(c.s.telHDJ)}</b>${c.horaires ? ' · ' + bi(c.horaires) : ''}</div></div>
         <div class="infos-seance">${infos}</div>
       </div>
       <footer class="pied"><span>${bi(P2.aideDates)}</span><span class="num">${fr(Lv.page)} ${n}/${N}</span></footer>
@@ -174,14 +183,17 @@
     const liste = completerExamens(rows);
     let bas;
     if (o.derniere) {
+      /* conseils de préparation seulement pour les examens prévus (dosage du médicament, calprotectine) */
+      const prevus = new Set(lignesExamens(c).map(x => x.id));
+      const conseils = P3.conseils.items.filter(i => (i.p || 1) <= 2 && !/Rapportez tous/.test(fr(i)) && (!/taux du médicament/.test(fr(i)) || prevus.has('tdm')) && (!/calprotectine/.test(fr(i)) || prevus.has('calpro')));
       const pc = c.prochaine; const quoi = pc ? (pc.voie === 'IV' ? P3.rdv.quoi.perfusionHDJ : pc.voie === 'SC' ? L().p1.voies.SC : L().p1.voies.PO) : null;
       const rdvRows = [pc ? { date: R.fmtDate(pc.datePrevue), heure: pc.voie === 'IV' ? pc.heure || '' : '', quoi, lieu: pc.voie === 'IV' ? c.s.unite || '' : '' } : null, null, null];
       const trr = r => `<tr>${r ? `<td class="c">${ltr(r.date)}</td><td class="c">${ltr(r.heure)}</td><td>${bi(r.quoi)}</td><td>${esc(r.lieu)}</td><td class="c">${chk()}</td>` : `<td></td><td></td><td></td><td></td><td class="c">${chk()}</td>`}</tr>`;
       const verso = (Lv.p4.carte.verso || {}).items || []; const it = i => verso[i] || { fr: '', ar: '' };
-      bas = `<h3 class="bt mt">${bi(P3.rdv.titre)}</h3>
+      bas = `<h3 class="bt mt">${bi(P3.rdv.titreCourt || P3.rdv.titre)}</h3>
       <table class="lv-tab rdv"><thead><tr>${['date', 'heure', 'quoi', 'lieu', 'fait'].map(k => `<th>${bi(P3.rdv.cols[k])}</th>`).join('')}</tr></thead><tbody>${rdvRows.map(trr).join('')}</tbody></table>
       <div class="bas3">
-        <div class="conseils"><h3 class="bt">${bi(P3.conseils.titre)}</h3>${P3.conseils.items.filter(i => (i.p || 1) <= 2 && !/Rapportez tous/.test(fr(i))).map(i => `<div class="li">${bi2(i)}</div>`).join('')}</div>
+        <div class="conseils">${conseils.length ? `<h3 class="bt">${bi(P3.conseils.titre)}</h3>${conseils.map(i => `<div class="li">${bi2(i)}</div>`).join('')}` : ''}</div>
         <div class="carte verso"><div class="carte-in"><div class="ct">${bi(P3.versoCarte)}</div>
           ${champ(it(0), `${p.prenom || ''} ${p.nom || ''}`)}${champ(it(1), p.ipp, { ltr: true })}${champ(it(2), c.maladie)}${champ(it(3), R.fmtDate(R.j0(p) || p.dateDebut), { ltr: true })}${champ(it(4), R.userName(p.medecinId) === '—' ? '' : R.userName(p.medecinId))}
           <div class="ct-note">${bi2(it(5))}</div></div></div>
@@ -202,17 +214,17 @@
     const Lv = L(), P4 = Lv.p4, p = c.p, s = c.s;
     const items = (arr, cls) => `<ul class="items${cls ? ' ' + cls : ''}">${arr.map(i => `<li>${bi(i)}</li>`).join('')}</ul>`;
     const rouge = c.items(P4.rouge.items).slice(0, 6);
-    const orange = c.items(P4.orange.items).filter(i => (i.p || 1) <= 1 || /Zona/.test(fr(i)));
+    const orange = c.items(P4.orange.items).filter(i => (i.p || 1) <= 1 || /Zona/.test(fr(i))).filter((i, k, a) => !a.some(j => fr(j).length > fr(i).length && fr(j).startsWith(fr(i)))); /* doublon retiré : « Je suis enceinte… » générique quand l'item méthotrexate le reprend */
     const jamais = c.items(P4.jamais.items).slice(0, 5);
     const avant = c.items(P4.avant.items); const cases = avant.filter(i => /^☐/.test(fr(i))), regles = avant.filter(i => !/^☐/.test(fr(i)) && !/^Pendant la perfusion/i.test(fr(i)));
     const ci = P4.carte.recto.items || [], ciVal = i => ci[i] || { fr: '', ar: '' };
     const marque = p.specialite ? esc(p.specialite) : `${bi(P4.marque)} <span class="fill" style="display:inline-block;width:16mm;flex:none"></span>`;
     const numeros = `<div class="nums grille">${bi(P4.rouge.sousTitre, '', { 'settings.telUrgences': telUrgTxt(s.telUrgences) })}</div>`;
-    const horaires = horairesBi();
+    const horaires = c.horaires;
     return `<section class="page p4">
       <div class="run"><span>${bi(P4.titre)}</span><span>${nomPatient(p)} · ${ltr(p.ipp || '')}</span><span class="num">${fr(Lv.page)} ${n}/${N}</span></div>
       <div class="alerte rouge"><div class="al-t"><span class="ico oct">!</span>${bi(P4.rouge.titre)}</div>${numeros}${items(rouge)}</div>
-      <div class="alerte orange"><div class="al-t"><span class="ico tri">!</span>${bi(P4.orange.titre)}</div><div class="nums"><span>${bi(P4.hdj)} <b>${tel(s.telHDJ)}</b>${horaires ? ' · ' + bi(horaires) : ''} · ${bi(P4.sinonUrgences)}</span></div>${items(orange)}</div>
+      <div class="alerte orange"><div class="al-t"><span class="ico tri">!</span>${bi(P4.orange.titre)}</div><div class="nums"><span>${bi(P4.hdj)} <b>${tel(s.telHDJ)}</b>${horaires ? ' · ' + bi(horaires) : ''} · ${bi(P4.sinonUrgences)}</span></div>${items(orange, orange.length > 8 ? 'serre' : '')}</div>
       <div class="jamais"><h3 class="bt"><span class="ico non"></span>${bi(P4.jamais.titre)}</h3>${items(jamais)}</div>
       <div class="avant"><h3 class="bt">${bi(P4.avant.titreCourt)}</h3><ul class="items cases">${cases.map(i => `<li class="case">${chk()}${bi({ fr: fr(i).replace(/^☐\s*/, ''), ar: ar(i) })}</li>`).join('')}</ul>${regles.slice(0, 1).map(i => `<div class="regle grille">${bi(i)}</div>`).join('')}</div>
       <div class="bas4">
@@ -232,7 +244,7 @@
   R.carnetPatientPages = function (p) {
     const c = contexte(p); const retro = blocRetro(c);
     const seances = lignesSeances(c); const capacite1 = Math.max(4, SEANCES_PAR_PAGE - retro.lignes);
-    const chunksS = seances.length <= capacite1 ? [seances] : [seances.slice(0, capacite1), ...chunk(seances.slice(capacite1), SEANCES_PAR_PAGE)];
+    const chunksS = chunkSeances(seances, capacite1);
     const chunksE = chunkExamens(lignesExamens(c));
     let total = 1 + chunksS.length + chunksE.length + 1; const pad = (4 - total % 4) % 4; let notes = 0;
     if (pad >= 1) chunksS.push([]); if (pad >= 2) chunksE.push([]); if (pad >= 3) notes = 1; total += pad;
@@ -261,7 +273,7 @@
 
   /* ---------- feuille de style du carnet (préfixe .livret ; @page du format choisi) ---------- */
   R.carnetPatientCSS = a4 => `
-.livret{--lv-ink:#182421;--lv-ink2:#4E5E59;--lv-ar:#1F3B57;--lv-acc:#1C6B62;--lv-acc-t:#E2F0ED;--lv-line:#B9C6C2;--lv-soft:#EEF3F1;--lv-rouge:#B3261E;--lv-rouge-t:#FBE9E7;--lv-orange:#C76E00;--lv-orange-t:#FFF1DF;--lv-gris:#7E8C88;color-scheme:light}
+.livret{--lv-ink:#182421;--lv-ink2:#4E5E59;--lv-ar:#1F3B57;--lv-acc:#1C6B62;--lv-acc-t:#E2F0ED;--lv-line:#B9C6C2;--lv-soft:#EEF3F1;--lv-rouge:#B3261E;--lv-rouge-t:#FBE9E7;--lv-orange:#C76E00;--lv-orange-t:#FFF1DF;--lv-gris:#5F6E69;color-scheme:light}
 .livret *{box-sizing:border-box}
 .livret .page{width:148mm;height:210mm;padding:5.5mm 7mm 5mm;background:#fff;color:var(--lv-ink);font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:7.2pt;line-height:1.3;position:relative;overflow:hidden;display:flex;flex-direction:column;margin:0 auto;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .livret table{color:inherit}
@@ -395,6 +407,7 @@
 .livret .items li .bi{display:grid;grid-template-columns:1.18fr 1fr;gap:0 3mm}
 .livret .items li .bi .sep{display:none}
 .livret .items li .bi .ar{text-align:right}
+.livret .p4 .items.serre li{font-size:5.8pt;line-height:1.08} /* liste orange de plus de 8 éléments */
 .livret .items li::before{content:"•";position:absolute;left:.4mm;color:var(--lv-ink2)}
 .livret .avant .bt{margin-top:1.6mm}
 .livret .cases li.case{padding-left:5.2mm;padding-top:.05mm;padding-bottom:.05mm}
