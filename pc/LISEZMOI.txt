@@ -1,0 +1,55 @@
+﻿RYZE — Biothérapies en hôpital de jour
+Installation sur un poste Windows (sans Internet, sans serveur)
+================================================================
+
+CE QU'IL FAUT
+  - Un PC Windows 10 ou 11 (même ancien : 4 Go de mémoire suffisent).
+  - Google Chrome ou Microsoft Edge (Edge est déjà présent sous Windows).
+
+INSTALLATION (5 minutes)
+  1. Copier tout le dossier « Ryze » (celui qui contient ce fichier) sur le PC,
+     par exemple dans C:\Ryze ou dans Documents. Ne pas le laisser sur la clé USB.
+  2. Double-cliquer sur Installer.bat : un raccourci « Ryze » apparaît sur le Bureau.
+     (Si l'informatique interdit les .bat : le raccourci peut pointer directement
+     sur Ryze.bat, ou on lance Ryze en double-cliquant sur Ryze.bat.)
+  3. Lancer Ryze depuis le Bureau. L'application s'ouvre dans sa propre fenêtre.
+  4. Première fois : entrer le code de démonstration CHEF01, puis
+     Paramètres > Importer un fichier > choisir (ou coller) votre base exportée,
+     mode « Remplacer toute la base ». Se reconnecter avec votre code.
+
+OÙ SONT LES DONNÉES
+  - Dans le sous-dossier « donnees » du dossier Ryze, sur le disque de ce PC.
+    Chaque action est enregistrée immédiatement : il n'y a pas de bouton
+    « Enregistrer ».
+  - Rien n'est envoyé sur Internet. Ryze fonctionne hors ligne.
+  - Ne supprimez jamais le dossier « donnees » : il contient la base.
+
+SAUVEGARDES (indispensable)
+  - Paramètres > « Sauvegarde automatique sur le disque » : choisir un dossier
+    (par exemple C:\Ryze\sauvegardes ou un dossier réseau du service). Ryze y
+    écrit ensuite lui-même une copie de la base après chaque modification,
+    plus une copie datée par jour. Au lancement, Chrome demande une fois
+    l'autorisation d'écrire dans ce dossier : cliquer « Autoriser ».
+  - En plus, chaque semaine : Paramètres > Exporter la base, et copier le fichier
+    sur une clé USB gardée ailleurs.
+  - Pour restaurer : Paramètres > Importer un fichier > « Remplacer toute la base ».
+
+IMPRIMER ET TÉLÉCHARGER
+  - Carnet professionnel, carnet patient (A5, français/arabe), compte rendu,
+    impressions : le bouton Imprimer ouvre la fenêtre d'impression de Windows
+    (imprimante du service ou « Enregistrer en PDF »). Télécharger enregistre
+    le document dans le dossier Téléchargements.
+  - Carnet patient : format A5, marges « Aucune », « Graphiques d'arrière-plan »
+    coché, recto-verso bord long ; ou la « Vue A4 recto-verso » pour un carnet
+    plié (A4 paysage, retournement bord court).
+
+MISE À JOUR DE RYZE
+  - Remplacer uniquement le sous-dossier « app » par la nouvelle version.
+    Le dossier « donnees » n'est pas touché : la base est conservée.
+
+EN CAS DE PROBLÈME
+  - Ryze ne s'ouvre pas : vérifier que Chrome ou Edge est installé.
+  - La fenêtre s'ouvre mais la base est vide : vous avez lancé Ryze depuis un
+    autre dossier (les données suivent le dossier). Relancer depuis le
+    raccourci du Bureau, ou importer la dernière sauvegarde.
+  - Le PC est remplacé : réinstaller Ryze, importer la dernière sauvegarde.

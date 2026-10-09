@@ -15,7 +15,22 @@ app/
   wizard.js    assistant « Nouveau dossier » (5 étapes) et carnet imprimable
 ```
 
-Ouvrir `app/index.html` dans un navigateur suffit : aucune dépendance, aucun serveur. Les modifications sont conservées dans le navigateur (localStorage) ; le bouton « Réinitialiser » des Paramètres régénère le jeu de démonstration.
+Ouvrir `app/index.html` dans un navigateur suffit : aucune dépendance, aucun serveur, aucun accès Internet (polices incluses dans `app/fonts/`). Les modifications sont conservées dans le navigateur (localStorage) ; le bouton « Réinitialiser » des Paramètres régénère le jeu de démonstration.
+
+## Installation sur un poste de travail (Windows)
+
+Le dossier `pc/` contient de quoi installer Ryze comme une application sur un PC du service, sans serveur :
+
+```
+pc/
+  Ryze.bat        lance Ryze dans une fenêtre d'application (Chrome ou Edge, mode --app),
+                  avec son propre espace de données dans le sous-dossier « donnees »
+  Installer.bat   crée le raccourci « Ryze » sur le Bureau et dans le menu Démarrer
+  ryze.ico        icône
+  LISEZMOI.txt    mode d'emploi (installation, données, sauvegardes, impression)
+```
+
+Copier `app/` et le contenu de `pc/` dans un même dossier (par exemple `C:\Ryze`), lancer `Installer.bat`, puis importer la base depuis Paramètres. La **sauvegarde automatique sur le disque** (Paramètres) écrit la base dans un dossier choisi après chaque modification (`ryze-base.json` + une copie datée par jour) ; les documents exportés embarquent les polices et s'impriment hors ligne.
 
 ## Modules
 
