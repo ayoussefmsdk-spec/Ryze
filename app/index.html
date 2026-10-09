@@ -495,7 +495,7 @@ div.cr-edit{display:block;min-height:60px;padding:6px 8px} .cr-bloc{font-size:10
   .search{max-width:none}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
-@media print{
+@media print{.cr-edit{outline:none!important;min-height:0!important;padding:0!important;min-width:0!important}span.cr-edit{display:inline!important}.cr-edit.vide{display:none!important}/* zones modifiables du compte rendu : à l’impression, même rendu que le fichier exporté (décor et zones vides retirés) */
   body{background:#fff}
   .rail,.topbar,.no-print,.plier,.toasts,#modal-root{display:none!important}
   .shell{display:block}
