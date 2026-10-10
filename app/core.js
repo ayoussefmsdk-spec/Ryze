@@ -10,6 +10,26 @@
   let uiInit = {}; try { uiInit = JSON.parse(localStorage.getItem('ryze-hdj-ui') || '{}') || {}; } catch (e) {} R.ui.plies = uiInit.plies || {};
   R.pages = {}; R.actions = R.actions || {};
 
+  /* ---------- Identité de l'établissement (en-têtes, connexion, Paramètres) ----------
+     réglages etablissement, hopital, service, unite, libelleHdj (libellé de l'hôpital de jour ; settings.hdj est la capacité), logo (data URL) :
+     complétés depuis window.RYZE_ETABLISSEMENT (etablissement.js, facultatif) quand ils sont vides ou encore égaux aux valeurs de démonstration ; une valeur saisie n'est jamais remplacée, un logo retiré (logoRetire) n'est pas remis (idempotent) */
+  const ETAB_DEMO = { etablissement: 'Centre Hospitalier Universitaire', service: 'Service de Gastro-entérologie et Hépatologie', unite: 'Hôpital de jour — Biothérapies' }, HDJ_DEFAUT = 'Hôpital de jour — Biothérapies';
+  const logoValide = v => typeof v === 'string' && /^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=\s]+$/.test(v);
+  function completerEtab(s) {
+    if (!s) return s; const st = s.settings = s.settings && typeof s.settings === 'object' ? s.settings : {}; const E = (typeof window !== 'undefined' && window.RYZE_ETABLISSEMENT && typeof window.RYZE_ETABLISSEMENT === 'object') ? window.RYZE_ETABLISSEMENT : {};
+    const vide = v => v == null || String(v).trim() === '', txt = v => typeof v === 'string' ? v.trim() : '';
+    if (st.unite === ETAB_DEMO.unite) st.unite = txt(E.unite); /* l'ancienne « unité » de démonstration était le libellé de l'hôpital de jour */
+    if (vide(st.libelleHdj)) st.libelleHdj = txt(E.hdj) || HDJ_DEFAUT;
+    ['etablissement', 'hopital', 'service', 'unite'].forEach(k => { if (txt(E[k]) && (vide(st[k]) || st[k] === ETAB_DEMO[k])) st[k] = txt(E[k]); if (st[k] == null) st[k] = ''; });
+    if (!logoValide(st.logo)) st.logo = ''; if (!st.logo && !st.logoRetire && logoValide(E.logo)) st.logo = E.logo;
+    return s;
+  }
+  R.logoValide = logoValide;
+  /* identité courante : { etablissement, hopital, service, unite, hdj (libellé de l'hôpital de jour), logo, chef, telHDJ, telUrgences } — chaînes, jamais undefined */
+  R.etab = () => { const st = (S && S.settings) || {}, t = v => typeof v === 'string' ? v.trim() : ''; return { etablissement: t(st.etablissement), hopital: t(st.hopital), service: t(st.service), unite: t(st.unite), hdj: t(st.libelleHdj) || HDJ_DEFAUT, logo: logoValide(st.logo) ? st.logo : '', chef: t(st.chef), telHDJ: t(st.telHDJ), telUrgences: t(st.telUrgences) }; };
+  /* <img> du logo (classe CSS au choix, défaut doc-logo) ou '' sans logo */
+  R.logoHTML = classe => { const e = R.etab(); return e.logo ? `<img class="${R.esc(classe || 'doc-logo')}" src="${e.logo}" alt="${R.esc('Logo — ' + (e.etablissement || 'établissement'))}">` : ''; };
+
   /* ---------- Migration des données locales ---------- */
   function migrer(s) {
     (s.patients || []).forEach(p => { p.notes = p.notes || []; p.surveillance = p.surveillance || []; p.bilan = p.bilan || []; p.cures = p.cures || []; }); s.settings = s.settings || {};
@@ -49,6 +69,7 @@
     /* idem : cibles de l'adalimumab alignées sur R.TDM_CIBLES (7,5–12 µg/mL) dans la fiche protocole et les contrôles déjà générés ; seule la chaîne d'origine exacte est remplacée (fiche modifiée par le service intacte) */
     (s.protocoles || []).forEach(pr => { if (pr.id === 'ada' && typeof pr.optimisation === 'string') pr.optimisation = pr.optimisation.replace('(taux résiduel cible 8–12 µg/mL)', '(taux résiduel cible 7,5–12 µg/mL)'); });
     (s.patients || []).forEach(p => (p.surveillance || []).forEach(x => { if (x.id === 'tdm' && typeof x.cible === 'string') x.cible = x.cible.replace('adalimumab ≥ 7,5 µg/mL', 'adalimumab 7,5–12 µg/mL'); }));
+    completerEtab(s); /* identité de l'établissement (idempotent, sans changement de version) */
     return s;
   }
   function charger() {
@@ -62,7 +83,7 @@
     if (!s.dirty && s.semaineSeed !== R.semaineRef()) return null;
     try { return migrer(s); } catch (e) { return illisible('erreur pendant la mise à niveau des données : ' + (e && e.message)); }
   }
-  function remplacer(obj) { Object.keys(S).forEach(k => delete S[k]); Object.assign(S, obj); if (R.ui) R.ui.tailleBase = 0; }
+  function remplacer(obj) { Object.keys(S).forEach(k => delete S[k]); Object.assign(S, obj); completerEtab(S); /* base de démonstration neuve comprise (R.seed ne passe pas par migrer) */ if (R.ui) R.ui.tailleBase = 0; }
   remplacer(charger() || Object.assign(R.seed(), { semaineSeed: R.semaineRef(), version: VERSION }));
   S.version = VERSION; if (uiInit.route && uiInit.route.page) S.route = uiInit.route;
   /* si un autre onglet a enregistré une version plus récente, on l'adopte au lieu de l'écraser */
@@ -412,7 +433,7 @@
       <aside class="rail" id="rail">
         <div class="brand"><div class="brand-mark">Rz</div><div><b>Ryze</b><span>Biothérapies · Hôpital de jour</span></div></div>
         <nav class="nav"><div style="height:8px"></div>${NAV.filter(i => R.can(i.mod, i.w ? 'w' : 'r')).map(i => `<button class="nav-item${(page === i.id || (i.id === 'patients' && (page === 'patient' || page === 'carnet' || page === 'carnetPatient' || page === 'compteRendu' || page === 'impression' || page === 'changement'))) ? ' active' : ''}" data-go="${i.id}">${R.icon(i.icon)}<span>${i.label}</span>${i.id === 'dashboard' && nCrit ? `<span class="count">${nCrit}</span>` : ''}</button>`).join('')}</nav>
-        <div class="rail-foot">${R.esc(S.settings.service)}<br>${R.esc(S.settings.unite)}</div>
+        <div class="rail-foot">${(() => { const e = R.etab(); return [e.service, e.hdj].filter(Boolean).map(R.esc).join('<br>'); })()}</div>
       </aside>
       <div class="main">
         <header class="topbar">
@@ -425,13 +446,15 @@
       </div></div>`;
   }
 
+  /* identité de l'établissement sur l'écran de connexion : logo (s'il existe) et noms des réglages */
+  R.etabConnexionHTML = () => { const e = R.etab(); const lignes = [e.etablissement, e.hopital, e.service, e.unite, e.hdj].filter(Boolean); return `<div class="login-etab">${e.logo ? R.logoHTML('login-logo') : ''}<p>${lignes.map((l, i) => i === 0 ? `<b>${R.esc(l)}</b>` : R.esc(l)).join('<br>')}</p></div>`; };
   function loginView() {
     const actifs = S.users.filter(u => u.actif);
     return `<div class="login"><div class="login-box">${R.ui.baseIllisible ? `<div class="callout crit mb16"><b>Vos données précédentes n’ont pas pu être chargées</b> — ${R.esc(R.ui.baseIllisible)}. ${R.ui.baseIllisibleAccepte ? 'Vous travaillez sur une base neuve.' : `Elles n’ont pas été modifiées. ${R.ui.copieOk ? 'Une copie a aussi été mise de côté dans ce navigateur.' : 'Aucune copie supplémentaire n’a pu être faite (espace plein) : téléchargez-les maintenant.'}`}<div class="row mt8" style="gap:8px;flex-wrap:wrap"><button type="button" class="btn sm primary" data-action="telechargerBak">Télécharger mes données</button>${R.ui.baseIllisibleAccepte ? '' : '<button type="button" class="btn sm danger" data-action="baseNeuve">Continuer avec une base neuve</button>'}</div><div class="small mt8">Importez ensuite le fichier depuis Paramètres, une fois l’application mise à jour.</div></div>` : ''}
       <div class="login-left">
         <div class="brand" style="padding:0"><div class="brand-mark">Rz</div><div><b>Ryze</b><span>Suivi biothérapique</span></div></div>
         <h1>Gestion des biothérapies en hôpital de jour</h1>
-        <p>${R.esc(S.settings.service)} — ${R.esc(S.settings.unite)}.</p>
+        ${R.etabConnexionHTML()}
         <ul class="feature-list">
           <li>${R.icon('check')}<span>Dossier patient et protocole par cycles, doses calculées au poids, historique des changements.</span></li>
           <li>${R.icon('check')}<span>Planning des fauteuils sans double réservation, calendrier mensuel navigable.</span></li>
@@ -464,7 +487,7 @@
       const alertes = R.alertes(); const retards = S.patients.filter(p => p.statut !== 'suspendu').reduce((n, p) => n + p.cures.filter(c => c.statut === 'prevue' && c.datePrevue < t && c.voie === 'IV').length, 0) + S.patients.reduce((n, p) => n + p.surveillance.filter(s => s.statut === 'prevue' && s.echeance && s.echeance < t).length, 0);
       const chart = R.curesParMois();
       return `
-      <div class="page-head"><div><h1>Tableau de bord</h1><p>${R.esc(S.settings.unite)} · semaine du ${R.fmtDateLong(sem.lundi)} au ${R.fmtDateLong(R.finSemaine(sem))}</p></div>
+      <div class="page-head"><div><h1>Tableau de bord</h1><p>${R.esc(R.etab().hdj)} · semaine du ${R.fmtDateLong(sem.lundi)} au ${R.fmtDateLong(R.finSemaine(sem))}</p></div>
         <div class="page-actions">${R.can('dossier', 'w') ? `<button class="btn primary" data-go="nouveau">${R.icon('plus')}Nouveau dossier</button>` : ''}<button class="btn" data-go="planning">${R.icon('cal')}Planning</button></div></div>
       <div class="kpis">
         <button class="kpi" data-go="patients"><div class="label">Patients suivis</div><div class="value">${actifs.length}<small>${actifs.filter(p => p.statut === 'induction').length} en induction</small></div><div class="sub">${S.patients.filter(p => p.statut === 'suspendu').length} traitement(s) suspendu(s)</div></button>
@@ -550,7 +573,7 @@
       <section class="card mb16 no-print"><div class="card-body"><div class="row" style="gap:6px;flex-wrap:wrap">${presets.map(x => `<button type="button" class="btn sm${r.preset === x[0] ? ' primary' : ''}" data-action="rapportPreset" data-v="${x[0]}">${x[1]}</button>`).join('')}<span class="grow"></span><span class="badge accent">${R.fmtDateLong(debut)} → ${R.fmtDateLong(fin)} · ${nbJ} j</span></div>
         ${r.preset === 'perso' ? `<div class="mt16">${R.rangePicker({ debut, fin, mois: r.mois || debut.slice(0, 7) })}</div>` : ''}</div></section>
       <div class="rapport">
-      <div class="doc-band print-only" style="display:none"><div><b>${R.esc(S.settings.etablissement)}</b>${R.esc(S.settings.service)} · ${R.esc(S.settings.unite)}</div><div class="r"><b>Rapport d’activité</b>${R.fmtDate(debut)} → ${R.fmtDate(fin)}<br>Édité le ${R.fmtDate(R.today())}</div></div>
+      <div class="print-only doc-entete-imp" style="display:none">${R.enteteDoc({ titre: 'Rapport d’activité', sousTitre: `${R.fmtDate(debut)} → ${R.fmtDate(fin)}`, sansPatient: true })}</div>
       <div class="kpis">
         ${tile('Séances réalisées', st.realisees.length, `${st.patients.size} patients distincts · ${Object.keys(st.parMol).length} molécules`)}
         ${tile('Séances programmées', st.prevues.length, `${st.aVenir.length} encore à venir · ${st.occupation === null ? '—' : st.occupation + ' %'} de la capacité (${st.capacite} séances possibles sur ${st.joursOuverts} j ouverts)`)}
@@ -586,7 +609,9 @@
   });
 
   /* ---------- Impression et téléchargement du document affiché ---------- */
-  R.boutonsDoc = lib => `<button class="btn" data-action="telechargerDoc" title="Fichier à ouvrir puis imprimer depuis l’ordinateur">${R.icon('download')}Télécharger</button><button class="btn primary" data-action="imprimer">${R.icon('print')}${lib || 'Imprimer / PDF'}</button>`;
+  /* opts.tel : avertissement « téléphones à renseigner » (défaut : documents qui impriment les téléphones — carnet, carnet patient, compte rendu) */
+  R.boutonsDoc = (lib, opts) => `${R.alerteTelsHTML(opts)}<button class="btn" data-action="telechargerDoc" title="Fichier à ouvrir puis imprimer depuis l’ordinateur">${R.icon('download')}Télécharger</button><button class="btn primary" data-action="imprimer">${R.icon('print')}${lib || 'Imprimer / PDF'}</button>`;
+  R.alerteTelsHTML = opts => { const o = opts || {}, page = (S.route || {}).page; const avec = o.tel != null ? !!o.tel : ['carnet', 'carnetPatient', 'compteRendu'].includes(page); if (!avec || !R.telsManquants) return ''; const m = R.telsManquants(); if (!m.length) return ''; const txt = `Téléphones à renseigner dans Paramètres (${m.join(', ')}) : le document imprime une ligne à remplir`; return R.can('equipe', 'w') ? `<button type="button" class="btn sm doc-tel-alerte no-print" data-go="parametres" title="${R.esc(txt)}">⚠ Téléphones à renseigner dans Paramètres</button>` : `<span class="doc-tel-alerte no-print" title="${R.esc(txt)}">⚠ Téléphones à renseigner dans Paramètres (accès complet)</span>`; };
   /* une impression bloquée (page intégrée dans un cadre isolé) échoue sans erreur : sans « beforeprint » on propose le fichier */
   R.imprimer = () => {
     let vu = false; const f = () => { vu = true; }; window.addEventListener('beforeprint', f);
@@ -704,6 +729,8 @@
   document.addEventListener('change', e => { if (e.target.closest && e.target.closest('#modal-root form')) R.ui.modalSale = true; }, true);
   document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.getAttribute && e.target.getAttribute('tabindex') === '0' && (e.target.dataset.go || e.target.dataset.action) && !/^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) { e.preventDefault(); e.target.click(); } });
   const DROITS = { userSave: ['equipe', 'w'], userRole: ['equipe', 'w'], userToggle: ['equipe', 'w'], userSupprimer: ['equipe', 'w'], userSupprimerOk: ['equipe', 'w'], userCode: ['equipe', 'w'], settingsSave: ['equipe', 'w'], protoEditer: ['protocoles', 'w'], protoSupprimer: ['protocoles', 'w'], protoSupprimerOk: ['protocoles', 'w'], protoArchiver: ['protocoles', 'w'], protoReactiver: ['protocoles', 'w'], protoSave: ['protocoles', 'w'], protoAddStep: ['protocoles', 'w'], protoDelStep: ['protocoles', 'w'], protoAddVariante: ['protocoles', 'w'], patientModifier: ['dossier', 'w'], patientSave: ['dossier', 'w'], protoChanger: ['dossier', 'w'], chgValider: ['dossier', 'w'], protoChangerSave: ['dossier', 'w'], posologieModifier: ['dossier', 'w'], posologieSave: ['dossier', 'w'], patientTerminer: ['dossier', 'w'], patientTerminerSave: ['dossier', 'w'], patientRouvrir: ['dossier', 'w'], cycleEditer: ['dossier', 'w'], cycleSave: ['dossier', 'w'], planModifier: ['dossier', 'w'], planSave: ['dossier', 'w'], wCreate: ['dossier', 'w'], wCreatePrint: ['dossier', 'w'], patientSuspendre: ['dossier', 'w'], patientSuspendreSave: ['dossier', 'w'], patientReprendre: ['dossier', 'w'], prolongerPlan: ['dossier', 'w'], cureModifier: ['dossier', 'w'], cureModifierSave: ['dossier', 'w'], cureAjouter: ['dossier', 'w'], cureAjouterSave: ['dossier', 'w'], survAjouter: ['dossier', 'w'], survAjouterSave: ['dossier', 'w'], bilanAjouter: ['cures', 'w'], bilanAjoutOuvrir: ['cures', 'w'], bilanCorriger: ['cures', 'w'], wHomonyme: ['dossier', 'w'], wAtcd: ['dossier', 'w'], wPremiereOn: ['dossier', 'w'], wPremiere: ['dossier', 'w'], retroOuvrir: ['dossier', 'w'], retroModifier: ['dossier', 'w'], retroModifierW: ['dossier', 'w'], retroSupprimerW: ['dossier', 'w'], retroChamp: ['dossier', 'w'], retroGenerer: ['dossier', 'w'], retroEcart: ['dossier', 'w'], retroAjouterLigne: ['dossier', 'w'], retroSupprimerLigne: ['dossier', 'w'], retroLigne: ['dossier', 'w'], retroEnregistrer: ['dossier', 'w'], retroSupprimer: ['dossier', 'w'], retroSupprimerOk: ['dossier', 'w'], bilanSupprimer: ['cures', 'w'], survAnnuler: ['dossier', 'w'], survAnnulerConfirm: ['dossier', 'w'], survRetablir: ['dossier', 'w'], rdvAjouter: ['planning', 'w'], rdvSave: ['planning', 'w'], rdvSupprimer: ['planning', 'w'], rdvSupprimerOk: ['planning', 'w'], importerBase: ['equipe', 'w'], importerBaseOk: ['equipe', 'w'], importerRemplacerOk: ['equipe', 'w'], importerAjoutOk: ['equipe', 'w'], noteModifier: ['equipe', 'w'], noteModifierSave: ['equipe', 'w'], noteSupprimer: ['equipe', 'w'], noteSupprimerOk: ['equipe', 'w'], fsChoisir: ['equipe', 'w'], fsReprendre: ['equipe', 'w'], fsEcrire: ['equipe', 'w'], fsArreter: ['equipe', 'w'], cureSupprimer: ['equipe', 'w'], cureSupprimerOk: ['equipe', 'w'], cycleSupprimer: ['equipe', 'w'], cycleSupprimerOk: ['equipe', 'w'], cureAjouterDose: ['dossier', 'w'], exporterBase: ['equipe', 'w'], crChamp: ['dossier', 'w'], crRegenerer: ['dossier', 'w'], crRestaurer: ['dossier', 'w'] };
+  /* droits des actions ajoutées par un autre fichier : R.ajouterDroits({ nomAction: ['module', 'r'|'w'] }) — fusionné dans DROITS, vérifié par R.autorise */
+  R.ajouterDroits = obj => { Object.keys(obj || {}).forEach(k => { const v = obj[k]; if (Array.isArray(v) && v.length === 2 && typeof v[0] === 'string' && (v[1] === 'r' || v[1] === 'w')) DROITS[k] = [v[0], v[1]]; }); return DROITS; };
   R.autorise = nom => { const d = DROITS[nom]; if (!d || R.can(d[0], d[1])) return true; R.toast('Action réservée à l’accès complet', 'crit'); return false; };
   document.addEventListener('click', e => {
     const t = e.target.closest('[data-go],[data-action]');

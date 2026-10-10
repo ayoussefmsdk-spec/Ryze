@@ -25,9 +25,10 @@
   const champ = (label, val, o = {}) => `<div class="f${o.cls ? ' ' + o.cls : ''}"><span class="lab">${bi(label)}</span><span class="val${val ? '' : ' libre'}">${val ? (typeof val === 'object' ? bi(val) : o.html ? val : (o.ltr ? ltr(val) : esc(val))) : ''}</span></div>`;
   const titreBloc = (v, cls) => `<h3 class="bt${cls ? ' ' + cls : ''}">${bi(v)}</h3>`;
   const chk = () => '<span class="chk"></span>';
-  const tel = v => v ? ltr(v) : '………';
-  const telUrgTxt = v => v ? String(v).replace(/\s*\((?=[^)]*(?:urgence|24))[^)]*\)\s*$/i, '') : '………'; /* « 05 … (urgences 24 h/24) » : la parenthèse est déjà dans le texte du bloc */
-  const telUrg = v => v ? ltr(telUrgTxt(v)) : '………';
+  /* téléphones vides ou factices (« 05 XX… ») : ligne à remplir à la main (R.telImprimable, documents.js) */
+  const tel = v => R.telImprimable(v) ? ltr(R.telImprimable(v)) : '………';
+  const telUrgTxt = v => R.telImprimable(v) ? R.telImprimable(v).replace(/\s*\((?=[^)]*(?:urgence|24))[^)]*\)\s*$/i, '') : '………'; /* « 05 … (urgences 24 h/24) » : la parenthèse est déjà dans le texte du bloc */
+  const telUrg = v => R.telImprimable(v) ? ltr(telUrgTxt(v)) : '………';
   const suite = v => ({ fr: `${fr(v)} ${fr(L().suite)}`, ar: `${ar(v)} ${ar(L().suite)}` });
   const joindre = (a, b) => ({ fr: `${fr(a)} → ${fr(b)}`, ar: `${ar(a)} ← ${ar(b)}` });
   const vide = v => v == null || String(v).trim() === '' || String(v).trim() === '—';
@@ -75,7 +76,7 @@
   const dureeBi = c => { const T = L().p1.heures; const m = c.pr.dureeSeanceMin != null ? +c.pr.dureeSeanceMin : 180; if (!T || !(m > 0) || !c.voies.includes('IV')) return null; return plur(T, Math.max(1, Math.round(m / 60))); };
   const nomPatient = p => `${esc(p.prenom || '')} <b>${esc(p.nom || '')}</b>`;
   const enTete = (c, n, N, droite) => `<div class="run"><span>${nomPatient(c.p)} · ${bi(L().dossierNo)} ${ltr(c.p.ipp || '')} · ${esc(c.dci)} ${esc(c.voieCourante)}</span><span>${droite}</span><span class="num">${fr(L().page)} ${n}/${N}</span></div>`;
-  const piedTech = c => `${esc(c.s.etablissement || '')}${c.s.unite ? ' · ' + esc(c.s.unite) : ''} · imprimé le ${R.fmtDate(c.t)} par Ryze`;
+  const piedTech = c => { const e = R.etab(); return `${esc(e.etablissement)}${e.hdj ? ' · ' + esc(e.hdj) : ''} · imprimé le ${R.fmtDate(c.t)} par Ryze`; };
 
   /* ---------- page 1 : informations ---------- */
   function page1(c, n, N) {
@@ -90,7 +91,7 @@
     return `<section class="page p1">
       <header class="band">
         <div class="band-l"><div class="titre">${bi(Lv.titre)}</div><div class="sous">${bi(Lv.sousTitre)}</div>
-          <div class="etab">${esc(s.etablissement || '')}${s.service ? ' · ' + esc(s.service) : ''}<br>${esc(s.unite || '')}</div></div>
+          <div class="etab">${esc(s.etablissement || '')}${s.service ? ' · ' + esc(s.service) : ''}<br>${esc(R.etab().hdj)}</div></div>
         <div class="etiquette"><span>${bi(Lv.etiquette)}</span></div>
       </header>
       <div class="nom-band"><div class="nom">${nomPatient(p)} <span class="ipp">${bi(Lv.dossierNo)} ${ltr(p.ipp || '')}</span></div>
@@ -101,9 +102,9 @@
           ${champ(moi.nom, p.nom)}${champ(moi.prenom, p.prenom)}${champ(moi.ddn, ddn, { ltr: true })}${champ(moi.sexe, sexeLib)}${champ(moi.dossier, p.ipp, { ltr: true })}${champ(P1.ecole, '')}
           ${champ(moi.poids, poidsTxt, { ltr: true })}${champ(moi.taille, p.taille ? `${nb(p.taille)} cm` : '', { ltr: true })}${champ(moi['groupe-sanguin'], '')}${champ(moi.allergies, allergies)}
           ${titreBloc(par.titre)}
-          ${champ(par.nom, '')}${champ(par.lien, '')}${champ(par.tel, p.tel, { ltr: true })}${champ(par.autreTel, '')}
+          ${champ(par.nom, '')}${champ(par.lien, '')}${champ(par.tel, R.telImprimable(p.tel), { ltr: true })}${champ(par.autreTel, '')}
           ${titreBloc(equ.titre)}
-          ${champ(equ.medecin, R.userName(p.medecinId) === '—' ? '' : R.userName(p.medecinId))}${s.chef ? champ(equ.chef, s.chef) : ''}${champ(equ['hdj-tel'], s.telHDJ, { ltr: true })}${champ(equ['hdj-horaires'], horaires)}
+          ${champ(equ.medecin, R.userName(p.medecinId) === '—' ? '' : R.userName(p.medecinId))}${s.chef ? champ(equ.chef, s.chef) : ''}${champ(equ['hdj-tel'], R.telImprimable(s.telHDJ), { ltr: true })}${champ(equ['hdj-horaires'], horaires)}
         </div>
         <div class="col">
           ${titreBloc(mal.titre)}
@@ -187,7 +188,7 @@
       const prevus = new Set(lignesExamens(c).map(x => x.id));
       const conseils = P3.conseils.items.filter(i => (i.p || 1) <= 2 && !/Rapportez tous/.test(fr(i)) && (!/taux du médicament/.test(fr(i)) || prevus.has('tdm')) && (!/calprotectine/.test(fr(i)) || prevus.has('calpro')));
       const pc = c.prochaine; const quoi = pc ? (pc.voie === 'IV' ? P3.rdv.quoi.perfusionHDJ : pc.voie === 'SC' ? L().p1.voies.SC : L().p1.voies.PO) : null;
-      const rdvRows = [pc ? { date: R.fmtDate(pc.datePrevue), heure: pc.voie === 'IV' ? pc.heure || '' : '', quoi, lieu: pc.voie === 'IV' ? c.s.unite || '' : '' } : null, null, null];
+      const rdvRows = [pc ? { date: R.fmtDate(pc.datePrevue), heure: pc.voie === 'IV' ? pc.heure || '' : '', quoi, lieu: pc.voie === 'IV' ? R.etab().hdj : '' } : null, null, null];
       const trr = r => `<tr>${r ? `<td class="c">${ltr(r.date)}</td><td class="c">${ltr(r.heure)}</td><td>${bi(r.quoi)}</td><td>${esc(r.lieu)}</td><td class="c">${chk()}</td>` : `<td></td><td></td><td></td><td></td><td class="c">${chk()}</td>`}</tr>`;
       const verso = (Lv.p4.carte.verso || {}).items || []; const it = i => verso[i] || { fr: '', ar: '' };
       bas = `<h3 class="bt mt">${bi(P3.rdv.titreCourt || P3.rdv.titre)}</h3>

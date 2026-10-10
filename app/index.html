@@ -457,6 +457,60 @@ div.cr-edit{display:block;min-height:60px;padding:6px 8px} .cr-bloc{font-size:10
 .cr-edit.vide::before{content:attr(data-placeholder);color:#8A9A95;font-style:italic;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:9.5pt} div.cr-edit.vide{min-height:40px}
 .cr-h2{display:flex;justify-content:space-between;align-items:flex-end;gap:8px} .cr-h2 .btn{text-transform:none;letter-spacing:0;font-weight:500;font-size:12px;padding:2px 8px;margin-top:-6px}
 .cr .doc-band+.doc-h2,.cr .doc-band+.cr-sec>.doc-h2{margin-top:0}
+.cr .doc-entete+.doc-h2,.cr .doc-entete+.cr-sec>.doc-h2{margin-top:0}
+
+/* ---------- Fondations des documents (documents.js) : en-tête commun, statut et sécurité, à faire ---------- */
+.doc-entete{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;border-bottom:2px solid var(--doc-ink);padding-bottom:7px;margin-bottom:12px;font-family:'IBM Plex Sans',system-ui,sans-serif;color:var(--doc-ink);break-inside:avoid;break-after:avoid}
+.doc-entete-g{display:flex;align-items:center;gap:9px;min-width:0;flex:1 1 auto}
+.doc-logo{display:block;width:34mm;max-width:34%;height:auto;flex:none;background:#fff}
+.doc-etab{display:flex;flex-direction:column;font-size:8pt;line-height:1.25;color:#2C3A36;min-width:0}
+.doc-etab b{font-size:8.5pt;font-weight:700;color:var(--doc-ink)}
+.doc-etab .doc-etab-hdj{font-style:italic;color:#4E5E59}
+.doc-entete-d{text-align:right;flex:0 0 62mm;min-width:0;font-size:8.5pt;line-height:1.3}
+.doc-entete-titre{font-size:11.5pt;font-weight:700;letter-spacing:-.005em;line-height:1.2;color:var(--doc-ink)}
+.doc-entete-sous{font-size:9pt;color:#4E5E59;margin-top:1px}
+.doc-entete-pat{display:flex;flex-direction:column;margin-top:4px}
+.doc-entete-pat b{font-size:11pt;font-weight:700;color:var(--doc-ink)}
+.doc-entete-ed{margin-top:3px;font-size:8pt;color:#4E5E59}
+.doc-entete.compact{align-items:center;padding-bottom:5px;margin-bottom:10px;border-bottom-width:1.5px}
+.doc-entete.compact .doc-logo{width:22mm}
+.doc-entete.compact .doc-etab{font-size:7.5pt;flex:1}
+.doc-entete.compact .doc-etab b{font-size:8pt}
+.doc-entete.compact .doc-entete-titre{font-size:10pt}
+.doc-entete.compact .doc-entete-pat{margin-top:1px;font-size:8pt}
+.doc-entete.compact .doc-entete-pat b{font-size:9.5pt}
+.doc-entete-imp>.doc-entete{flex:1;width:100%}
+.doc-tel{white-space:nowrap}
+.doc-a-remplir{white-space:nowrap;letter-spacing:.05em;color:#4E5E59}
+.doc-secu{border:1.5px solid var(--doc-ink);border-radius:4px;padding:7px 10px;margin:8px 0;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:9.5pt;line-height:1.35;color:var(--doc-ink);break-inside:avoid}
+.doc-secu.alerte{border-width:2.5px}
+.doc-secu-t,.doc-afaire-t{font-size:8.5pt;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.doc-secu-r{display:grid;grid-template-columns:34mm minmax(0,1fr);gap:8px;padding:2px 0;border-top:1px dotted var(--doc-line)}
+.doc-secu-r:first-of-type{border-top:0}
+.doc-secu-k{color:#4E5E59;font-size:8.5pt;padding-top:1px}
+.doc-secu-r.alerte .doc-secu-k{color:var(--doc-ink);font-weight:700}
+.doc-secu-v{min-width:0;overflow-wrap:anywhere}
+.doc-fort{font-weight:700;text-transform:none}
+.doc-secu-reac{margin:0;padding-left:16px}
+.doc-secu-reac li{margin:1px 0}
+.doc-afaire{border:1px solid var(--doc-ink);border-radius:4px;padding:7px 10px;margin:8px 0;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:9.5pt;line-height:1.35;color:var(--doc-ink)}
+.doc-afaire-h{font-weight:400;letter-spacing:0;text-transform:none;color:#4E5E59;font-size:8pt}
+.doc-afaire-l{list-style:none;margin:0;padding:0}
+.doc-afaire-l li{display:grid;grid-template-columns:5mm 20mm minmax(0,1fr);gap:4px;padding:2px 0;border-top:1px dotted var(--doc-line);break-inside:avoid}
+.doc-afaire-l li:first-child{border-top:0}
+.doc-afaire-l li.retard{font-weight:500}
+.doc-afaire-l li.retard .doc-afaire-x{border-left:3px solid var(--doc-ink);padding-left:6px}
+.doc-afaire.courrier .doc-afaire-l li{grid-template-columns:0 20mm minmax(0,1fr)}
+.doc-case{font-size:10pt;line-height:1.2}
+.doc-afaire-d{font-family:'IBM Plex Mono',monospace;font-size:8.5pt;padding-top:1px;white-space:nowrap}
+.doc-afaire-x{min-width:0;overflow-wrap:anywhere}
+.doc-tel-alerte{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--warn);background:var(--warn-tint);color:var(--warn-ink);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:500;white-space:nowrap}
+.btn.doc-tel-alerte:hover{filter:brightness(.97);background:var(--warn-tint)}
+.login-etab{margin-top:4px}
+.login-logo{display:block;width:190px;max-width:100%;height:auto;margin:6px 0 10px;background:#fff;border-radius:6px;padding:4px}
+.logo-zone{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.logo-apercu{display:block;width:45mm;max-width:100%;height:auto;background:#fff;border:1px solid var(--line);border-radius:6px;padding:4px}
+.logo-vide{font-size:12px;color:var(--muted);border:1px dashed var(--line-strong);border-radius:6px;padding:10px 12px}
 
 /* ---------- Responsive ---------- */
 @media (max-width:1400px){.grid.c21:has(.tbl),.grid.c11:has(.tbl){grid-template-columns:1fr}}
@@ -474,6 +528,7 @@ div.cr-edit{display:block;min-height:60px;padding:6px 8px} .cr-bloc{font-size:10
   .grid.c11{grid-template-columns:1fr}
   .dl div{grid-template-columns:1fr}
   .doc-cols,.doc-kv{grid-template-columns:1fr}
+  .doc-entete{flex-direction:column}.doc-entete-d{text-align:left}
   .carnet-page{padding:18px 14px;min-height:auto}
   .user-chip .who{display:none}
   .week-chip{display:none}
@@ -488,20 +543,31 @@ div.cr-edit{display:block;min-height:60px;padding:6px 8px} .cr-bloc{font-size:10
   .carnet-wrap{background:#fff;padding:0}
   .carnet-page{box-shadow:none;margin:0;width:auto;min-height:auto;padding:0 14mm;page-break-after:always;color:#000}
   .cr-sec:not(:has(li)):has(.cr-edit.vide){display:none}
-  .carnet-page .doc-kv,.carnet-page .doc-cols{grid-template-columns:1fr 1fr} /* A4 < 860 px : on garde les deux colonnes de l'écran (carnet, impressions, compte rendu) */
+  .carnet-page .doc-kv,.carnet-page .doc-cols{grid-template-columns:1fr 1fr}
+  .doc-entete{flex-direction:row!important}.doc-entete-d{text-align:right!important} /* en-tête commun : jamais empilé sur papier */
+  .doc-secu,.doc-afaire li,.doc-entete{break-inside:avoid} /* A4 < 860 px : on garde les deux colonnes de l'écran (carnet, impressions, compte rendu) */
   .carnet-page .doc-foot{position:static;margin-top:8mm;break-before:avoid} .carnet-page .doc-foot span:last-child{display:none} /* pied jamais seul sur une feuille */
   .carnet-page thead{display:table-header-group} .carnet-page tr,.carnet-page .doc-box{break-inside:avoid}
   .carnet-page:last-child{page-break-after:auto}
-  @page{size:A4;margin:12mm 0 14mm;@bottom-center{content:"Page " counter(page) " / " counter(pages);font:8pt 'IBM Plex Sans',sans-serif;color:#5F6E69}}
+  @page{size:A4;margin:12mm 0 14mm;@bottom-center{content:"Page " counter(page) " / " counter(pages);font:8pt 'IBM Plex Sans',sans-serif;color:#5F6E69}} /* identité du patient en haut à droite de chaque feuille (sauf la 1re) : R.identitePages, dans le document */
 }
+/* ===== Couloirs des documents : chaque chantier ajoute sa CSS juste après son marqueur ===== */
+/* ===== @carnet-a4 ===== */
+/* ===== @impressions ===== */
+/* ===== @compte-rendu ===== */
+/* ===== @carnet-patient ===== */
+/* ===== @rapport ===== */
+/* ===== @planning ===== */
 </style>
 <div id="app" class="app"></div>
 <div id="modal-root"></div>
 <div id="toast-root" class="toasts" role="status" aria-live="polite"></div>
 <div id="tooltip" class="tooltip" hidden></div>
 <script src="data.js"></script>
+<script src="etablissement.js"></script><!-- facultatif : identité de l’établissement (sans lui, identité générique) -->
 <script src="suivi.js"></script>
 <script src="core.js"></script>
+<script src="documents.js"></script>
 <script src="pages.js"></script>
 <script src="wizard.js"></script>
 <script src="livret-data.js"></script>
