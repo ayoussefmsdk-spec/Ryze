@@ -6,6 +6,13 @@
    écrites \u200E, \u2066…\u2069, \u00A0). « livret » devient « carnet » en
    français, comme dans la maquette. Les chaînes de _nouvelles (pédiatrie,
    pluriels arabes, jours de la semaine) sont à faire relire.
+   Version 0.4 (carnet remis une seule fois) : plus d'injection à la maison
+   (l'injection sous la peau est une séance de l'hôpital de jour), plus de
+   zone de questions ni de notes, plus de « marque » à compléter, dates et
+   doses à venir laissées en blanc ; consignes « contact varicelle, rougeole,
+   tuberculose », « yeux jaunes » (azathioprine, méthotrexate) et « hijama »
+   remises. Les textes nouveaux ou modifiés sont listés dans _aValider (à
+   faire valider par le médecin).
    Convention : chaque texte est { fr, ar } ; si = condition d'affichage
    (voie IV|SC|PO, sexe F|M, classe antiTNF|vedolizumab|antiIL|JAK,
    associe methotrexate|thiopurine|mesalazine) ; p = priorité (1 = indispensable).
@@ -13,7 +20,7 @@
 'use strict';
 window.RYZE = window.RYZE || {};
 window.RYZE.LIVRET = {
- "version": "0.3-carnet4p-relu (2026-09-30)",
+ "version": "0.4-carnet-unique (2026-10-10)",
  "titre": {
   "fr": "Mon carnet de suivi",
   "ar": "دفتر متابعتي"
@@ -231,8 +238,8 @@ window.RYZE.LIVRET = {
     "ar": "التسريب الوريدي في المستشفى"
    },
    "SC": {
-    "fr": "Injection à la maison",
-    "ar": "الحقن في المنزل"
+    "fr": "Injection sous la peau, à l’hôpital de jour",
+    "ar": "حقنة تحت الجلد في مستشفى النهار"
    },
    "PO": {
     "fr": "Comprimés",
@@ -286,8 +293,8 @@ window.RYZE.LIVRET = {
    "ar": "أُحضر معي في كل حصة:"
   },
   "apporteListe": {
-   "fr": "ce carnet · CIN + papiers AMO · derniers résultats · ordonnances · liste de mes médicaments",
-   "ar": "هذا الدفتر · البطاقة الوطنية ووثائق AMO · آخر النتائج · الوصفات · لائحة أدويتي"
+   "fr": "ce carnet · carnet de santé · CIN d’un parent + carte AMO · derniers résultats · ordonnances · liste des médicaments",
+   "ar": "هذا الدفتر · دفتر الصحة · البطاقة الوطنية لأحد الوالدين وبطاقة AMO · آخر النتائج · الوصفات · لائحة الأدوية"
   },
   "urgence": {
    "titre": {
@@ -450,12 +457,12 @@ window.RYZE.LIVRET = {
    "ar": "يُملأ في كل زيارة لمستشفى النهار"
   },
   "aideCocher": {
-   "fr": "Cochez et faites signer à chaque séance",
-   "ar": "ضعوا علامة واطلبوا التوقيع في كل حصة"
+   "fr": "À remplir et à signer par l’équipe à chaque séance",
+   "ar": "يملؤها الفريق ويوقّعها في كل حصة"
   },
   "aideDates": {
-   "fr": "Les dates sont prévues à l’avance. Elles peuvent changer : l’équipe corrige au stylo. Cochez la case quand la séance est faite.",
-   "ar": "التواريخ محددة مسبقًا، وقد تتغير: يصحّحها الفريق بخط اليد. ضعوا علامة في الخانة بعد إجراء الحصة."
+   "fr": "À chaque séance, l’équipe note sur la ligne suivante la date du prochain rendez-vous ; la dose donnée et la tolérance sont notées le jour de la séance.",
+   "ar": "في كل حصة، يكتب الفريق في السطر التالي تاريخ الموعد القادم؛ وتُسجَّل الجرعة المعطاة ومدى التحمّل يوم الحصة."
   },
   "legende": {
    "fr": "✓ fait · ✗ manqué · → reporté (nouvelle date à côté)",
@@ -503,8 +510,8 @@ window.RYZE.LIVRET = {
     "ar": "أُجريت بتاريخ"
    },
    "dose": {
-    "fr": "Dose (mg ou stylo)",
-    "ar": "الجرعة (ملغ أو قلم حقن)"
+    "fr": "Dose donnée",
+    "ar": "الجرعة المعطاة"
    },
    "poids": {
     "fr": "Poids (kg)",
@@ -539,52 +546,6 @@ window.RYZE.LIVRET = {
    "injection": {
     "fr": "Injection",
     "ar": "حقنة"
-   }
-  },
-  "injections": {
-   "titre": {
-    "fr": "Mes injections à la maison",
-    "ar": "حقني في المنزل"
-   },
-   "condition": {
-    "fr": "Si je fais mes injections à la maison",
-    "ar": "إذا كنت أحقن نفسي في المنزل"
-   },
-   "cols": {
-    "date": {
-     "fr": "Date",
-     "ar": "التاريخ"
-    },
-    "endroit": {
-     "fr": "Endroit",
-     "ar": "مكان الحقن"
-    },
-    "parQui": {
-     "fr": "Faite par",
-     "ar": "قام بها"
-    },
-    "fait": {
-     "fr": "Fait",
-     "ar": "تمّ"
-    },
-    "probleme": {
-     "fr": "Problème ? (rougeur, oubli…)",
-     "ar": "مشكلة؟ (احمرار، نسيان…)"
-    }
-   },
-   "oubli": {
-    "titre": {
-     "fr": "Si j’oublie une injection",
-     "ar": "إذا نسيت حقنة"
-    },
-    "texte": {
-     "fr": "Faites-la dès que vous y pensez, puis appelez l’hôpital de jour pour savoir quand faire la suivante. Ne faites jamais 2 injections pour rattraper.",
-     "ar": "قوموا بها بمجرد أن تتذكروا، ثم اتصلوا بمستشفى النهار لمعرفة موعد الحقنة التالية. لا تقوموا أبدًا بحقنتين لتعويض الحقنة المنسية."
-    }
-   },
-   "frigo": {
-    "fr": "Stylos au réfrigérateur (2 à 8 °C), jamais au congélateur.",
-    "ar": "الأقلام في الثلاجة (بين 2 و8 درجات)، وليس أبدًا في المجمّد."
    }
   },
   "report": {
@@ -622,6 +583,14 @@ window.RYZE.LIVRET = {
     "fr": "Motif d’arrêt",
     "ar": "سبب التوقف"
    }
+  },
+  "bienToleree": {
+   "fr": "Bien tolérée",
+   "ar": "تحمّل جيد"
+  },
+  "pause": {
+   "fr": "Traitement en pause : l’hôpital de jour vous rappellera pour la reprise.",
+   "ar": "العلاج متوقف مؤقتًا: سيتصل بكم مستشفى النهار من أجل استئنافه."
   }
  },
  "p3": {
@@ -639,8 +608,8 @@ window.RYZE.LIVRET = {
     "ar": "الفحص"
    },
    "quand": {
-    "fr": "À faire vers le",
-    "ar": "تُجرى في حدود تاريخ"
+    "fr": "Prévu le",
+    "ar": "التاريخ المقرر"
    },
    "fait": {
     "fr": "Fait le",
@@ -657,6 +626,10 @@ window.RYZE.LIVRET = {
    "visa": {
     "fr": "Signature / cachet",
     "ar": "التوقيع / الختم"
+   },
+   "vu": {
+    "fr": "Vu par le médecin",
+    "ar": "اطّلع عليه الطبيب"
    }
   },
   "examens": {
@@ -835,14 +808,64 @@ window.RYZE.LIVRET = {
    "fr": "Verso de ma carte",
    "ar": "ظهر بطاقتي"
   },
-  "questions": {
+  "plan": {
    "titre": {
-    "fr": "Mes questions pour le médecin",
-    "ar": "أسئلتي للطبيب"
+    "fr": "Examens prévus dans mon suivi",
+    "ar": "الفحوصات المبرمجة في متابعتي"
    },
-   "texte": {
-    "fr": "Écrivez vos questions ici avant le rendez-vous.",
-    "ar": "اكتبوا أسئلتكم هنا قبل الموعد."
+   "quand": {
+    "fr": "Quand ?",
+    "ar": "متى؟"
+   }
+  },
+  "dates": {
+   "fr": "Mes examens : dates (à remplir)",
+   "ar": "فحوصاتي: التواريخ (تُملأ)"
+  },
+  "priseDeSangNom": {
+   "fr": "Prise de sang : {nom}",
+   "ar": "تحليل الدم: {nom}"
+  },
+  "frequences": {
+   "chaqueSeance": {
+    "fr": "À chaque séance",
+    "ar": "في كل حصة"
+   },
+   "mois": {
+    "un": {
+     "fr": "Tous les mois",
+     "ar": "كل شهر"
+    },
+    "deux": {
+     "fr": "Tous les 2 mois",
+     "ar": "كل شهرين"
+    },
+    "peu": {
+     "fr": "Tous les {n} mois",
+     "ar": "كل {n} أشهر"
+    },
+    "beaucoup": {
+     "fr": "Tous les {n} mois",
+     "ar": "كل {n} شهرًا"
+    }
+   },
+   "ans": {
+    "un": {
+     "fr": "Tous les ans",
+     "ar": "كل سنة"
+    },
+    "deux": {
+     "fr": "Tous les 2 ans",
+     "ar": "كل سنتين"
+    },
+    "peu": {
+     "fr": "Tous les {n} ans",
+     "ar": "كل {n} سنوات"
+    },
+    "beaucoup": {
+     "fr": "Tous les {n} ans",
+     "ar": "كل {n} سنة"
+    }
    }
   }
  },
@@ -992,12 +1015,18 @@ window.RYZE.LIVRET = {
     {
      "fr": "Yeux ou peau jaunes, urines très foncées",
      "ar": "اصفرار العينين أو الجلد، بول داكن جدًا",
-     "p": 2
+     "p": 1,
+     "si": {
+      "associe": [
+       "thiopurine",
+       "methotrexate"
+      ]
+     }
     },
     {
-     "fr": "Contact avec un malade : tuberculose, varicelle, zona",
-     "ar": "مخالطة مريض بالسل أو جدري الماء أو الحزام الناري",
-     "p": 2
+     "fr": "Contact avec un malade : varicelle, rougeole, tuberculose",
+     "ar": "مخالطة مريض بجدري الماء أو الحصبة أو السل",
+     "p": 1
     }
    ]
   },
@@ -1023,11 +1052,6 @@ window.RYZE.LIVRET = {
      "p": 1
     },
     {
-     "fr": "Prendre 2 doses pour rattraper un oubli",
-     "ar": "أخذ جرعتين لتعويض جرعة منسية",
-     "p": 1
-    },
-    {
      "fr": "Cacher ma biothérapie au dentiste, chirurgien, pharmacien",
      "ar": "إخفاء علاجي البيولوجي عن طبيب الأسنان والجرّاح والصيدلي",
      "p": 1
@@ -1035,7 +1059,7 @@ window.RYZE.LIVRET = {
     {
      "fr": "Plantes, remèdes traditionnels, hijama sans demander",
      "ar": "الأعشاب، الوصفات التقليدية، الحجامة دون استشارة",
-     "p": 2
+     "p": 1
     }
    ]
   },
@@ -1049,10 +1073,6 @@ window.RYZE.LIVRET = {
     "ar": "قبل كل حصة، أضع علامة إذا كان الجواب « نعم »"
    },
    "titreParVoie": {
-    "SC": {
-     "fr": "Avant chaque séance ou injection, 5 questions — je coche si « oui »",
-     "ar": "قبل كل حصة أو حقنة، 5 أسئلة — أضع علامة إذا كان الجواب « نعم »"
-    },
     "PO": {
      "fr": "Avant de continuer mes comprimés, 5 questions — je coche si « oui »",
      "ar": "قبل أن أستمر في أقراصي، 5 أسئلة — أضع علامة إذا كان الجواب « نعم »"
@@ -1127,10 +1147,6 @@ window.RYZE.LIVRET = {
     }
    ]
   },
-  "notes": {
-   "fr": "Notes",
-   "ar": "ملاحظات"
-  },
   "hdj": {
    "fr": "Hôpital de jour",
    "ar": "مستشفى النهار"
@@ -1138,10 +1154,6 @@ window.RYZE.LIVRET = {
   "sinonUrgences": {
    "fr": "sinon : urgences",
    "ar": "وإلا: المستعجلات"
-  },
-  "marque": {
-   "fr": "marque",
-   "ar": "العلامة"
   },
   "carte": {
    "titreLong": {
@@ -1230,7 +1242,24 @@ window.RYZE.LIVRET = {
     "fr": "MAQUETTE — contenu à valider par l’équipe médicale avant toute utilisation",
     "ar": "نموذج أولي — يجب أن يراجع الفريق الطبي هذا المحتوى قبل أي استعمال"
    }
-  }
+  },
+  "numerosUrgence": [
+   {
+    "fr": "Urgences du CHU (24 h/24)",
+    "ar": "مستعجلات المستشفى الجامعي (24/24)",
+    "tel": "{urgences}"
+   },
+   {
+    "fr": "SAMU",
+    "ar": "الإسعاف الطبي (SAMU)",
+    "tel": "141"
+   },
+   {
+    "fr": "Protection civile (ambulance)",
+    "ar": "الوقاية المدنية (سيارة إسعاف)",
+    "tel": "15"
+   }
+  ]
  },
  "translit": {
   "infliximab": "إنفليكسيماب",
@@ -1413,6 +1442,133 @@ window.RYZE.LIVRET = {
    "cle": "p1.jours.0",
    "fr": "dimanche",
    "ar": "الأحد"
+  }
+ ],
+ "_aValider": [
+  {
+   "cle": "p1.voies.SC",
+   "fr": "Injection sous la peau, à l’hôpital de jour",
+   "ar": "حقنة تحت الجلد في مستشفى النهار"
+  },
+  {
+   "cle": "p1.apporteListe",
+   "fr": "ce carnet · carnet de santé · CIN d’un parent + carte AMO · derniers résultats · ordonnances · liste des médicaments",
+   "ar": "هذا الدفتر · دفتر الصحة · البطاقة الوطنية لأحد الوالدين وبطاقة AMO · آخر النتائج · الوصفات · لائحة الأدوية"
+  },
+  {
+   "cle": "p2.cols.dose",
+   "fr": "Dose donnée",
+   "ar": "الجرعة المعطاة"
+  },
+  {
+   "cle": "p2.aideCocher",
+   "fr": "À remplir et à signer par l’équipe à chaque séance",
+   "ar": "يملؤها الفريق ويوقّعها في كل حصة"
+  },
+  {
+   "cle": "p2.aideDates",
+   "fr": "À chaque séance, l’équipe note sur la ligne suivante la date du prochain rendez-vous ; la dose donnée et la tolérance sont notées le jour de la séance.",
+   "ar": "في كل حصة، يكتب الفريق في السطر التالي تاريخ الموعد القادم؛ وتُسجَّل الجرعة المعطاة ومدى التحمّل يوم الحصة."
+  },
+  {
+   "cle": "p2.bienToleree",
+   "fr": "Bien tolérée",
+   "ar": "تحمّل جيد"
+  },
+  {
+   "cle": "p2.pause",
+   "fr": "Traitement en pause : l’hôpital de jour vous rappellera pour la reprise.",
+   "ar": "العلاج متوقف مؤقتًا: سيتصل بكم مستشفى النهار من أجل استئنافه."
+  },
+  {
+   "cle": "p3.cols.quand",
+   "fr": "Prévu le",
+   "ar": "التاريخ المقرر"
+  },
+  {
+   "cle": "p3.cols.vu",
+   "fr": "Vu par le médecin",
+   "ar": "اطّلع عليه الطبيب"
+  },
+  {
+   "cle": "p3.plan.titre",
+   "fr": "Examens prévus dans mon suivi",
+   "ar": "الفحوصات المبرمجة في متابعتي"
+  },
+  {
+   "cle": "p3.plan.quand",
+   "fr": "Quand ?",
+   "ar": "متى؟"
+  },
+  {
+   "cle": "p3.dates",
+   "fr": "Mes examens : dates (à remplir)",
+   "ar": "فحوصاتي: التواريخ (تُملأ)"
+  },
+  {
+   "cle": "p3.priseDeSangNom",
+   "fr": "Prise de sang : {nom}",
+   "ar": "تحليل الدم: {nom}"
+  },
+  {
+   "cle": "p3.frequences.chaqueSeance",
+   "fr": "À chaque séance",
+   "ar": "في كل حصة"
+  },
+  {
+   "cle": "p3.frequences.mois.un",
+   "fr": "Tous les mois",
+   "ar": "كل شهر"
+  },
+  {
+   "cle": "p3.frequences.mois.deux",
+   "fr": "Tous les 2 mois",
+   "ar": "كل شهرين"
+  },
+  {
+   "cle": "p3.frequences.mois.peu",
+   "fr": "Tous les {n} mois",
+   "ar": "كل {n} أشهر"
+  },
+  {
+   "cle": "p3.frequences.mois.beaucoup",
+   "fr": "Tous les {n} mois",
+   "ar": "كل {n} شهرًا"
+  },
+  {
+   "cle": "p3.frequences.ans.un",
+   "fr": "Tous les ans",
+   "ar": "كل سنة"
+  },
+  {
+   "cle": "p3.frequences.ans.deux",
+   "fr": "Tous les 2 ans",
+   "ar": "كل سنتين"
+  },
+  {
+   "cle": "p3.frequences.ans.peu",
+   "fr": "Tous les {n} ans",
+   "ar": "كل {n} سنوات"
+  },
+  {
+   "cle": "p3.frequences.ans.beaucoup",
+   "fr": "Tous les {n} ans",
+   "ar": "كل {n} سنة"
+  },
+  {
+   "cle": "p4.orange.items[contact]",
+   "fr": "Contact avec un malade : varicelle, rougeole, tuberculose",
+   "ar": "مخالطة مريض بجدري الماء أو الحصبة أو السل"
+  },
+  {
+   "cle": "p4.orange.items[yeux jaunes] (affiché sous azathioprine ou méthotrexate)",
+   "fr": "Yeux ou peau jaunes, urines très foncées",
+   "ar": "اصفرار العينين أو الجلد، بول داكن جدًا"
+  },
+  {
+   "cle": "p4.jamais.items[hijama] (remplace « 2 doses »)",
+   "fr": "Plantes, remèdes traditionnels, hijama sans demander",
+   "ar": "الأعشاب، الوصفات التقليدية، الحجامة دون استشارة"
   }
  ]
 };
