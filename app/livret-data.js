@@ -11,14 +11,8 @@
    zone de questions ni de notes, plus de « marque » à compléter, dates et
    doses à venir laissées en blanc ; consignes « contact varicelle, rougeole,
    tuberculose », « yeux jaunes » (azathioprine, méthotrexate) et « hijama »
-   remises. Version 0.5 (8 pages A5 fixes, décision D1) : couverture avec
-   3 consignes clés (p1.consignes), « Dose : notée à chaque séance »,
-   « Autres traitements » à remplir, titres « Mes examens » et « Mes
-   rendez-vous », page urgences en version courte (p4.court : sélection de
-   textes déjà relus, dans l'ordre d'importance ; carnet.js imprime les 4
-   premiers rouges, les 3 premiers oranges et les 3 « à ne jamais faire »). Les textes nouveaux ou modifiés
-   sont listés dans _aValider (à faire valider par le médecin) ; les clés
-   devenues inutilisées sont gardées (inoffensives).
+   remises. Les textes nouveaux ou modifiés sont listés dans _aValider (à
+   faire valider par le médecin).
    Convention : chaque texte est { fr, ar } ; si = condition d'affichage
    (voie IV|SC|PO, sexe F|M, classe antiTNF|vedolizumab|antiIL|JAK,
    associe methotrexate|thiopurine|mesalazine) ; p = priorité (1 = indispensable).
@@ -26,7 +20,7 @@
 'use strict';
 window.RYZE = window.RYZE || {};
 window.RYZE.LIVRET = {
- "version": "0.5-carnet-8-pages (2026-10-11)",
+ "version": "0.4-carnet-unique (2026-10-10)",
  "titre": {
   "fr": "Mon carnet de suivi",
   "ar": "دفتر متابعتي"
@@ -218,18 +212,6 @@ window.RYZE.LIVRET = {
    "tt-autres": {
     "fr": "Autres médicaments pour ma maladie",
     "ar": "أدوية أخرى لمرضي"
-   },
-   "dose": {
-    "fr": "Dose",
-    "ar": "الجرعة"
-   },
-   "doseSeance": {
-    "fr": "notée à chaque séance (pages 2 à 4)",
-    "ar": "تُسجَّل في كل حصة (الصفحات 2 إلى 4)"
-   },
-   "autresTrt": {
-    "fr": "Autres traitements",
-    "ar": "علاجات أخرى"
    }
   },
   "classes": {
@@ -328,20 +310,6 @@ window.RYZE.LIVRET = {
    "fr": "Apportez ce carnet à chaque séance",
    "ar": "أحضروا هذا الدفتر في كل حصة"
   },
-  "consignes": [
-   {
-    "fr": "Fièvre à 38 °C ou plus, ou signe qui vous inquiète : appelez l’hôpital de jour",
-    "ar": "حمى 38 درجة أو أكثر، أو أي علامة تقلقكم: اتصلوا بمستشفى النهار"
-   },
-   {
-    "fr": "Pas de vaccin vivant sans avis (fièvre jaune, ROR, BCG, varicelle)",
-    "ar": "ممنوع أي لقاح حيّ دون استشارة (الحمى الصفراء، الحصبة ROR، السل BCG، جدري الماء)"
-   },
-   {
-    "fr": "Apportez ce carnet à chaque séance",
-    "ar": "أحضروا هذا الدفتر في كل حصة"
-   }
-  ],
   "allergiesAucune": {
    "fr": "Aucune allergie connue",
    "ar": "لا توجد حساسية معروفة"
@@ -795,10 +763,6 @@ window.RYZE.LIVRET = {
     "fr": "Mon prochain rendez-vous",
     "ar": "موعدي القادم"
    },
-   "planning": {
-    "fr": "Mes rendez-vous",
-    "ar": "مواعيدي"
-   },
    "cols": {
     "date": {
      "fr": "Date",
@@ -843,10 +807,6 @@ window.RYZE.LIVRET = {
   "versoCarte": {
    "fr": "Verso de ma carte",
    "ar": "ظهر بطاقتي"
-  },
-  "titreCourt": {
-   "fr": "Mes examens",
-   "ar": "فحوصاتي"
   },
   "plan": {
    "titre": {
@@ -1299,67 +1259,7 @@ window.RYZE.LIVRET = {
     "ar": "الوقاية المدنية (سيارة إسعاف)",
     "tel": "15"
    }
-  ],
-  "court": {
-   "rouge": [
-    {
-     "fr": "Gêne pour respirer, gonflement du visage ou de la gorge",
-     "ar": "صعوبة في التنفس، تورّم في الوجه أو الحلق"
-    },
-    {
-     "fr": "Beaucoup de sang dans les selles (ou plus de 6 fois par jour), caillots, malaise",
-     "ar": "دم كثير في البراز (أو أكثر من 6 مرات في اليوم)، كتل دموية، إحساس بالإغماء"
-    },
-    {
-     "fr": "Ventre très douloureux, gonflé, dur, plus de gaz ni selles",
-     "ar": "بطن مؤلم جدًا ومنتفخ وصلب، توقف الغازات والبراز"
-    },
-    {
-     "fr": "Vomissements répétés : impossible de boire",
-     "ar": "قيء متكرر: لا تستطيعون الشرب"
-    },
-    {
-     "fr": "Fièvre avec frissons forts, grande faiblesse ou somnolence",
-     "ar": "حمى مع قشعريرة قوية، ضعف شديد أو نعاس غير عادي"
-    }
-   ],
-   "orange": [
-    {
-     "fr": "Fièvre à 38 °C ou plus, ou frissons",
-     "ar": "حمى 38 درجة أو أكثر، أو قشعريرة"
-    },
-    {
-     "fr": "Plus de selles, de sang ou de douleurs depuis 2 à 3 jours",
-     "ar": "زيادة في التبرز أو الدم أو الألم منذ 2 إلى 3 أيام"
-    },
-    {
-     "fr": "Contact avec un malade : varicelle, rougeole, tuberculose",
-     "ar": "مخالطة مريض بجدري الماء أو الحصبة أو السل"
-    },
-    {
-     "fr": "Brûlures en urinant, plaie rouge, dent qui fait mal",
-     "ar": "حرقة عند التبول، جرح أحمر، ألم في الأسنان"
-    },
-    {
-     "fr": "Un autre médecin me propose : antibiotique, cortisone, vaccin, opération",
-     "ar": "طبيب آخر يقترح عليّ: مضاد حيوي، كورتيزون، لقاح، عملية جراحية"
-    }
-   ],
-   "jamais": [
-    {
-     "fr": "Arrêter ou décaler mon traitement sans avis",
-     "ar": "إيقاف علاجي أو تأجيله دون استشارة"
-    },
-    {
-     "fr": "Anti-inflammatoires (ibuprofène…), cortisone sans avis",
-     "ar": "مضادات الالتهاب مثل Ibuprofène (إيبوبروفين)، أو كورتيزون، دون استشارة"
-    },
-    {
-     "fr": "Plantes, remèdes traditionnels, hijama sans demander",
-     "ar": "الأعشاب، الوصفات التقليدية، الحجامة دون استشارة"
-    }
-   ]
-  }
+  ]
  },
  "translit": {
   "infliximab": "إنفليكسيماب",
@@ -1664,42 +1564,6 @@ window.RYZE.LIVRET = {
    "cle": "p4.jamais.items[hijama] (remplace « 2 doses »)",
    "fr": "Plantes, remèdes traditionnels, hijama sans demander",
    "ar": "الأعشاب، الوصفات التقليدية، الحجامة دون استشارة"
-  }
-,
-  {
-   "cle": "p1.consignes[0] (couverture : 1re consigne clé, 1re phrase de p1.urgence.texte)",
-   "fr": "Fièvre à 38 °C ou plus, ou signe qui vous inquiète : appelez l’hôpital de jour",
-   "ar": "حمى 38 درجة أو أكثر، أو أي علامة تقلقكم: اتصلوا بمستشفى النهار"
-  },
-  {
-   "cle": "p1.consignes[1] (couverture : 2e consigne clé, d’après p4.jamais et la carte)",
-   "fr": "Pas de vaccin vivant sans avis (fièvre jaune, ROR, BCG, varicelle)",
-   "ar": "ممنوع أي لقاح حيّ دون استشارة (الحمى الصفراء، الحصبة ROR، السل BCG، جدري الماء)"
-  },
-  {
-   "cle": "p1.traitement.dose",
-   "fr": "Dose",
-   "ar": "الجرعة"
-  },
-  {
-   "cle": "p1.traitement.doseSeance (valeur de la ligne « Dose »)",
-   "fr": "notée à chaque séance (pages 2 à 4)",
-   "ar": "تُسجَّل في كل حصة (الصفحات 2 إلى 4)"
-  },
-  {
-   "cle": "p1.traitement.autresTrt (ligne à remplir)",
-   "fr": "Autres traitements",
-   "ar": "علاجات أخرى"
-  },
-  {
-   "cle": "p3.titreCourt (pages 5 et 6)",
-   "fr": "Mes examens",
-   "ar": "فحوصاتي"
-  },
-  {
-   "cle": "p3.rdv.planning (page 7)",
-   "fr": "Mes rendez-vous",
-   "ar": "مواعيدي"
   }
  ]
 };
