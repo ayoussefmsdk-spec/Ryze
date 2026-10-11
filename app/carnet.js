@@ -147,7 +147,7 @@
   /* dose réellement donnée d'une séance faite : « 325 mg » */
   const doseDonnee = x => { if (x.dose != null && x.dose !== '' && !isNaN(+x.dose) && +x.dose > 0) return `${nb(+x.dose)} mg`; const t = String(x.doseTexte || ''); const m = /→\s*([\d.,]+)\s*mg/.exec(t) || /^\s*([\d.,]+)\s*mg\b/.exec(t); return m ? `${m[1].replace('.', ',')} mg` : ''; };
   /* tolérance d'une séance faite : « Bien tolérée », ou la réaction (nature seulement, sans le détail professionnel) */
-  const toleranceHTML = x => { const t = String(x.tolerance || '').trim(); if (!t) return ''; const seg = t.split(/\s+—\s+/).find(s => R.estReaction(s));
+  const toleranceHTML = x => { const t = String(x.tolerance || '').trim(); if (!t) return ''; const seg = R.estReaction(t) ? t.split(/\s+—\s+/).find(s => R.estReaction(s)) || t : null; /* même règle que les autres documents : « Bonne — … » choisi dans la fenêtre n'est pas une réaction */
     if (seg) { let h = seg.split(/\s+:\s+/)[0].trim(); if (!R.estReaction(h)) h = seg.trim(); h = h.charAt(0).toUpperCase() + h.slice(1); if (h.length > 140) h = h.slice(0, 140).replace(/\s+\S*$/, '') + '…'; return `<span class="pre reac">⚠ ${esc(h)}</span>`; }
     return /^(bonne|bien tol|ras\b)/i.test(t) ? pre(bi(L().p2.bienToleree)) : ''; };
   const trSeance = r => { const x = r.x, f = !!x, cls = f ? 'fait' : 'blanc'; const ide = f && x.ide && R.userName(x.ide) !== '—' ? R.userName(x.ide) : '';
