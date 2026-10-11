@@ -32,12 +32,14 @@
   const bi2 = (v, cls, vals) => v ? `<div class="bi2${cls ? ' ' + cls : ''}"><div class="fr">${insec(remplir(esc(fr(v)), vals, 'fr'))}</div>${ar(v) ? `<div class="ar" lang="ar" dir="rtl">${insec(remplir(esc(ar(v)), vals, 'ar'))}</div>` : ''}</div>` : '';
   const fill = () => '<span class="fill"></span>';
   /* ligne « libellé : valeur » ; valeur : chaîne (échappée, ou LTR isolée), paire bilingue, ou vide (ligne à compléter) */
-  const champ = (label, val, o = {}) => `<div class="f${o.cls ? ' ' + o.cls : ''}"><span class="lab">${bi(label)}</span><span class="val${val ? '' : ' libre'}">${val ? (typeof val === 'object' ? bi(val) : o.html ? val : (o.ltr ? ltr(val) : esc(val))) : ''}</span></div>`;
+  const champ = (label, val, o = {}) => `<div class="f${o.cls ? ' ' + o.cls : ''}${typeof val === 'string' && val.length > 42 ? ' long' : ''}"><span class="lab">${bi(label)}</span><span class="val${val ? '' : ' libre'}">${val ? (typeof val === 'object' ? bi(val) : o.html ? val : (o.ltr ? ltr(val) : esc(val))) : ''}</span></div>`;
   const titreBloc = (v, cls) => `<h3 class="bt${cls ? ' ' + cls : ''}">${bi(v)}</h3>`;
   const chk = () => '<span class="chk"></span>';
   const pre = h => `<span class="pre">${h}</span>`;
   const dt = s => s ? R.fmtDate(s) : '';
   const dtPasse = s => s && s <= R.today() ? R.fmtDate(s) : ''; /* date à venir : case laissée en blanc (carnet non réimprimé) */
+  /* « Paracétamol 1 g + dexchlorphéniramine 5 mg IV » → « Paracétamol + dexchlorphéniramine IV » (doses retirées : pas de dose fixe dans le carnet) */
+  const sansDose = t => String(t || '').replace(/\s*\d+(?:[.,]\d+)?\s*(?:mg\s*\/\s*kg|mg|g|µg|mcg|ml|UI)(?![A-Za-zÀ-ÿ0-9])/gi, '').replace(/\s{2,}/g, ' ').replace(/\s+([+,;])/g, ' $1').trim();
   /* téléphones vides ou factices (« 05 XX… ») : ligne à remplir à la main (R.telImprimable, documents.js) ; jamais coupés */
   const A_REMPLIR = '<span class="a-remplir">………………</span>';
   const tel = v => R.telImprimable(v) ? ltr(R.telImprimable(v)) : A_REMPLIR;
@@ -95,13 +97,14 @@
     const ddn = p.ddn && !isNaN(R.parse(p.ddn)) ? `${R.ddnTxt(p)}${R.ageDoc(p) ? ' (' + R.ageDoc(p) + ')' : ''}` : '';
     const pi = R.poidsInitial(p), pd = R.dernierPoids(p); const poidsTxt = pd && pi && pd.poids !== pi ? `${nb(pi)} kg · ${nb(pd.poids)} kg (${dt(pd.date)})` : (pi || pd ? `${nb(pi || pd.poids)} kg` : '');
     const allergies = vide(p.allergies) ? '' : p.allergies; /* « — » = non renseigné (assistant) : ligne laissée à compléter, jamais « Aucune allergie connue » */
-    const pm = R.premedicationEnCours ? R.premedicationEnCours(p) : null; const premed = pm ? pm.texte : '';
+    const pm = R.premedicationEnCours ? R.premedicationEnCours(p) : null; const premed = pm ? sansDose(pm.texte) : ''; /* carnet remis une seule fois : noms des médicaments, jamais leur dose (elle suit le poids de l'enfant) */
     const dateDiag = p.dateDiag && !isNaN(R.parse(p.dateDiag)) ? R.fmtDate(p.dateDiag, { month: '2-digit', year: 'numeric' }) : '';
     const medecin = R.userName(p.medecinId) === '—' ? '' : R.userName(p.medecinId);
     const rdvLigne = `<tr><td></td><td></td><td></td><td class="c">${chk()}</td></tr>`;
-    /* valeurs longues (allergies, autres médicaments, prémédication, horaires…) : 2 lignes de rendez-vous au lieu de 3, puis présentation resserrée */
-    const long = [allergies, vide(p.traitementsAssocies) ? '' : p.traitementsAssocies, c.voies.includes('IV') ? premed : '', vide(p.specialite) ? '' : p.specialite, e.chef, vide(p.groupeSanguin) ? '' : 'x'.repeat(20)].reduce((a, x) => a + String(x || '').length, 0) + Math.max(0, fr(c.horaires).length - 40) + Math.max(0, (p.prenom || '').length + (p.nom || '').length - 28) * 3;
-    const nbRdv = long > 70 ? 2 : 3, dense = long > 150;
+    /* valeurs longues (allergies, autres médicaments, prémédication, horaires, nom), bandeau de pause : 3 lignes de rendez-vous, puis 2, présentation resserrée, 1 ligne, enfin sans l'encadré « J'apporte » ; les allergies ne sont jamais coupées */
+    const long = [allergies, vide(p.traitementsAssocies) ? '' : p.traitementsAssocies, c.voies.includes('IV') ? premed : '', vide(p.specialite) ? '' : p.specialite, e.chef, vide(p.groupeSanguin) ? '' : 'x'.repeat(20)].reduce((a, x) => a + String(x || '').length, 0) + Math.max(0, fr(c.horaires).length - 40) + Math.max(0, (p.prenom || '').length + (p.nom || '').length - 28) * 3 + (c.susp ? 40 : 0)
+      + Math.max(0, fr(commentBi(c)).length + ar(commentBi(c)).length - 60) + Math.max(0, String(c.dci || '').length - 14) * 2; /* « Comment » d'un protocole IV puis SC (4 à 5 lignes en FR et AR), DCI longue (« Infliximab SC (CT-P13 SC) ») */
+    const dense = long > 150, nbRdv = (dense && c.susp) || long > 260 ? 1 : long > 95 ? 2 : 3, sansApporte = long > 320;
     return `<section class="page p1${dense ? ' dense' : ''}">
       <header class="couv">${R.logoHTML('lv-logo')}<div class="couv-etab">${e.etablissement ? `<b>${esc(e.etablissement)}</b>` : ''}${etabLignes(e).map(x => `<span>${esc(x)}</span>`).join('')}<span class="couv-hdj">${esc(e.hdj)}</span></div></header>
       <div class="couv-titre"><div class="titre">${bi(Lv.titre)}</div><div class="sous">${bi(Lv.sousTitre)}</div></div>
@@ -123,7 +126,7 @@
           ${champ(mal['maladie-nom'], c.maladie)}${champ(mal['date-diag'], dateDiag, { ltr: true })}
           ${titreBloc(trt.titre)}
           ${champ(trt['tt-nom'], c.dci ? c.dciBi : '')}${vide(p.specialite) ? '' : champ(trt['tt-boite'], p.specialite)}${champ(trt['tt-comment'], commentBi(c))}${champ(trt['tt-rythme'], rythmeBi(c) || '')}${champ(trt['tt-debut'], dtPasse(R.j0(p) || p.dateDebut), { ltr: true })}${c.voies.includes('IV') && premed ? champ(trt['tt-premed'], premed) : ''}${champ(trt['tt-autres'], vide(p.traitementsAssocies) ? '' : p.traitementsAssocies)}
-          <div class="apporte"><b>${bi(P1.apporte)}</b> ${bi2(P1.apporteListe)}</div>
+          ${sansApporte ? '' : `<div class="apporte"><b>${bi(P1.apporte)}</b> ${bi2(P1.apporteListe)}</div>`}
         </div>
       </div>
       <footer class="pied"><span class="maq">imprimé le ${R.fmtDate(c.t)} par Ryze</span><span class="num">${fr(Lv.page)} 1/${NB_PAGES}</span></footer>
@@ -166,9 +169,9 @@
     const T = L().p2.retro, p = c.p; if (!T) return { html: '', h: 0 }; const cyc = p.cycleCourant || 1;
     const hist = (p.historiqueProtocoles || []).filter(h => h && !h.retro).sort((a, b) => (a.cycle || 1) - (b.cycle || 1));
     const avant = hist.filter(h => (h.cycle || 1) < cyc).map(h => { const suiv = hist.find(x => (x.cycle || 1) > (h.cycle || 1)); return { protocoleId: h.protocoleId, specialite: h.specialite, dateDebut: h.dateDebut, dateFin: h.dateFin || (suiv && suiv.dateDebut) || '' }; });
-    const L0 = [...R.retroCycles(p), ...avant].filter(h => h.protocoleId || h.dateDebut); if (!L0.length) return { html: '', h: 0 };
+    const L0 = [...R.retroCycles(p), ...avant].filter(h => h.protocoleId || h.dateDebut).sort((a, b) => String(a.dateDebut || '').localeCompare(String(b.dateDebut || ''))); if (!L0.length) return { html: '', h: 0 }; /* ordre des dates ; au-delà de 5, les plus récents (le dernier traitement arrêté n'est jamais perdu) */
     /* carnet remis à la famille : médicament et période seulement (nombre de séances, motif d'arrêt et remarques restent dans le carnet de suivi des soignants) ; spécialité seulement si elle est renseignée */
-    const rows = L0.slice(0, 5).map(h => { const pr = R.proto(h.protocoleId) || {}; return `<tr><td><b>${esc(String(pr.dci || h.protocoleId || '').split(' — ')[0])}</b>${vide(h.specialite) ? '' : ` <span class="pre">(${esc(h.specialite)})</span>`}</td><td class="c">${ltr(dt(h.dateDebut))}${h.dateFin ? ` → ${ltr(dtPasse(h.dateFin) || dt(h.dateFin))}` : ''}</td></tr>`; }).join('');
+    const rows = L0.slice(-5).map(h => { const pr = R.proto(h.protocoleId) || {}; return `<tr><td><b>${esc(String(pr.dci || h.protocoleId || '').split(' — ')[0])}</b>${vide(h.specialite) ? '' : ` <span class="pre">(${esc(h.specialite)})</span>`}</td><td class="c">${ltr(dt(h.dateDebut))}${h.dateFin ? ` → ${dtPasse(h.dateFin) ? ltr(dtPasse(h.dateFin)) : ''}` : ''}</td></tr>`; }).join(''); /* fin à venir (relais programmé) : laissée en blanc, à compléter à la main */
     return { html: `<h3 class="bt retro-t">${bi(T.titre)}</h3><table class="lv-tab retro"><thead><tr><th>${bi(T.medicament)}</th><th>${bi(T.periode)}</th></tr></thead><tbody>${rows}</tbody></table>`, h: 13.5 + Math.min(5, L0.length) * 5.8 };
   }
 
@@ -186,30 +189,31 @@
     } else { const vus = new Set(); (c.p.surveillance || []).filter(s => s.mode === 'echeance' && s.statut === 'prevue').forEach(s => { const k = s.id + '|' + (s.nom || ''); if (vus.has(k)) return; vus.add(k); out.push({ id: s.id, nom: s.nom, label: s.label, per: s.periode || null }); }); }
     return out.map(x => ({ id: x.id, lib: libelleExamen(x), freq: x.per ? frequenceBi(x.per) : null }));
   }
-  /* hauteur estimée (mm) d'un texte bilingue empilé : fr sur nf caractères par ligne, ar sur na */
-  const hBi = (v, nf, na, lf, la) => Math.ceil((fr(v).length || 1) / nf) * lf + (ar(v) ? Math.ceil(ar(v).length / na) * la : 0);
   function pageExamens(c, n) {
     const Lv = L(), P3 = Lv.p3, col = P3.cols; const plan = planExamens(c); const ids = new Set(plan.map(x => x.id));
     const conseils = (P3.conseils.items || []).slice(0, 3).filter(i => (/taux du médicament/.test(fr(i)) && ids.has('tdm')) || (/calprotectine/.test(fr(i)) && ids.has('calpro')) || (/Coloscopie/.test(fr(i)) && ids.has('colo')));
     const rapportez = (P3.conseils.items || []).find(i => /Rapportez tous/.test(fr(i)));
     /* lignes vides dans la hauteur restante (positions en mm depuis le haut de la page ; bas utile : 205 mm, encadré « Rapportez » : 10 mm) */
     const hPlan = x => 7.2 + Math.max(0, Math.ceil(fr(x.lib).length / 80) - 1) * 2.9 + Math.max(0, Math.ceil(ar(x.lib).length / 80) - 1) * 3.2;
+    const hPlanSerre = x => 5.2 + Math.max(0, Math.ceil((fr(x.lib).length + ar(x.lib).length + 3) / 72) - 1) * 2.7; /* plan resserré : français et arabe sur une ligne */
     const hConseil = i => 1.2 + Math.ceil(fr(i).length / 126) * 2.85 + Math.ceil(ar(i).length / 140) * 3.2;
-    const haut = 28 + (plan.length ? 12.8 + plan.reduce((a, x) => a + hPlan(x), 0) : 0) + (conseils.length ? 6.5 + conseils.reduce((a, i) => a + hConseil(i), 0) : 0) + 6.5 + 7.4;
-    const nbLignes = Math.max(3, Math.min(18, Math.floor((205 - (rapportez ? 10.5 : 1) - haut) / 7.65)));
+    const haut = hp => 28 + (plan.length ? 12.8 + plan.reduce((a, x) => a + hp(x), 0) : 0) + (conseils.length ? 6.5 + conseils.reduce((a, i) => a + hConseil(i), 0) : 0) + 6.5 + 7.4;
+    const lignes = hp => Math.floor((205 - (rapportez ? 10.5 : 1) - haut(hp)) / 7.65);
+    /* plan chargé (moins de 3 lignes vides) : plan resserré ; lignes vides de 0 à 18 — l'encadré « Rapportez » n'est jamais rogné (R.carnetPatientAjuster vérifie à l'affichage) */
+    const serre = plan.length > 0 && lignes(hPlan) < 3 && lignes(hPlanSerre) > lignes(hPlan), nbLignes = Math.max(0, Math.min(18, lignes(serre ? hPlanSerre : hPlan)));
     const lignePlan = x => `<tr><td class="ex">${bi(x.lib)}</td><td class="fq">${x.freq ? bi(x.freq) : ''}</td></tr>`;
     return `<section class="page p3">${enTete(c, n, P3.titre)}
       <div class="titre-page"><h2>${bi(P3.titre)}</h2></div>${bi2(P3.intro, 'intro')}
-      ${plan.length ? `${titreBloc(P3.plan.titre)}<table class="lv-tab plan"><colgroup><col><col style="width:40mm"></colgroup><thead><tr><th>${bi(col.examen)}</th><th>${bi(P3.plan.quand)}</th></tr></thead><tbody>${plan.map(lignePlan).join('')}</tbody></table>` : ''}
+      ${plan.length ? `${titreBloc(P3.plan.titre)}<table class="lv-tab plan${serre ? ' serre' : ''}"><colgroup><col><col style="width:40mm"></colgroup><thead><tr><th>${bi(col.examen)}</th><th>${bi(P3.plan.quand)}</th></tr></thead><tbody>${plan.map(lignePlan).join('')}</tbody></table>` : ''}
       ${conseils.length ? `<div class="conseils">${titreBloc(P3.conseils.titre)}${conseils.map(i => `<div class="li">${bi2(i)}</div>`).join('')}</div>` : ''}
-      ${titreBloc(P3.dates)}<table class="lv-tab examens"><colgroup><col><col style="width:22mm"><col style="width:22mm"><col style="width:36mm"></colgroup><thead><tr><th>${bi(col.examen)}</th><th>${bi(col.quand)}</th><th>${bi(col.fait)}</th><th>${bi(col.vu)}</th></tr></thead><tbody>${`<tr class="blanc"><td></td><td></td><td></td><td>${chk()}</td></tr>`.repeat(nbLignes)}</tbody></table>
+      ${nbLignes > 0 ? `<div class="dates-ex">${titreBloc(P3.dates)}<table class="lv-tab examens"><colgroup><col><col style="width:22mm"><col style="width:22mm"><col style="width:36mm"></colgroup><thead><tr><th>${bi(col.examen)}</th><th>${bi(col.quand)}</th><th>${bi(col.fait)}</th><th>${bi(col.vu)}</th></tr></thead><tbody>${`<tr class="blanc"><td></td><td></td><td></td><td>${chk()}</td></tr>`.repeat(nbLignes)}</tbody></table></div>` : ''}
       ${rapportez ? `<div class="rapportez">${bi2(rapportez)}</div>` : ''}
     </section>`;
   }
 
   /* ---------- urgences (page 6) : rouge et orange, 9 pt au moins, numéros en gros ---------- */
   const listeItems = (arr, cls) => `<ul class="items${cls ? ' ' + cls : ''}">${arr.map(i => `<li>${bi(i)}</li>`).join('')}</ul>`;
-  /* hauteur estimée (mm) d'un élément de liste à 9 pt : colonne française ≈ 40 caractères par ligne, arabe ≈ 44 */
+  /* hauteur estimée (mm) d'un élément de liste à 9 pt (mesurée) : colonne française ≈ 47 caractères par ligne, arabe ≈ 44, 3,85 mm par ligne */
   const hItem = i => 1.3 + Math.max(Math.ceil((fr(i).length || 1) / 47), ar(i) ? Math.ceil(ar(i).length / 44) : 0) * 3.85;
   const URG_BAS = 204.5, URG_FIXE = 65.5, HOR_MM = 5.2, P7_LIBRE = 27, SUITE_FIXE = 12; /* bas utile de la page 6, hauteur fixe (bandeau, titres, numéros, marges), ligne des horaires */
   function listesUrgence(c) {
@@ -340,6 +344,7 @@
 .livret .f{display:flex;flex-wrap:wrap;gap:0 1.5mm;padding:.45mm 0;border-bottom:.25pt dotted var(--lv-line);align-items:baseline;min-height:3.6mm}
 .livret .f .lab{flex:0 1 auto;color:var(--lv-ink2)}
 .livret .f .val{flex:1 1 18mm;font-weight:500}
+.livret .f.long .val{flex-basis:100%} /* valeur longue (allergies, autres médicaments) : sous le libellé, sur toute la largeur */
 .livret .fill{display:inline-block;min-width:14mm;border-bottom:.3pt solid var(--lv-ink2);height:1em;vertical-align:baseline;flex:1}
 .livret .chk{display:inline-block;width:3.6mm;height:3.6mm;border:.45pt solid var(--lv-ink);border-radius:.5mm;vertical-align:-0.8mm;margin-right:.6mm;background:#fff}
 .livret .pre{color:var(--lv-gris);font-style:italic}
@@ -349,8 +354,8 @@
 .livret .pied{margin-top:auto;padding-top:.7mm;border-top:.35pt solid var(--lv-line);display:flex;justify-content:flex-end;gap:3mm;font-size:6.2pt;color:var(--lv-ink2);line-height:1.25}
 .livret .maq{color:var(--lv-gris);font-size:6pt}
 .livret .run{display:flex;justify-content:space-between;align-items:baseline;gap:3mm;font-size:6.6pt;color:var(--lv-ink2);border-bottom:.35pt solid var(--lv-line);padding-bottom:.5mm;margin-bottom:1.2mm}
-.livret .run .run-id{color:var(--lv-ink)}
-.livret .run .run-t{flex:1;text-align:center}
+.livret .run .run-id{color:var(--lv-ink);white-space:nowrap;flex:none}
+.livret .run .run-t{flex:1 1 0;min-width:0;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} /* bandeau sur une ligne : le titre s'efface devant un nom long */
 /* couverture */
 .livret .couv{display:flex;align-items:center;gap:3.5mm;padding-bottom:1.6mm;border-bottom:.5pt solid var(--lv-acc)}
 .livret .lv-logo{height:15mm;width:auto;max-width:40mm;object-fit:contain;flex:none}
@@ -367,7 +372,7 @@
 .livret .nom-band .remis{font-size:6.8pt;color:var(--lv-ink2);display:flex;flex-wrap:wrap;gap:.6mm 3mm;align-items:baseline}
 .livret .nom-band .remis > span{white-space:nowrap}
 .livret .nom-band .remis .fill{min-width:16mm;flex:0 0 auto}
-.livret .p1.dense .f{padding:.25mm 0;min-height:3.2mm}.livret .p1.dense .bt{margin:1mm 0 .4mm}.livret .p1.dense .apporte{margin-top:1mm;padding:.8mm 1.4mm}
+.livret .p1.dense .f{padding:.25mm 0;min-height:3.2mm;font-size:6.9pt}.livret .p1.dense .bt{margin:1mm 0 .4mm}.livret .p1.dense .apporte{margin-top:1mm;padding:.8mm 1.4mm}
 .livret .pause{margin:1.2mm 0 .4mm;padding:1mm 2mm;border:.8pt solid var(--lv-orange);border-left:2mm solid var(--lv-orange);border-radius:.8mm;background:var(--lv-orange-t);font-weight:600;font-size:8pt;line-height:1.25}
 .livret .rdv-couv .bt{margin-top:1.4mm}
 .livret .cols{display:grid;grid-template-columns:1fr 1fr;gap:0 4mm;align-items:start}
@@ -415,6 +420,7 @@
 .livret .plan td.ex .sep,.livret .plan td.fq .sep{display:none}
 .livret .plan td.ex .ar,.livret .plan td.fq .ar{display:block}
 .livret .plan td.fq{font-weight:600}
+.livret .plan.serre td{height:5mm;font-size:6.3pt;line-height:1.15;padding-top:.3mm;padding-bottom:.3mm}.livret .plan.serre td.ex .ar,.livret .plan.serre td.fq .ar{display:inline}.livret .plan.serre td.ex .sep,.livret .plan.serre td.fq .sep{display:inline}
 .livret .examens td{height:7.6mm}
 .livret .examens td:last-child{text-align:left}
 .livret .conseils .li{font-size:6.6pt;padding:.4mm 0;border-bottom:.25pt dotted var(--lv-line);line-height:1.2}
@@ -427,7 +433,7 @@
 .livret .al-t .bi2{flex:1}
 .livret .al-t .bi2 .ar{font-size:1.04em}
 .livret .rouge .al-t{color:var(--lv-rouge)}.livret .orange .al-t{color:var(--lv-orange)}
-.livret .ico{display:inline-flex;width:5mm;height:5mm;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:8.5pt;flex:0 0 auto}
+.livret .ico{display:inline-flex;width:5mm;height:5mm;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:9pt;flex:0 0 auto}
 .livret .ico.oct{background:var(--lv-rouge);clip-path:polygon(30% 0,70% 0,100% 30%,100% 70%,70% 100%,30% 100%,0 70%,0 30%)}
 .livret .ico.tri{background:var(--lv-orange);clip-path:polygon(50% 0,100% 100%,0 100%);padding-top:1.4mm}
 .livret .ico.non{width:3.8mm;height:3.8mm;border:.7pt solid var(--lv-ink);border-radius:50%;position:relative}
@@ -497,7 +503,7 @@
 .livret .solo{box-shadow:0 8px 24px rgba(0,0,0,.18)}
 .livret .lab-page{font-size:12px;color:var(--muted,#4E5E59);font-family:'IBM Plex Sans',system-ui,sans-serif;align-self:center}
 .livret .imposition{display:flex;flex-direction:column;gap:14px;align-items:center;padding:18px 8px 40px;overflow-x:auto;max-width:100%}
-.livret .sheet{display:flex;width:297mm;height:210mm;flex:none;background:#fff;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.livret .sheet{display:flex;justify-content:center;width:297mm;height:210mm;flex:none;background:#fff;box-shadow:0 8px 24px rgba(0,0,0,.18)} /* pages centrées : pli au milieu de la feuille, carte superposée au recto et au verso */
 .livret .sheet .page{margin:0}
 .livret .sheet .page + .page{border-left:.4pt dashed #B9C6C2}
 @media print{
@@ -527,10 +533,17 @@
     }
   };
   R.actions.carnetVue = el => { R.ui.carnetA4 = el.dataset.v === 'a4'; R.render(); };
+  /* page qui déborde encore une fois rendue (valeurs très longues, police de remplacement) : page 1 — présentation resserrée, puis une ligne de rendez-vous de moins (au moins 1), puis sans l'encadré « J'apporte » ;
+     page 5 — une ligne vide de moins (jusqu'à aucune), puis plan resserré, puis sans les conseils. Rien n'est jamais rogné ; le document téléchargé (R.docExport) copie ce rendu */
+  R.carnetPatientAjuster = racine => {
+    const wrap = racine || document.querySelector('.carnet-wrap.livret'); if (!wrap) return; const deborde = el => el.scrollHeight - el.clientHeight > 1;
+    wrap.querySelectorAll('.page.p1').forEach(el => { for (let k = 0; k < 12 && deborde(el); k++) { if (!el.classList.contains('dense')) { el.classList.add('dense'); continue; } const trs = el.querySelectorAll('.rdv tbody tr'); if (trs.length > 1) { trs[trs.length - 1].remove(); continue; } const ap = el.querySelector('.apporte'); if (ap) { ap.remove(); continue; } break; } });
+    wrap.querySelectorAll('.page.p3').forEach(el => { for (let k = 0; k < 24 && deborde(el); k++) { const trs = el.querySelectorAll('.examens tbody tr'); if (trs.length) { trs[trs.length - 1].remove(); if (trs.length === 1) { const d = el.querySelector('.dates-ex'); if (d) d.remove(); } continue; } const pl = el.querySelector('.plan'); if (pl && !pl.classList.contains('serre')) { pl.classList.add('serre'); continue; } const co = el.querySelector('.conseils'); if (co) { co.remove(); continue; } break; } });
+  };
   /* sans la police web (poste sans accès à Internet), la police de remplacement est plus large : corps réduit pour que chaque page tienne */
   R.carnetPatientPolices = () => {
     const chargee = () => { try { return [...document.fonts].some(f => f.family === 'IBM Plex Sans' && f.status === 'loaded'); } catch (e) { return true; } };
-    const appliquer = () => { const el = document.querySelector('.carnet-wrap.livret'); if (el) el.classList.toggle('sans-police', !chargee()); };
+    const appliquer = () => { const el = document.querySelector('.carnet-wrap.livret'); if (el) { el.classList.toggle('sans-police', !chargee()); R.carnetPatientAjuster(el); } };
     appliquer();
     if (document.fonts) { if (!R.ui.carnetPolicesEcoute) { R.ui.carnetPolicesEcoute = true; document.fonts.addEventListener('loadingdone', appliquer); } document.fonts.ready.then(() => setTimeout(appliquer, 50)); }
   };

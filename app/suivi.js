@@ -148,6 +148,13 @@
   R.lireClinique = fd => { const g = k => fd.get(k); const d = { taille: g('cl_taille') ? +g('cl_taille') : null, puberte: g('cl_puberte') || '', digestif: (g('cl_digestif') || '').trim(), douleur: !!g('cl_douleur'), douleurLoc: fd.getAll('cl_douleurLoc'), douleurNote: (g('cl_douleurNote') || '').trim(), fievre: g('cl_fievre') === 'oui', temperature: g('cl_temperature') ? +g('cl_temperature') : null, fievreNote: (g('cl_fievreNote') || '').trim(), perineal: fd.getAll('cl_perineal'), cutaneNote: (g('cl_cutaneNote') || '').trim(), remarques: (g('cl_remarques') || '').trim() }; if (fd.has('cl_poids') && g('cl_poids')) d.poids = +g('cl_poids'); if (d.douleurLoc.length || d.douleurNote) d.douleur = true; if (d.temperature && d.temperature >= 38) d.fievre = true; return d; };
   R.cliniqueVide = d => !d || !(d.douleur || d.fievre || (d.perineal && d.perineal.length) || d.digestif || d.remarques || d.taille || d.cutaneNote || (d.puberte && !/Non applicable/.test(d.puberte)));
   R.resumeClinique = d => { if (!d) return ''; const p = []; if (d.douleur) p.push('Douleur ' + ((d.douleurLoc || []).map(x => (R.CLINIQUE.douleurLoc.find(y => y[0] === x) || [x, x])[1].toLowerCase()).join(' + ') || 'présente') + (d.douleurNote ? ' (' + d.douleurNote + ')' : '')); if (d.fievre) p.push('Fièvre' + (d.temperature ? ' ' + d.temperature + ' °C' : '') + (d.fievreNote ? ' (' + d.fievreNote + ')' : '')); if (d.perineal && d.perineal.length) p.push('Périnéal : ' + d.perineal.map(x => (R.CLINIQUE.perineal.find(y => y[0] === x) || [x, x])[1].toLowerCase()).join(', ') + (d.cutaneNote ? ' (' + d.cutaneNote + ')' : '')); else if (d.cutaneNote) p.push('Cutané : ' + d.cutaneNote); if (d.digestif) p.push('Digestif : ' + d.digestif); if (d.puberte && !/Non applicable/.test(d.puberte)) p.push(d.puberte); if (d.remarques) p.push(d.remarques); return p.length ? p.join(' · ') : 'Examen clinique sans particularité'; };
+  /* syndrome digestif à imprimer (documents) : texte libre qui n'est pas un transit normal — signe d'alerte (sang, glaires, diarrhée, réveil nocturne, urgences…) ou plus de 3 selles par jour ; « transit normal », « 3 selles/j, pas de sang », « 1–2 selles/j, formées, sans sang » : normal */
+  R.digestifAnormal = t => { const s = String(t == null ? '' : t).trim(); if (!s || s === '—' || /^(transit normal|normal|ras|r\.a\.s\.?|sans particularit[ée]s?|rien à signaler)\.?$/i.test(s)) return false;
+    const net = s.replace(/\b(sans|pas de|aucune?|ni)\s+(?:de\s+)?(sang|glaires?|douleurs?|diarrh[ée]es?|rectorragies?|r[ée]veils?|vomissements?|urgences?|selles? nocturnes?)(\s+nocturnes?)?/gi, ' ');
+    if (/glair|sang|rectorragi|diarrh|m[ée]l[ée]na|nocturne|imp[ée]riosit|urgence|t[ée]nesme|vomis|liquide|incontinen|ballonn|douleur|constipation|fécalome|occlusi/i.test(net)) return true;
+    const m = net.match(/(\d+)\s*(?:[-–à]\s*(\d+)\s*)?selles?/i); if (m) return +(m[2] || m[1]) > 3; return !/normal|form[ée]es?|moul[ée]es?|r[ée]gulier/i.test(net); };
+  /* stade pubertaire renseigné chez l'enfant (« Tanner 3 ») ; '' si absent ou « Non applicable » */
+  R.pubertePediatrique = d => { const v = String((d && d.puberte) || '').trim(); return v && !/Non applicable/i.test(v) ? v : ''; };
   R.alerteClinique = d => !!d && (d.fievre || (d.perineal && d.perineal.includes('abces')) || (d.perineal && d.perineal.includes('fistule')));
 
   /* ---------- Saisie d'un contrôle selon son type ---------- */
@@ -204,11 +211,15 @@
     if (date && isNaN(R.parse(date))) { R.toast('Date invalide', 'crit'); return null; } if (date && date > R.today() && statut.startsWith('fait')) { R.toast('Un examen fait ne peut pas être daté dans le futur : laissez-le « En attente » avec la date prévue', 'crit'); return null; }
     return { id: R.uid('libre-'), label: label || 'Examen à préciser', cat: v('bp-add-cat') || 'Personnalisé', statut, date: statut === 'attente' ? (v('bp-add-date') || '') : date, commentaire: v('bp-add-com').trim() };
   };
-  /* lignes du bilan pré-biothérapie pour les documents imprimés : anomalies et commentaires en évidence */
+  /* examens de l'état de départ (calprotectine, endoscopie avec score, coloscopie et histologie de référence) : un résultat anormal est attendu avant le traitement, imprimé « fait » sans alerte dans tous les documents.
+     La recherche de C. difficile (même catégorie « Référence ») n'en fait pas partie : positive, elle reste une anomalie */
+  R.ETAT_REFERENCE = ['calpro0', 'endo0', 'colo0', 'histo0'];
+  R.estEtatReference = id => R.ETAT_REFERENCE.includes(id);
+  /* lignes du bilan pré-biothérapie pour les documents imprimés : anomalies et commentaires en évidence ; état de départ (R.estEtatReference) imprimé « fait » sans alerte */
   R.bilanPreDoc = bilan => {
     const esc = R.esc; const rows = R.bilanDefs(bilan).map(b => ({ b, r: (bilan || []).find(x => x.id === b.id) })).filter(x => x.r && x.r.statut !== 'na');
     const court = l => l.split(' (')[0].split(' :')[0];
-    return rows.map(x => { const st = x.r.statut === 'attente' ? `<i>${x.r.date ? esc(R.bilanDemandeTxt(x.r)) : 'en attente'}</i>` : x.r.statut === 'fait_anormal' ? '<b>anormal</b>' : 'normal'; return `<tr${x.r.statut === 'fait_anormal' ? ' class="doc-alert"' : ''}><td>${esc(x.b.cat)}</td><td>${esc(court(x.b.label))}</td><td>${st}</td><td class="m">${x.r.date ? R.fmtDate(x.r.date) : ''}</td><td>${x.r.commentaire ? esc(x.r.commentaire) : ''}</td></tr>`; }).join('');
+    return rows.map(x => { const anormal = x.r.statut === 'fait_anormal' && !R.estEtatReference(x.b.id); const st = x.r.statut === 'attente' ? `<i>${x.r.date ? esc(R.bilanDemandeTxt(x.r)) : 'en attente'}</i>` : anormal ? '<b>anormal</b>' : x.r.statut === 'fait_anormal' ? 'fait' : 'normal'; return `<tr${anormal ? ' class="doc-alert"' : ''}><td>${esc(x.b.cat)}</td><td>${esc(court(x.b.label))}</td><td>${st}</td><td class="m">${x.r.date ? R.fmtDate(x.r.date) : ''}</td><td>${x.r.commentaire ? esc(x.r.commentaire) : ''}</td></tr>`; }).join('');
   };
   R.estBio = s => !!(s.valeurs || ['calpro', 'tdm', 'vit', 'actnf', 'libre-bio'].includes(s.id) || (R.itemBilan(s.id) && R.itemBilan(s.id).groupe.id === 'bio'));
   R.estClin = s => s.id === 'clin' || s.type === 'clinique' || !!s.clinique;
@@ -263,7 +274,7 @@
       <p class="small muted" style="margin:0">Prélèvement à faire juste avant la perfusion ou l’injection. Lecture indicative, à confronter à la clinique et aux normes du laboratoire.</p>
       <div class="field"><label>Remarques (conduite à tenir)</label><textarea name="note" placeholder="ex. optimisation à 10 mg/kg décidée en staff">${esc(s.note || '')}</textarea></div>`;
   };
-  R.interpTdmHTML = i => !i.texte ? '<div class="callout">Saisissez le taux pour obtenir une lecture.</div>' : `<div class="callout ${i.niveau === 'bas' ? 'crit' : i.niveau === 'haut' ? 'warn' : i.niveau === 'cible' ? 'good' : ''}"><b>${i.niveau === 'bas' ? 'Sous la cible' : i.niveau === 'haut' ? 'Au-dessus de la cible' : i.niveau === 'cible' ? 'Dans la cible' : 'Lecture'}</b>${i.cible ? ` (cible ${esc(i.cible)})` : ''} — ${esc(i.texte)}</div>`;
+  R.interpTdmHTML = i => !i.texte ? '<div class="callout">Saisissez le taux pour obtenir une lecture.</div>' : `<div class="callout ${i.niveau === 'bas' ? 'crit' : i.niveau === 'haut' ? 'warn' : i.niveau === 'cible' ? 'good' : ''}"><b>${i.niveau === 'bas' ? 'Sous la cible' : i.niveau === 'haut' ? 'Au-dessus de la cible' : i.niveau === 'cible' ? 'Dans la cible' : 'Lecture'}</b>${i.cible ? ` (cible ${esc(String(i.cible).replace(/(\d)\.(\d)/g, '$1,$2'))})` : ''} — ${esc(i.texte)}</div>`;
   R.actions.tdmInterp = el => { const f = el.closest('form'); if (!f) return; const g = n => (f.querySelector(`[name="${n}"]`) || {}).value; const t = { molecule: g('tdm_mol'), taux: g('tdm_taux') === '' ? null : +g('tdm_taux'), ac: g('tdm_ac'), titre: g('tdm_titre') }; const d = document.getElementById('tdm-interp'); if (d) d.innerHTML = R.interpTdmHTML(R.interpTdm(t)); };
   /* ---------- Courbes : séries biologiques et cliniques ---------- */
   R.nums = s => { const t = String(s ?? '').replace(/[\u00a0\u202f]/g, ' ').replace(/(\d) (?=\d{3}(?!\d))/g, '$1').replace(/,/g, '.').replace(/(\d)\s*[-–]\s*(?=\d)/g, '$1 '); return (t.match(/-?\d+(?:\.\d+)?/g) || []).map(Number); };
@@ -271,25 +282,29 @@
   R.uniteDe = s => { const m = String(s || '').match(/-?\d+(?:[.,]\d+)?\s*([a-zA-Zµ%]+(?:\/[a-zA-Zµ]+)?)/); return m ? m[1] : ''; };
   /* zones de référence indicatives : à adapter aux normes du laboratoire. Service pédiatrique : les zones adultes
      (IMC, FC, Hb selon le sexe, ferritine 30–300) ne valent qu'à partir de 18 ans ; âge inconnu : pas de zone d'âge */
-  R.REFS = { crp: [0, 5], transa: [0, 40], alb: [35, 50], ferr: [30, 300], ferrEnfant: [15, 140], b12: [200, 900], calpro: [0, 250], temperature: [36, 37.5], fc: [50, 100], hbF: [12, 16], hbM: [13, 17] };
+  R.REFS = { crp: [0, 5], transa: [0, 40], alb: [35, 50], ferr: [30, 300], ferrEnfant: [15, 140], b12: [200, 900], calpro: [0, 250], temperature: [36, 37.5], fc: [50, 100], hbF: [12, 16], hbM: [13, 17], alatG: [0, 26], alatF: [0, 22] };
   const agePatient = p => { const a = R.age(p && p.ddn); return typeof a === 'number' && !isNaN(a) ? a : null; };
   const refAdulte = (p, ref) => { const a = agePatient(p); return a != null && a >= 18 ? ref : null; };
   /* hémoglobine : seuils OMS de l'anémie selon l'âge (comme BILAN_NORMES.hb) ; âge inconnu : pas de zone */
   R.refHb = p => { const a = agePatient(p); if (a == null) return null; return a < 5 ? [11, 14] : a < 12 ? [11.5, 15.5] : a < 18 ? (a < 15 || p.sexe === 'F' ? [12, 16] : [13, 17]) : (p.sexe === 'F' ? R.REFS.hbF : R.REFS.hbM); };
   /* ferritine : zone enfant (BILAN_NORMES.ferr) avant 18 ans */
   const refBio = (p, k) => k === 'ferr' ? (refAdulte(p, true) ? R.REFS.ferr : R.REFS.ferrEnfant) : (R.REFS[k] || null);
+  /* transaminases : 0–40 UI/L chez l'adulte (et âge inconnu) ; avant 18 ans, ALAT ≤ 26 UI/L chez le garçon, ≤ 22 UI/L chez la fille (zone de la courbe = ALAT), ASAT gardée à 0–40 — { ch: zone de la courbe, lignes: zone de chaque ligne ou null, zone: libellé } */
+  R.refTransa = p => { const a = agePatient(p); if (a == null || a >= 18) return { ch: R.REFS.transa, lignes: null, zone: '' }; const alat = p && p.sexe === 'F' ? R.REFS.alatF : R.REFS.alatG; return { ch: alat, lignes: { ALAT: alat, ASAT: R.REFS.transa }, zone: `zone : ALAT ≤ ${alat[1]}` }; };
+  /* cible de taux résiduel d'une molécule (DCI du protocole) : [minimum, maximum ou null] ou null */
+  R.cibleTdmDe = dci => R.TDM_CIBLES[(R.TDM_MOLECULES.find(m => new RegExp(m, 'i').test(String(dci || ''))) || '').toLowerCase()] || null;
   const nouvChart = (key, titre, unite, ref) => ({ key, titre, unite: unite || '', ref: ref || null, lignes: [] });
-  const ajouterPt = (ch, nom, pt) => { let l = ch.lignes.find(x => x.nom === nom); if (!l) { l = { nom, pts: [] }; ch.lignes.push(l); } const m = String(pt.brut || '').match(/[<>≤≥]/); if (m) pt.sym = m[0]; l.pts.push(pt); };
+  const ajouterPt = (ch, nom, pt) => { let l = ch.lignes.find(x => x.nom === nom); if (!l) { l = { nom, pts: [] }; if (ch.refLignes && ch.refLignes[nom]) l.ref = ch.refLignes[nom]; /* zone propre à la ligne (ASAT / ALAT de l'enfant) */ ch.lignes.push(l); } const m = String(pt.brut || '').match(/[<>≤≥]/); if (m) pt.sym = m[0]; l.pts.push(pt); };
   const finaliser = charts => Object.values(charts).map(ch => { ch.lignes.forEach(l => l.pts.sort((a, b) => a.date.localeCompare(b.date))); ch.lignes = ch.lignes.filter(l => l.pts.length); return ch; }).filter(ch => ch.lignes.length);
 
   R.seriesBio = p => {
-    const charts = {}; const bio = R.itemBilan('biostd') || { sous: [] }; const antiTNF = /TNF/.test((R.proto(p.protocoleId) || {}).classe || '');
+    const charts = {}; const bio = R.itemBilan('biostd') || { sous: [] }; const antiTNF = /TNF/.test((R.proto(p.protocoleId) || {}).classe || ''); const rt = R.refTransa(p);
     p.surveillance.filter(s => s.statut === 'faite' && s.dateFaite && R.estBio(s)).forEach(s => {
       const note = s.note || '';
       if (s.valeurs) {
         Object.keys(s.valeurs).forEach(k => {
           const brut = s.valeurs[k]; const def = bio.sous.find(x => x.id === k) || { id: k, label: k, unite: '' }; const n = R.nums(brut); if (!n.length) return;
-          if (k === 'transa') { const ch = charts.transa || (charts.transa = nouvChart('transa', 'ASAT / ALAT', def.unite || 'UI/L', R.REFS.transa)); if (n.length >= 2) { ajouterPt(ch, 'ASAT', { date: s.dateFaite, v: n[0], brut, note }); ajouterPt(ch, 'ALAT', { date: s.dateFaite, v: n[1], brut, note }); } else if (/alat|alt\b|tgp/i.test(brut)) ajouterPt(ch, 'ALAT', { date: s.dateFaite, v: n[0], brut, note }); else if (/asat|ast\b|tgo/i.test(brut)) ajouterPt(ch, 'ASAT', { date: s.dateFaite, v: n[0], brut, note }); return; }
+          if (k === 'transa') { const ch = charts.transa || (charts.transa = Object.assign(nouvChart('transa', 'ASAT / ALAT', def.unite || 'UI/L', rt.ch), rt.lignes ? { refLignes: rt.lignes, zoneLib: rt.zone } : {})); if (n.length >= 2) { ajouterPt(ch, 'ASAT', { date: s.dateFaite, v: n[0], brut, note }); ajouterPt(ch, 'ALAT', { date: s.dateFaite, v: n[1], brut, note }); } else if (/alat|alt\b|tgp/i.test(brut)) ajouterPt(ch, 'ALAT', { date: s.dateFaite, v: n[0], brut, note }); else if (/asat|ast\b|tgo/i.test(brut)) ajouterPt(ch, 'ASAT', { date: s.dateFaite, v: n[0], brut, note }); return; }
           if (k === 'nfs') { const m = String(brut).replace(/,/g, '.').match(/(?:h[ée]moglobine|hgb|hb)\s*[:=]?\s*(\d+(?:\.\d+)?)/i); if (m) { const ch = charts.hb || (charts.hb = nouvChart('hb', 'Hémoglobine', 'g/dL', R.refHb(p))); ajouterPt(ch, 'Hémoglobine', { date: s.dateFaite, v: +m[1], brut, note }); } return; }
           const ch = charts[k] || (charts[k] = nouvChart(k, def.label, def.unite || R.uniteDe(brut), refBio(p, k))); ajouterPt(ch, def.label, { date: s.dateFaite, v: n[0], brut, note });
         });
@@ -302,7 +317,7 @@
       const refTdm = cTdm && cTdm[1] != null ? cTdm : null; /* la zone de courbe exige une borne haute */
       const ref = s.id === 'calpro' ? R.REFS.calpro : s.id === 'tdm' ? refTdm : null;
       const ch = charts[key] || (charts[key] = nouvChart(key, titre, it.unite || s.unite || R.uniteDe(s.resultat), ref)); if (s.id === 'tdm') { if (ch.dci === undefined) ch.dci = dciCycle; else if (ch.dci !== dciCycle) ch.ref = null; /* molécules différentes : pas de zone commune */ }
-      ajouterPt(ch, titre, { date: s.dateFaite, v: n[0], brut: s.resultat, note: td ? [R.AC_LIB[td.ac] + (td.titre ? ' (titre ' + td.titre + ')' : ''), note].filter(Boolean).join(' · ') : note });
+      ajouterPt(ch, titre, { date: s.dateFaite, v: n[0], brut: s.resultat, dci: s.id === 'tdm' ? dciCycle : undefined, note: td ? [R.AC_LIB[td.ac] + (td.titre ? ' (titre ' + td.titre + ')' : ''), note].filter(Boolean).join(' · ') : note });
     });
     return finaliser(charts);
   };
@@ -411,25 +426,38 @@
   /* ---------- Courbes pour les documents imprimés (carnet professionnel, compte rendu) ---------- */
   R.fmtV = fmtV;
   const ORDRE_DOC = ['poids', 'crp', 'calpro', 'tdm', 'hb', 'alb', 'transa', 'ferr', 'b12', 'imc', 'temp', 'fc', 'ta'];
-  R.chartsDoc = (p, depuis) => { const all = [...R.seriesClinique(p), ...R.seriesBio(p)]; const rang = ch => { const i = ORDRE_DOC.indexOf(ch.key); return i < 0 ? 50 : i; }; return filtrerCharts(all, depuis || null).filter(ch => ch.lignes.some(l => l.pts.length >= 2)).sort((a, b) => rang(a) - rang(b)); };
+  /* séries des documents : taux résiduel coupé au dernier changement de molécule (zone = cible de cette molécule) */
+  R.seriesDoc = p => [...R.seriesClinique(p), ...R.seriesBio(p)].map(ch => { if (ch.key !== 'tdm') return ch; const der = ch.lignes.flatMap(l => l.pts).sort((a, b) => a.date.localeCompare(b.date)).pop(); if (!der || der.dci === undefined) return ch;
+    const dci = der.dci, mol = String(dci).split(' — ')[0], c = R.cibleTdmDe(dci), lignes = ch.lignes.map(l => ({ ...l, pts: l.pts.filter(x => x.dci === dci) })).filter(l => l.pts.length);
+    return { ...ch, titre: mol ? `Taux résiduel — ${mol.toLowerCase()}` : ch.titre, dci: mol, ref: c && c[1] != null ? c : null, lignes }; });
+  /* température, fréquence cardiaque, tension : courbe imprimée seulement si une valeur est anormale
+     FC de l'enfant : fréquence d'éveil PALS 2020 [âge maximal exclu, min, max] ; TA : ≥ 140/90 ou systolique < 90 (adulte), ≥ 130/80 avant 18 ans (seuil AAP 2017 de l'adolescent) */
+  const FC_ENFANT = [[1, 100, 180], [3, 98, 140], [6, 80, 120], [12, 75, 118], [18, 60, 100]];
+  const valeurAnormale = (p, ch, l, v) => { const a = agePatient(p); if (ch.key === 'temp') return v < R.REFS.temperature[0] || v > R.REFS.temperature[1];
+    if (ch.key === 'fc') { const r = a == null ? null : a >= 18 ? R.REFS.fc : (FC_ENFANT.find(x => a < x[0]) || []).slice(1); return !!(r && r.length === 2 && (v < r[0] || v > r[1])); }
+    if (ch.key === 'ta') { const sys = /^sys/i.test(l.nom || ''); return a != null && a < 18 ? (sys ? v >= 130 : v >= 80) : (sys ? v >= 140 || v < 90 : v >= 90); } return false; };
+  const courbeUtile = (p, ch) => !['temp', 'fc', 'ta'].includes(ch.key) || ch.lignes.some(l => l.pts.some(x => valeurAnormale(p, ch, l, x.v)));
+  /* courbes des documents : au moins 2 points sur la période ; chez l'enfant, la taille en premier */
+  R.chartsDoc = (p, depuis) => { const ordre = (agePatient(p) ?? 99) < 18 ? ['taille', ...ORDRE_DOC] : ORDRE_DOC; const rang = ch => { const i = ordre.indexOf(ch.key); return i < 0 ? 50 : i; }; return filtrerCharts(R.seriesDoc(p), depuis || null).filter(ch => ch.lignes.some(l => l.pts.length >= 2) && courbeUtile(p, ch)).sort((a, b) => rang(a) - rang(b)); };
+  /* o : { depuis, max (6), cols (3), valeurs (false : sans la ligne chiffrée sous le titre, quand le document a déjà le tableau des dernières valeurs) } */
   R.courbesDoc = (p, o) => {
     o = o || {}; const charts = R.chartsDoc(p, o.depuis).slice(0, o.max || 6); if (!charts.length) return '';
     return `<div class="doc-courbes" style="grid-template-columns:repeat(${o.cols || 3},minmax(0,1fr))">${charts.map(ch => { const l0 = ch.lignes[0]; const last = l0.pts[l0.pts.length - 1], prev = l0.pts[l0.pts.length - 2] || l0.avant; const dv = prev ? last.v - prev.v : null;
-      return `<div class="doc-courbe"><div class="dc-t"><b>${esc(ch.titre)}</b><span>${esc(ch.unite || '')}</span></div><div class="dc-v">${ch.lignes.length > 1 ? esc(l0.nom) + ' ' : ''}<b>${last.sym || ''}${fmtV(last.v)}</b> le ${R.fmtDate(last.date)}${dv != null ? ` · ${dv > 0 ? '+' : ''}${fmtV(dv)}` : ''}${ch.ref ? ` · réf. ${fmtV(ch.ref[0])}–${fmtV(ch.ref[1])}` : ''}</div>${R.courbe(ch, { h: 150, w: 340, compact: true })}</div>`; }).join('')}</div>`;
+      return `<div class="doc-courbe"><div class="dc-t"><b>${esc(ch.titre)}</b><span>${esc([ch.unite || '', ch.zoneLib || ''].filter(Boolean).join(' · '))}</span></div>${o.valeurs === false ? '' : `<div class="dc-v">${ch.lignes.length > 1 ? esc(l0.nom) + ' ' : ''}<b>${last.sym || ''}${fmtV(last.v)}</b> le ${R.fmtDate(last.date)}${dv != null ? ` · ${dv > 0 ? '+' : ''}${fmtV(dv)}` : ''}${ch.ref ? ` · réf. ${fmtV(ch.ref[0])}–${fmtV(ch.ref[1])}` : ''}</div>`}${R.courbe(ch, { h: 150, w: 340, compact: true })}</div>`; }).join('')}</div>`;
   };
-  /* dernière valeur d'une série, la précédente et le sens d'évolution (tableau des dernières valeurs, résumé du compte rendu) */
-  R.evolSerie = (ch, l) => { const pts = l.pts; const last = pts[pts.length - 1], prev = pts[pts.length - 2]; return { last, prev, sens: !last || !prev ? '' : Math.abs(last.v - prev.v) < 1e-9 ? 'stable' : last.v > prev.v ? 'en hausse' : 'en baisse', hors: !!(last && ch.ref && (last.v < ch.ref[0] || last.v > ch.ref[1])) }; };
+  /* dernière valeur d'une série, la précédente et le sens d'évolution (tableau des dernières valeurs, résumé du compte rendu) ; zone de la ligne si elle a la sienne (ASAT / ALAT de l'enfant) */
+  R.evolSerie = (ch, l) => { const pts = l.pts, ref = l.ref || ch.ref; const last = pts[pts.length - 1], prev = pts[pts.length - 2]; return { last, prev, sens: !last || !prev ? '' : Math.abs(last.v - prev.v) < 1e-9 ? 'stable' : last.v > prev.v ? 'en hausse' : 'en baisse', hors: !!(last && ref && (last.v < ref[0] || last.v > ref[1])) }; };
   /* dernières valeurs : une ligne par donnée suivie, avec la précédente et le sens d'évolution */
   R.tableDernieres = (p, depuis) => {
     const charts = [...R.seriesClinique(p), ...R.seriesBio(p)].filter(ch => ['poids', 'imc', 'crp', 'calpro', 'tdm', 'hb', 'alb', 'transa', 'ferr', 'b12'].includes(ch.key) || /^libre-bio|^vit/.test(ch.key));
     const rows = []; charts.forEach(ch => ch.lignes.forEach(l => { const { last, prev, sens, hors } = R.evolSerie(ch, l); if (!last || (depuis && last.date < depuis)) return;
-      rows.push(`<tr><td>${esc(ch.lignes.length > 1 ? l.nom : ch.titre)}</td><td class="m"${hors ? ' style="font-weight:700"' : ''}>${last.sym || ''}${fmtV(last.v)} ${esc(ch.unite || '')}${hors ? ' *' : ''}</td><td class="m">${R.fmtDate(last.date)}</td><td class="m">${prev ? `${prev.sym || ''}${fmtV(prev.v)} (${R.fmtDate(prev.date)})` : '—'}</td><td>${sens}</td><td>${ch.ref ? `${fmtV(ch.ref[0])}–${fmtV(ch.ref[1])}` : ''}</td></tr>`); }));
+      rows.push(`<tr><td>${esc(ch.lignes.length > 1 ? l.nom : ch.titre)}</td><td class="m"${hors ? ' style="font-weight:700"' : ''}>${last.sym || ''}${fmtV(last.v)} ${esc(ch.unite || '')}${hors ? ' *' : ''}</td><td class="m">${R.fmtDate(last.date)}</td><td class="m">${prev ? `${prev.sym || ''}${fmtV(prev.v)} (${R.fmtDate(prev.date)})` : '—'}</td><td>${sens}</td><td>${(l.ref || ch.ref) ? `${fmtV((l.ref || ch.ref)[0])}–${fmtV((l.ref || ch.ref)[1])}` : ''}</td></tr>`); }));
     return rows.length ? `<table class="doc-table"><thead><tr><th>Donnée</th><th>Dernière valeur</th><th>Date</th><th>Précédente</th><th>Évolution</th><th>Réf.</th></tr></thead><tbody>${rows.join('')}</tbody></table><div style="font-size:8pt;color:#5F6E69;margin-top:3px">* hors de la zone de référence indicative</div>` : '<p style="font-size:9.5pt;color:#5F6E69;margin:0">Aucun résultat chiffré sur la période.</p>';
   };
   /* Un contrôle annulé par l'équipe n'est pas recréé par le plan ou la prolongation (tolérance de 10 jours) */
   R.bloqueParAnnulation = (p, s) => p.surveillance.some(x => x.statut === 'annulee' && x.annuleLe && !x.annuleAuto && x.id === s.id && (x.nom || '') === (s.nom || '') && x.echeance && s.echeance && Math.abs(R.diffDays(x.echeance, s.echeance)) <= 10);
   /* séance à laquelle le dosage est réellement rattaché aujourd'hui (le libellé enregistré peut être périmé : report, suspension, annulation, renumérotation) */
-  R.seanceAvantTdm = (p, s) => { if (!s || !s.avantSeance || s.statut !== 'prevue') return ''; const c = ((p && p.cures) || []).find(x => x.statut === 'prevue' && x.datePrevue === s.echeance); return c ? c.label : ''; };
+  R.seanceAvantTdm = (p, s) => { if (!s || !s.avantSeance || s.statut !== 'prevue' || (p && p.statut === 'suspendu')) return ''; /* traitement suspendu : les séances sont en attente, le prélèvement n'est rattaché à aucune */ const c = ((p && p.cures) || []).find(x => x.statut === 'prevue' && x.datePrevue === s.echeance); return c ? c.label : ''; };
   /* Le dosage résiduel se prélève juste avant une perfusion : chaque dosage prévu est placé le jour de la séance suivante */
   R.alignerTdm = p => {
     if (!p || !p.cures || !p.surveillance) return 0; const t = R.today(); let n = 0; const prises = new Set();

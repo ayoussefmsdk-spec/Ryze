@@ -457,8 +457,8 @@ window.RYZE.LIVRET = {
    "ar": "يُملأ في كل زيارة لمستشفى النهار"
   },
   "aideCocher": {
-   "fr": "À remplir et à signer par l’équipe à chaque séance",
-   "ar": "يملؤها الفريق ويوقّعها في كل حصة"
+   "fr": "Cochez et faites signer à chaque séance",
+   "ar": "ضعوا علامة واطلبوا التوقيع في كل حصة"
   },
   "aideDates": {
    "fr": "À chaque séance, l’équipe note sur la ligne suivante la date du prochain rendez-vous ; la dose donnée et la tolérance sont notées le jour de la séance.",
@@ -1459,11 +1459,6 @@ window.RYZE.LIVRET = {
    "cle": "p2.cols.dose",
    "fr": "Dose donnée",
    "ar": "الجرعة المعطاة"
-  },
-  {
-   "cle": "p2.aideCocher",
-   "fr": "À remplir et à signer par l’équipe à chaque séance",
-   "ar": "يملؤها الفريق ويوقّعها في كل حصة"
   },
   {
    "cle": "p2.aideDates",

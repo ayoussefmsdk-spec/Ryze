@@ -20,6 +20,8 @@
   /* ---------- Textes ---------- */
   /* nombre à la française : 64.9 → « 64,9 » ; dec = nombre maximal de décimales (défaut 2) ; '' si vide ; texte non numérique rendu tel quel */
   R.nbFr = (x, dec) => { if (x == null || x === '') return ''; const v = typeof x === 'number' ? x : Number(String(x).trim().replace(',', '.')); if (!isFinite(v)) return String(x); const r = dec == null ? Math.round(v * 100) / 100 : +v.toFixed(dec); return String(r).replace('.', ','); };
+  /* virgule décimale dans un texte saisi (« Hb 12.8 g/dL » → « Hb 12,8 g/dL ») : même règle que l'impression des bilans, pour le carnet A4 et le compte rendu */
+  R.virguleTexte = t => String(t == null ? '' : t).replace(/(\d)\.(\d)/g, '$1,$2');
   /* « 1 séance », « 3 séances » (singulier sous 2) ; plur facultatif (défaut sing + s) ; motSeul : le mot sans le nombre */
   R.pluriel = (n, sing, plur, motSeul) => { const mot = Math.abs(+n || 0) >= 2 ? (plur || sing + 's') : sing; return motSeul ? mot : `${R.nbFr(+n || 0)} ${mot}`; };
   /* téléphone imprimable : '' si vide ou numéro factice (« 05 XX XX… ») — le document imprime alors une ligne à remplir (R.telHTML) */
@@ -57,11 +59,18 @@
   /* ---------- Séances annulées ou reportées automatiquement ----------
      changement de protocole (statutAvantChg, motif « Changement de protocole : … »), action « Suspendre » (parSuspension, motif « Suspendu : … »), arrêt du traitement (motif « Arrêt du traitement ») : une ligne d'événement (R.evenementsTraitement) les remplace dans les documents */
   R.annulationAuto = c => !!c && (c.statut === 'annulee' || c.statut === 'reportee') && (c.statutAvantChg != null || /^Changement de protocole/.test(c.motif || '') || !!c.parSuspension || /^Suspendu : /.test(c.motif || '') || (c.statut === 'annulee' && /^Arrêt du traitement/.test(c.motif || '')));
+  /* séance annulée automatiquement (arrêt, changement de protocole) APRÈS une trace saisie par l'équipe : absence (« Patient non venu »), ou report sans nouvelle date — son état d'avant : 'manquee' | 'reportee', sinon null.
+     Les documents gardent sa ligne (« Non venu le … », « Reportée … ») et ne la comptent pas parmi les séances annulées de l'événement */
+  R.traceAvantAnnulation = c => { if (!c || c.statut !== 'annulee' || !R.annulationAuto(c) || c.parSuspension) return null;
+    if ((c.absences || []).some(a => a && a.date) || c.statutAvantChg === 'manquee') return 'manquee';
+    const r = (c.reports || []).filter(Boolean).slice(-1)[0]; if (c.statutAvantChg === 'reportee' || (c.statutAvantChg == null && r && r.vers == null)) return 'reportee'; return null; };
 
+  /* clôt les suspensions encore ouvertes (relais, arrêt, suppression du cycle) : finLe, fin = raison — pas de « reprise » imprimée ; le rapport ne les compte plus après cette date */
+  R.fermerSuspensions = (p, date, raison) => { (p && p.suspensions || []).forEach(x => { if (x && !x.repriseLe && !x.finLe) Object.assign(x, { finLe: date || R.today(), fin: raison || 'autre' }); }); };
   /* suspension en cours : { le, motif, nbSeances } ou null — date : enregistrement de l'action « Suspendre », sinon note « Traitement suspendu : … », sinon date du report de la séance concernée */
   R.suspensionEnCours = p => {
     if (!p || p.statut !== 'suspendu') return null; const nb = (p.cures || []).filter(c => c.parSuspension && c.statut === 'reportee').length;
-    const rec = (p.suspensions || []).filter(x => x && !x.repriseLe).slice(-1)[0]; if (rec) return { le: rec.le || null, motif: p.motifSuspension || rec.motif || '', nbSeances: nb };
+    const rec = (p.suspensions || []).filter(x => x && !x.repriseLe && !x.finLe).slice(-1)[0]; /* finLe : suspension close par un relais, un arrêt ou la suppression du cycle (sans « reprise ») */ if (rec) return { le: rec.le || null, motif: p.motifSuspension || rec.motif || '', nbSeances: nb };
     const note = (p.notes || []).find(n => /^Traitement suspendu : /.test(n.txt || '')); let le = note ? note.date : null;
     if (!le) le = (p.cures || []).filter(c => c.statut === 'reportee' && (c.parSuspension || (p.motifSuspension && c.motif === p.motifSuspension))).flatMap(c => (c.reports || []).map(r => r.date)).filter(Boolean).sort()[0] || null;
     return { le, motif: p.motifSuspension || '', nbSeances: nb };
@@ -78,7 +87,7 @@
     if (!hist.length && (p.protocoleId || p.dateDebut)) ajouter({ date: p.dateDebut || null, type: 'debut', texte: `Début du traitement par ${dciDe(p.protocoleId)}`, motif: '', nbSeances: 0, cycle: 1 });
     hist.forEach((h, i) => {
       if (i === 0) { ajouter({ date: h.dateDebut || p.dateDebut || null, type: 'debut', texte: `Début du traitement par ${dciDe(h.protocoleId)}`, motif: '', nbSeances: 0, cycle: h.cycle || 1 }); return; }
-      const prev = hist[i - 1], n = cures.filter(c => (c.cycle || 1) === (prev.cycle || 1) && c.statut === 'annulee' && (c.statutAvantChg != null || /^Changement de protocole/.test(c.motif || ''))).length;
+      const prev = hist[i - 1], n = cures.filter(c => (c.cycle || 1) === (prev.cycle || 1) && c.statut === 'annulee' && (c.statutAvantChg != null || /^Changement de protocole/.test(c.motif || '')) && !R.traceAvantAnnulation(c)).length;
       let de = dciDe(prev.protocoleId), vers = dciDe(h.protocoleId); if (de === vers && voieDe(prev.protocoleId) !== voieDe(h.protocoleId)) { de += ' ' + voieDe(prev.protocoleId); vers += ' ' + voieDe(h.protocoleId); }
       const motif = h.motif || prev.motifFin || '';
       ajouter({ date: h.dateDebut || null, type: 'changement', de, vers, motif, nbSeances: n, cycle: h.cycle, texte: `Relais ${de} → ${vers}${motif ? ' : ' + motif : ''}${n ? ' — ' + R.pluriel(n, 'séance annulée', 'séances annulées') : ''}` });
@@ -93,7 +102,7 @@
       else if (/^Reprise du traitement/.test(t)) { const k = +((/ — (\d+) séance/.exec(t) || [])[1]) || 0; ajouter({ date: n.date || null, type: 'reprise', motif: '', nbSeances: k, texte: txtReprise(k) }); }
       else if ((m = /^Traitement arrêté le (\d{2}\/\d{2}\/\d{4}) : ([\s\S]*)$/.exec(t))) arretsNotes.push({ date: frVersIso(m[1]) || n.date || null, motif: m[2].trim() });
       else if (/^Dossier rouvert/.test(t)) ajouter({ date: n.date || null, type: 'reprise', motif: '', nbSeances: 0, texte: 'Dossier rouvert : reprise du suivi' }); });
-    const nArret = cures.filter(c => c.statut === 'annulee' && /^Arrêt du traitement/.test(c.motif || '')).length;
+    const nArret = cures.filter(c => c.statut === 'annulee' && /^Arrêt du traitement/.test(c.motif || '') && !R.traceAvantAnnulation(c)).length;
     if (p.statut === 'termine' && !arretsNotes.some(a => a.date === (p.dateFin || null))) arretsNotes.push({ date: p.dateFin || null, motif: p.motifFin || '' });
     arretsNotes.sort((a, b) => String(a.date || '9').localeCompare(String(b.date || '9'))).forEach((a, i, L) => { const n = i === L.length - 1 ? nArret : 0; ajouter({ date: a.date, type: 'arret', motif: a.motif, nbSeances: n, texte: `Traitement arrêté${a.motif && a.motif !== '—' ? ' : ' + a.motif : ''}${n ? ' — ' + R.pluriel(n, 'séance annulée', 'séances annulées') : ''}` }); });
     ev.sort((a, b) => String(a.date || '9999').localeCompare(String(b.date || '9999')) || ORDRE_EV[a.type] - ORDRE_EV[b.type]);
@@ -105,9 +114,12 @@
   };
 
   /* ---------- Réactions antérieures et prémédication ---------- */
-  const RX = /r[ée]action|anaphyla/i, RX_NEG = /\b(pas de|aucune?|sans)\s+(de\s+)?(r[ée]action|anaphyla\w*)/gi;
-  /* texte qui signale une réaction (casse ignorée ; « pas de réaction », « aucune réaction », « sans réaction » exclus) */
-  R.estReaction = t => !!t && RX.test(String(t)) && RX.test(String(t).replace(RX_NEG, ''));
+  const RX = /r[ée]action|anaphyla/i, RX_NEG = /(?:\b(?:pas de|aucune?|sans(?:\s+aucune?)?|absence de|ni)\s+|\bpas d['’]\s*)(?:de\s+)?(?:r[ée]action|anaphyla\w*)/gi;
+  /* texte qui signale une réaction (casse ignorée ; « pas de réaction », « pas d’anaphylaxie », « aucune réaction », « sans (aucune) réaction », « absence de réaction », « ni réaction » exclus) ;
+     tolérance « Bonne » choisie dans la fenêtre de la séance (« Bonne » ou « Bonne — note ») : pas une réaction, sauf si la note reprend « Réaction mineure » ou « Réaction sévère » */
+  R.estReaction = t => { if (!t) return false; const s = String(t); if (/^\s*Bonne\s*(—|$)/i.test(s) && !/r[ée]action\s+(mineure|s[ée]v[èe]re)/i.test(s)) return false; return RX.test(s) && RX.test(s.replace(RX_NEG, '')); };
+  /* champ Allergies qui dit qu'il n'y en a pas (« Aucune », « Néant », « RAS », « Pas d’allergie connue »…) : texte entier, pour ne pas masquer « aucune médicamenteuse, arachide » */
+  R.allergieAbsente = v => /^\s*(aucune?(\s+allergie)?(\s+(connue|médicamenteuse connue|alimentaire ou médicamenteuse))?|n[ée]ant|r\.?a\.?s\.?|pas\s+d['’ ]\s*allergies?(\s+connues?)?|sans(\s+allergies?)?(\s+connues?)?|allergies?\s*:\s*(aucune?|n[ée]ant))\s*\.?\s*$/i.test(String(v == null ? '' : v));
   /* toutes les réactions connues, toutes périodes : [{ date, seance, dci, texte, retro }] (séances du dossier, séances et cycles saisis rétrospectivement, antécédents libres), date croissante (sans date en tête) */
   R.reactionsAnterieures = p => {
     if (!p) return []; const out = [];
@@ -145,7 +157,7 @@
   R.blocStatutSecurite = (p, opts) => {
     if (!p) return ''; const o = opts || {}, st = R.statutTraitement(p), reac = R.reactionsAnterieures(p), pm = R.premedicationEnCours(p);
     const ligne = (k, v, cls) => `<div class="doc-secu-r${cls ? ' ' + cls : ''}"><span class="doc-secu-k">${cls === 'alerte' ? '⚠ ' : ''}${k}</span><span class="doc-secu-v">${v}</span></div>`;
-    const allergies = vide(p.allergies) ? '<i>non renseignées</i>' : `<b>${esc(p.allergies)}</b>`;
+    const allergies = vide(p.allergies) ? '<i>non renseignées</i>' : R.allergieAbsente(p.allergies) ? 'aucune connue' : `<b>${esc(p.allergies)}</b>`;
     const reacHTML = reac.length ? `<ul class="doc-secu-reac">${reac.map(r => `<li><b>${r.date ? R.fmtDate(r.date) : 'Date inconnue'}${r.seance ? ' — ' + esc(r.seance) : ''}</b>${r.dci ? ` (${esc(r.dci)})` : ''} : ${esc(r.texte)}</li>`).join('')}</ul>` : 'aucune signalée';
     const pmHTML = pm ? `<b>${esc(pm.texte)}</b>${pm.depuis ? ` depuis le ${R.fmtDate(pm.depuis)}` : ''}` : 'aucune';
     return `<div class="doc-secu${st.alerte || reac.length ? ' alerte' : ''}">${o.titre === false ? '' : `<div class="doc-secu-t">${esc(o.titre || 'Statut et sécurité')}</div>`}${ligne('Traitement', st.alerte ? `<span class="doc-fort">${esc(st.texte)}</span>` : esc(st.texte), st.alerte ? 'alerte' : '')}${ligne('Allergies', allergies)}${ligne(R.pluriel(reac.length, 'Réaction antérieure', 'Réactions antérieures', true), reacHTML, reac.length ? 'alerte' : '')}${ligne('Prémédication', pmHTML)}</div>`;
@@ -161,12 +173,35 @@
   /* dernier poids connu : séance réalisée, sinon poids à l'inclusion — { poids, date, initial } ou null */
   R.poidsReference = p => { const d = R.dernierPoids(p); if (d) return { poids: d.poids, date: d.date, initial: false }; const i = R.poidsInitial(p); if (!(i > 0)) return null; const h = (p.historiqueProtocoles || []).find(x => !x.retro) || {}; return { poids: i, date: p.creeLe || h.dateDebut || p.dateDebut || null, initial: true }; };
   /* dose à imprimer pour une séance à venir : { texte, mgkg, dose, poids, datePoids, auPoids } — mg/kg recalculés sur le dernier poids (avec sa date), ou « 5 mg/kg — à calculer sur le poids du jour » */
+  /* étape du schéma d'une séance quand sa dose suit des paliers de poids (induction : étape du jour ; entretien : schéma actuel, posologie modifiée comprise), sinon null */
+  const etapePalier = (p, c, pr) => { if (!pr || !(pr.paliers || []).length) return null; const ind = c.phase === 'Induction'; let et = null;
+    try { if ((c.cycle || 1) === (p.cycleCourant || 1) && R.schemaPatient) { const s = R.schemaPatient(p); et = ind ? (s.induction || []).find(x => +x.jour === +c.jour) || (s.induction || []).find(x => x.label === c.label) : s.actuel; } } catch (e) { et = null; }
+    if (!et) et = ind ? (pr.induction || []).find(x => +x.jour === +c.jour) || (pr.induction || []).find(x => x.label === c.label) : pr.entretien; if (!et) return null;
+    const dt = et.doseType || (ind ? pr.doseType : ((pr.entretien || {}).doseType || pr.doseType)); return dt === 'palier' ? et : null; };
+  /* dose de la séance corrigée à la main (« Modifier ») : choix du médecin, jamais recalculé */
+  const doseCorrigee = c => (c.corrections || []).some(x => x && (x.changements || []).some(ch => ch && (ch.champ === 'dose' || ch.champ === 'doseTexte')));
   R.doseProchaine = (p, c) => {
     if (!c) return { texte: '', auPoids: false }; const mk = R.mgkgDe(p, c), pw = R.poidsReference(p), pr = R.protoDeCure(p, c) || {};
     if (mk) { if (pw) { const dose = Math.round(mk * pw.poids); return { texte: `${R.nbFr(mk)} mg/kg → ${dose} mg (${pw.initial ? 'poids à l’inclusion' : 'dernier poids'} : ${R.nbFr(pw.poids)} kg${pw.date ? ' le ' + R.fmtDate(pw.date) : ''})`, mgkg: mk, dose, poids: pw.poids, datePoids: pw.date, auPoids: true }; } return { texte: `${R.nbFr(mk)} mg/kg — à calculer sur le poids du jour`, mgkg: mk, dose: null, poids: null, datePoids: null, auPoids: true }; }
     if (/poids/i.test(c.doseTexte || '')) return { texte: 'dose selon le poids du jour', mgkg: null, dose: null, auPoids: true };
+    /* paliers de poids (ustekinumab IV, golimumab…) : palier recalculé sur le dernier poids, la dose planifiée est rappelée si le palier a changé (prevu) */
+    const et = etapePalier(p, c, pr);
+    if (et && pw && !doseCorrigee(c) && R.doseEtape) { let d = null; try { d = R.doseEtape(pr, et, pw.poids, c.phase === 'Induction' ? 'induction' : 'entretien'); } catch (e) { d = null; }
+      if (d && +d.dose > 0) { const prevu = c.dose != null && c.dose !== '' && !isNaN(+c.dose) && +c.dose !== +d.dose ? +c.dose : null; return { texte: prevu != null ? `${R.nbFr(d.dose)} mg (palier du ${pw.initial ? 'poids à l’inclusion' : 'dernier poids'} : ${R.nbFr(pw.poids)} kg${pw.date ? ' le ' + R.fmtDate(pw.date) : ''})` : `${R.nbFr(d.dose)} mg`, mgkg: null, dose: +d.dose, poids: pw.poids, datePoids: pw.date, auPoids: true, palier: true, articleId: d.articleId || null, prevu }; } }
     const fixe = c.dose != null && c.dose !== '' && !isNaN(+c.dose) ? `${R.nbFr(c.dose)} mg` : String(c.doseTexte || '').replace(/\s*\((optimisation|modifi[ée]e?)[^)]*\)/gi, '').trim();
-    return { texte: fixe, mgkg: null, dose: c.dose != null ? +c.dose : null, auPoids: pr.doseType === 'palier' };
+    return { texte: fixe, mgkg: null, dose: c.dose != null ? +c.dose : null, auPoids: !!et };
+  };
+  /* écart entre la dose donnée et la prescription d'une séance réalisée : « prescrit 370 mg », « prescrit 5 mg/kg », '' sans écart.
+     prescription en mg/kg : comparaison en mg/kg (mg/kg saisis, sinon dose ÷ poids du jour, 5 % d'arrondi) — jamais les mg planifiés sur un ancien poids ; dose fixe : comparaison des mg */
+  const mgkgTexte = t => { const m = /(\d+(?:[.,]\d+)?)\s*mg\s*\/\s*kg/i.exec(t || ''); return m ? +m[1].replace(',', '.') : null; };
+  R.ecartDose = (p, c) => {
+    if (!c || c.statut !== 'realisee') return ''; const num = v => v != null && v !== '' && !isNaN(+v); if (!num(c.dosePrescrite) || !num(c.dose)) return '';
+    const mkP = c.doseTextePrescrite !== undefined ? mgkgTexte(c.doseTextePrescrite) || (+c.mgkg > 0 ? +c.mgkg : null) : (+c.mgkg > 0 ? +c.mgkg : null);
+    if (mkP) { const mkD = mgkgTexte(c.doseTexte), lib = `prescrit ${R.nbFr(mkP)} mg/kg`;
+      if (mkD) return Math.abs(mkD - mkP) > 0.005 ? lib : ''; /* mg/kg saisis dans la fenêtre : les mg en découlent */
+      if (+c.poids > 0) { const attendu = mkP * +c.poids; return Math.abs(+c.dose - attendu) > Math.max(1, attendu * 0.05) ? lib : ''; }
+      return ''; }
+    return +c.dosePrescrite !== +c.dose ? `prescrit ${R.nbFr(c.dosePrescrite)} mg` : '';
   };
 
   /* ---------- Bloc « À faire » ----------
@@ -189,7 +224,7 @@
     else if (!arrete) {
       pro = cures.filter(c => c.statut === 'prevue' && c.datePrevue && c.datePrevue >= t).sort((a, b) => (a.datePrevue + (a.heure || '')).localeCompare(b.datePrevue + (b.heure || '')))[0] || null;
       if (pro) { const d = R.doseProchaine(p, pro), voie = pro.voie === 'IV' ? 'perfusion' : pro.voie === 'SC' ? 'injection sous-cutanée' : pro.voie || ''; const premiere = !cures.some(c => (c.cycle || 1) === (pro.cycle || 1) && c.statut === 'realisee');
-        suite.push({ date: pro.datePrevue, html: `<b>${premiere ? 'Première séance' : 'Prochaine séance'}</b>${pro.heure && pro.voie === 'IV' ? ' à ' + esc(pro.heure) : ''} — ${esc([pro.label, pro.phase ? pro.phase.toLowerCase() : '', voie].filter(Boolean).join(', '))}${d.texte ? ' : ' + esc(d.texte) : ''}` });
+        suite.push({ date: pro.datePrevue, html: `<b>${premiere ? 'Première séance' : 'Prochaine séance'}</b>${pro.heure && pro.voie === 'IV' ? ' à ' + esc(pro.heure) : ''} — ${esc([pro.label, pro.phase ? pro.phase.toLowerCase() : '', voie].filter((x, i, a) => x && a.findIndex(y => String(y).toLowerCase() === String(x).toLowerCase()) === i).join(', '))}${d.texte ? ' : ' + esc(d.texte) : ''}` });
         if (!courrier && d.auPoids) { const pw = R.poidsReference(p); if (!pw || !pw.date || R.diffDays(pw.date, pro.datePrevue) > 92 || pw.initial && !R.dernierPoids(p) && R.diffDays(pw.date, pro.datePrevue) > 31) autres.push({ date: pro.datePrevue, html: `<b>Poids à mesurer</b> avant la séance du ${R.fmtDate(pro.datePrevue)} ${pw ? `(${pw.initial ? 'poids à l’inclusion' : 'dernier poids'} : ${R.nbFr(pw.poids)} kg${pw.date ? ' le ' + R.fmtDate(pw.date) : ''})` : '(aucun poids enregistré)'}` }); } }
       else if (!courrier) suite.push({ date: null, html: '<b>Aucune séance programmée</b> : planification à prolonger' });
     }
