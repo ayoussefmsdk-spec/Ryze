@@ -248,4 +248,38 @@
   const valCorr = (champ, v) => vide(v) ? '∅' : champ === 'statut' ? STATUTS[v] || String(v) : champ === 'ide' ? R.userName(v) : /^\d{4}-\d{2}-\d{2}$/.test(String(v)) ? R.fmtDate(v) : typeof v === 'number' ? R.nbFr(v) : String(v);
   R.correctionsTexte = (c, opts) => { const L = (c && Array.isArray(c.corrections) ? c.corrections : []).filter(x => x && x.le); if (!L.length) return ''; const sel = opts && opts.derniere ? L.slice(-1) : L;
     return sel.map(x => `Corrigée le ${R.fmtDate(x.le)}${x.par ? ' par ' + R.userName(x.par) : ''}${(x.changements || []).length ? ' : ' + x.changements.map(ch => `${CHAMPS[ch.champ] || ch.champ} ${valCorr(ch.champ, ch.avant)} → ${valCorr(ch.champ, ch.apres)}`).join(' ; ') : ''}`).join(' · '); };
+  /* ---------- Lecture d'un dosage (taux résiduel) sur un document ----------
+     Décision D3 : le constat seulement (taux, cible du dossier, anticorps), précédé de la remarque du médecin (conduite à tenir) en gras si elle existe.
+     La conduite proposée par l'application (R.interpTdm(...).texte) reste à l'écran : jamais imprimée ni exportée.
+     R.lectureTdm(p, s) → { constat: 'Taux résiduel 5,2 µg/mL — sous la cible (≥ 7,5) — anticorps non détectés', note, niveau, cible, cibleMotif, hors, induction, taux, molecule } ; constat '' si le dosage n'est pas chiffré */
+  R.lectureTdm = (p, s) => { if (!s) return { constat: '', note: '', niveau: '', cible: '', cibleMotif: '', hors: false, induction: false, taux: null, molecule: '' };
+    const td = R.tdmDe(s, p) || {}, i = R.interpTdm(td, { p: p || null, s }), note = String(s.note || '').trim();
+    return { constat: i.constat || '', note, niveau: i.niveau || '', cible: i.cible || '', cibleMotif: i.cibleMotif || '', hors: i.niveau === 'bas' || i.niveau === 'haut', induction: !!i.induction, taux: td.taux != null && !isNaN(td.taux) ? td.taux : null, molecule: td.molecule || '' }; };
+  /* HTML : <div class="doc-tdm-note"><b>Remarque du médecin : …</b></div><div class="doc-tdm-constat">constat</div> — o.inline : « <b>Remarque du médecin : …</b> — constat » sur une ligne ; '' si ni note ni constat */
+  R.lectureTdmDoc = (p, s, o) => { o = o || {}; const l = R.lectureTdm(p, s); const note = l.note ? `<b>Remarque du médecin : ${esc(l.note)}</b>` : '', constat = l.constat ? esc(l.constat) : '';
+    if (!note && !constat) return ''; if (o.inline) return [note, constat].filter(Boolean).join(' — ');
+    return `${note ? `<div class="doc-tdm-note">${note}</div>` : ''}${constat ? `<div class="doc-tdm-constat">${constat}</div>` : ''}`; };
+
+  /* ---------- Bilan pré-biothérapie : « À retenir » (décision D7) ----------
+     anomalies (examens faits anormaux, hors état de référence R.estEtatReference) et examens en attente, en tête de la liste complète.
+     R.bilanPreRetenir(p) → { anomalies: [{ id, label, commentaire, date }], attente: [{ id, label, date, demande }], faits, total } ; label = libellé court */
+  const courtBilan = l => String(l || '').split(' (')[0].split(' :')[0];
+  R.bilanPreRetenir = p => { const bilan = (p && p.bilan) || []; const app = R.bilanDefs(bilan).map(d => ({ d, b: bilan.find(x => x.id === d.id) })).filter(x => x.b && x.b.statut !== 'na');
+    return { anomalies: app.filter(x => x.b.statut === 'fait_anormal' && !R.estEtatReference(x.d.id)).map(x => ({ id: x.d.id, label: courtBilan(x.d.label), commentaire: String(x.b.commentaire || '').trim(), date: x.b.date || '' })),
+      attente: app.filter(x => R.bilanEnCours(x.b)).map(x => ({ id: x.d.id, label: courtBilan(x.d.label), date: x.b.date || '', demande: x.b.date ? R.bilanDemandeTxt(x.b) : '' })),
+      faits: app.filter(x => R.bilanFait(x.b)).length, total: app.length }; };
+  /* liste complète en deux colonnes (compte rendu) : Examen | Résultat | Date ×2 ; anomalies en gras, état de référence « fait », en attente en italique ; puis « Résultats et commentaires » (o.commentaires:false pour l'omettre) ; '' sans bilan retenu */
+  R.bilanPreCompactDoc = (p, o) => { o = o || {}; const bilan = (p && p.bilan) || []; const rows = R.bilanDefs(bilan).map(d => ({ d, b: bilan.find(x => x.id === d.id) })).filter(x => x.b && x.b.statut !== 'na'); if (!rows.length) return '';
+    const an = x => x.b.statut === 'fait_anormal' && !R.estEtatReference(x.d.id);
+    const TD = ' style="height:auto;padding:2px 5px"'; /* lignes serrées (la CSS du document est dans index.html) */
+    const cell = x => !x ? `<td${TD}></td><td${TD}></td><td class="m"${TD}></td>` : `<td${TD}>${an(x) ? '<b>' : ''}${esc(courtBilan(x.d.label))}${an(x) ? '</b>' : ''}</td><td${TD}>${x.b.statut === 'attente' ? `<i>${x.b.date ? esc(R.bilanDemandeTxt(x.b)) : 'en attente'}</i>` : an(x) ? '<b>anormal</b>' : x.b.statut === 'fait_anormal' ? 'fait' : 'normal'}</td><td class="m"${TD}>${x.b.date ? R.fmtDate(x.b.date) : ''}</td>`;
+    let h = ''; for (let i = 0; i < rows.length; i += 2) h += `<tr>${cell(rows[i])}${cell(rows[i + 1])}</tr>`;
+    const com = rows.filter(x => String(x.b.commentaire || '').trim() || an(x));
+    return `<table class="doc-table doc-bilan-compact" style="font-size:8.5pt"><thead><tr><th style="padding:3px 5px">Examen</th><th style="padding:3px 5px">Résultat</th><th style="padding:3px 5px">Date</th><th style="padding:3px 5px">Examen</th><th style="padding:3px 5px">Résultat</th><th style="padding:3px 5px">Date</th></tr></thead><tbody>${h}</tbody></table>${com.length && o.commentaires !== false ? `<p class="doc-bilan-com" style="font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:9pt;line-height:1.35;margin:4px 0 0"><b>Résultats et commentaires :</b> ${com.map(x => `${an(x) ? '<b>' : ''}${esc(courtBilan(x.d.label))}${an(x) ? ' (anormal)</b>' : ''}${String(x.b.commentaire || '').trim() ? ' : ' + esc(String(x.b.commentaire).trim()) : ''}`).join(' · ')}</p>` : ''}`; };
+  /* bloc imprimé div.doc-retenir (avant la liste complète) : « À retenir — ⚠ Anomalies : … · ☐ En attente : … » ; bilan complet sans anomalie : une ligne ; '' sans bilan retenu */
+  R.bilanPreRetenirDoc = p => { const r = R.bilanPreRetenir(p); if (!r.total) return '';
+    const an = r.anomalies.map(x => `<b>${esc(x.label)}</b>${x.commentaire ? ' : ' + esc(x.commentaire) : ''}${x.date ? ` (${R.fmtDate(x.date)})` : ''}`), att = r.attente.map(x => `${esc(x.label)}${x.demande ? ` (${esc(x.demande)})` : ''}`);
+    const ligne = (k, v) => `<div class="doc-retenir-r" style="display:grid;grid-template-columns:30mm minmax(0,1fr);gap:6px;padding:1px 0"><span class="doc-retenir-k" style="font-weight:700">${k}</span><span class="doc-retenir-v">${v}</span></div>`;
+    const corps = !an.length && !att.length ? `<div class="doc-retenir-ok">Bilan complet (${r.faits}/${r.total}), aucune anomalie signalée.</div>` : `${ligne(an.length ? `⚠ ${an.length > 1 ? 'Anomalies' : 'Anomalie'} (${an.length})` : 'Anomalies', an.length ? an.join(' · ') : 'aucune')}${att.length ? ligne(`☐ En attente (${att.length})`, att.join(' · ')) : ''}`;
+    return `<div class="doc-box doc-retenir" style="font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:9pt;line-height:1.35;padding:5px 9px;margin:4px 0 6px;break-inside:avoid"><div class="doc-retenir-t" style="font-size:8pt;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:2px">À retenir <span style="font-weight:400;letter-spacing:0;text-transform:none">· ${r.faits}/${r.total} ${R.pluriel(r.total, 'examen réalisé', 'examens réalisés', true)}</span></div>${corps}</div>`; };
 })(window.RYZE);

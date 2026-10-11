@@ -72,9 +72,12 @@
     if (s.user && !(s.users || []).some(u => u.id === s.user)) s.user = null;
     /* correction idempotente, sans changement de version : un protocole dont toutes les voies sont sous-cutanées ne peut pas être dosé en mg/kg (l'assistant refuse ensuite tout dossier) — remis en « mg fixe », les valeurs de dose sont conservées */
     (s.protocoles || []).forEach(pr => { const voies = (pr.induction || []).map(e => e.voie).concat(pr.entretien ? [pr.entretien.voie] : []); if (pr.doseType === 'mgkg' && voies.length && voies.every(v => v && v !== 'IV')) pr.doseType = 'mg'; });
-    /* idem : cibles de l'adalimumab alignées sur R.TDM_CIBLES (7,5–12 µg/mL) dans la fiche protocole et les contrôles déjà générés ; seule la chaîne d'origine exacte est remplacée (fiche modifiée par le service intacte) */
-    (s.protocoles || []).forEach(pr => { if (pr.id === 'ada' && typeof pr.optimisation === 'string') pr.optimisation = pr.optimisation.replace('(taux résiduel cible 8–12 µg/mL)', '(taux résiduel cible 7,5–12 µg/mL)'); });
-    (s.patients || []).forEach(p => (p.surveillance || []).forEach(x => { if (x.id === 'tdm' && typeof x.cible === 'string') x.cible = x.cible.replace('adalimumab ≥ 7,5 µg/mL', 'adalimumab 7,5–12 µg/mL'); }));
+    /* idem : cibles pédiatriques de taux résiduel (D4, réglables dans Paramètres) — fiches protocole infliximab et adalimumab : seules les chaînes d'origine des versions précédentes sont remplacées (fiche modifiée par le service intacte) ;
+       contrôles de dosage : toute cible générée par l'application (anciens textes « 3–7 », « 7,5–12 », « ≥ 7,5 »…) est réécrite d'après le réglage, la molécule du cycle et l'atteinte périnéale (R.rafraichirCiblesTdm, idempotent) ; une cible saisie à la main n'est pas touchée */
+    { const ANC = { ada: [['(taux résiduel cible 8–12 µg/mL)', '(taux résiduel cible 7,5–12 µg/mL)'], ['(taux résiduel cible 7,5–12 µg/mL)', '(taux résiduel cible pédiatrique ≥ 7,5 µg/mL, ≥ 12 µg/mL si atteinte périnéale ; réglable dans Paramètres)']],
+        'ifx-iv': [['guidés par le taux résiduel (≥ 5 µg/mL AGA ; 3–7 µg/mL consensus) et les anticorps anti-infliximab', 'guidés par le taux résiduel (cible pédiatrique ≥ 5 µg/mL en entretien, ≥ 10 µg/mL si atteinte périnéale ; réglable dans Paramètres) et les anticorps anti-infliximab']] };
+      (s.protocoles || []).forEach(pr => { (ANC[pr.id] || []).forEach(([de, vers]) => { if (typeof pr.optimisation === 'string') pr.optimisation = pr.optimisation.replace(de, vers); }); }); }
+    try { R.rafraichirCiblesTdm(s); } catch (e) { console.error('Cibles de taux résiduel', e); }
     completerEtab(s); /* identité de l'établissement (idempotent, sans changement de version) */
     return s;
   }

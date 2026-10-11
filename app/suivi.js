@@ -32,7 +32,7 @@
       ] },
       { id: 'vit', label: 'Dosage vitaminique', type: 'libre', desc: 'saisissez le dosage souhaité et sa période ; plusieurs possibles', placeholder: 'ex. vitamine D, folates, zinc' },
       { id: 'calpro', label: 'Calprotectine fécale', periode: 182, unite: 'µg/g', cible: '< 250 µg/g' },
-      { id: 'tdm', label: 'Dosage de l’anti-TNF (taux résiduel : infliximab, adalimumab…)', periodeChoix: true, unite: 'µg/mL', cible: 'résiduel selon la molécule : infliximab 3–7 µg/mL, adalimumab 7,5–12 µg/mL', defaut: false },
+      { id: 'tdm', label: 'Dosage de l’anti-TNF (taux résiduel : infliximab, adalimumab…)', periodeChoix: true, unite: 'µg/mL', cible: 'résiduel selon la molécule : infliximab ≥ 5 µg/mL, adalimumab ≥ 7,5 µg/mL ; atteinte périnéale : infliximab ≥ 10, adalimumab ≥ 12', defaut: false }, /* texte remplacé à la lecture par R.cibleTdmGenerique() (réglage de Paramètres) */
       { id: 'actnf', label: 'Suivi annuel des anticorps anti-TNF', periode: 365, defaut: false }
     ] },
     { id: 'radio', label: 'Bilan radiologique', periode: 365, items: [
@@ -40,7 +40,7 @@
       { id: 'echo', label: 'Échographie abdominale avec doppler', periode: 182 }
     ] }
   ];
-  R.itemBilan = id => { for (const g of R.BILANS) { const it = g.items.find(x => x.id === id); if (it) return Object.assign({ groupe: g }, it); } return null; };
+  R.itemBilan = id => { for (const g of R.BILANS) { const it = g.items.find(x => x.id === id); if (it) return Object.assign({ groupe: g }, it, it.id === 'tdm' && R.cibleTdmGenerique ? { cible: R.cibleTdmGenerique() } : {}); } return null; }; /* dosage : cible lue dans le réglage de Paramètres */
   /* compatibilité : R.surv(id) sert encore aux anciens dossiers, à la prolongation et à l'éditeur de protocoles */
   const survAncien = R.surv;
   R.surv = id => { const it = R.itemBilan(id); if (it) { const per = it.periode || it.groupe.periode; return { id: it.id, label: it.label, cat: it.groupe.label, mode: per === 'cure' ? 'cure' : 'periodique', tousLes: per === 'cure' ? null : per, cible: it.cible, type: it.type }; } return survAncien(id); };
@@ -90,7 +90,7 @@
   R.periodeItem = (cfg, g, it, c) => { if (it.periode === 'cure' || g.periode === 'cure') return 'cure'; return +(c && c.periode) || it.periode || +(cfg.groupes && cfg.groupes[g.id]) || g.periode; };
   R.genererSurveillanceCfg = (cfg, dateDebut, horizon, cycle) => {
     const out = []; horizon = horizon || 365;
-    const serie = (g, it, per, extra) => { const base = Object.assign({ id: it.id, label: it.label, cat: g.label, type: it.type, cible: it.cible, unite: it.unite, gen: true, cycle: cycle || 1 }, extra); if (per === 'cure') { out.push(Object.assign(base, { mode: 'cure', echeance: null, statut: 'cure' })); return; } per = Math.max(7, +per || 91); for (let j = per; j <= horizon; j += per) out.push(Object.assign({}, base, { mode: 'echeance', jour: j, echeance: R.addDays(dateDebut, j), statut: 'prevue', periode: per })); };
+    const serie = (g, it, per, extra) => { const base = Object.assign({ id: it.id, label: it.label, cat: g.label, type: it.type, cible: it.id === 'tdm' && R.cibleTdmGenerique ? R.cibleTdmGenerique() : it.cible, unite: it.unite, gen: true, cycle: cycle || 1 }, extra); /* dosage : cible du réglage, précisée par molécule et dossier dans R.alignerTdm */ if (per === 'cure') { out.push(Object.assign(base, { mode: 'cure', echeance: null, statut: 'cure' })); return; } per = Math.max(7, +per || 91); for (let j = per; j <= horizon; j += per) out.push(Object.assign({}, base, { mode: 'echeance', jour: j, echeance: R.addDays(dateDebut, j), statut: 'prevue', periode: per })); };
     R.BILANS.forEach(g => g.items.forEach(it => { const c = cfg.items && cfg.items[it.id]; if (!c || !c.on) return;
       if (it.type === 'libre') { (c.entries || []).filter(e => e.nom && e.nom.trim()).forEach(e => serie(g, it, +e.periode || R.periodeItem(cfg, g, it, c), { label: `${it.label} : ${e.nom.trim()}`, nom: e.nom.trim() })); return; }
       if (it.type === 'composite' && Array.isArray(c.sous) && !c.sous.length) return; /* aucune analyse cochée : rien à programmer */
@@ -168,7 +168,7 @@
   };
   R.lireSaisieControle = (s, fd) => {
     const it = R.itemBilan(s.id) || {};
-    if (s.id === 'tdm' && fd.has('tdm_taux')) { const taux = fd.get('tdm_taux') === '' ? null : +fd.get('tdm_taux'); s.tdm = { molecule: fd.get('tdm_mol'), taux, ac: fd.get('tdm_ac') || 'nd', titre: (fd.get('tdm_titre') || '').trim() }; const i = R.interpTdm(s.tdm); s.interpretation = i.texte; s.resultat = `${s.tdm.molecule} : résiduel ${taux == null ? '—' : R.fmtV(taux) + ' µg/mL'} — ${R.AC_LIB[s.tdm.ac]}${s.tdm.ac === 'pos' && s.tdm.titre ? ' (titre ' + s.tdm.titre + ')' : ''}`; s.note = (fd.get('note') || '').trim(); return; }
+    if (s.id === 'tdm' && fd.has('tdm_taux')) { const taux = fd.get('tdm_taux') === '' ? null : +fd.get('tdm_taux'); s.tdm = { molecule: fd.get('tdm_mol'), taux, ac: fd.get('tdm_ac') || 'nd', titre: (fd.get('tdm_titre') || '').trim() }; const i = R.interpTdm(s.tdm, R.ctxTdm(s)); /* conduite proposée (écran) ; les documents recalculent le constat */ s.interpretation = i.texte; s.resultat = `${s.tdm.molecule} : résiduel ${taux == null ? '—' : R.fmtV(taux) + ' µg/mL'} — ${R.AC_LIB[s.tdm.ac]}${s.tdm.ac === 'pos' && s.tdm.titre ? ' (titre ' + s.tdm.titre + ')' : ''}`; s.note = (fd.get('note') || '').trim(); return; }
     if (s.type === 'clinique' || it.type === 'clinique') { s.clinique = R.lireClinique(fd); if (Array.isArray(s.sous)) s.clinique.sous = s.sous.slice(); /* éléments proposés à la saisie (bande des signes) */ s.resultat = R.resumeClinique(s.clinique); s.note = s.clinique.remarques || ''; return; }
     if (s.type === 'composite' || it.type === 'composite') { const sous = (s.sous && s.sous.length ? s.sous : (it.sous || []).map(x => x.id)); s.valeurs = {}; sous.forEach(sid => { const v = (fd.get('val_' + sid) || '').trim(); if (v) s.valeurs[sid] = v; }); s.resultat = sous.filter(sid => s.valeurs[sid]).map(sid => { const d = (it.sous || []).find(x => x.id === sid) || { label: sid, unite: '' }; return `${d.label} ${s.valeurs[sid]}${d.unite ? ' ' + d.unite : ''}`; }).join(' · ') || 'fait'; s.note = (fd.get('note') || '').trim(); return; }
     s.resultat = (fd.get('resultat') || '').trim(); s.note = (fd.get('note') || '').trim();
@@ -219,7 +219,7 @@
   R.bilanPreDoc = bilan => {
     const esc = R.esc; const rows = R.bilanDefs(bilan).map(b => ({ b, r: (bilan || []).find(x => x.id === b.id) })).filter(x => x.r && x.r.statut !== 'na');
     const court = l => l.split(' (')[0].split(' :')[0];
-    return rows.map(x => { const anormal = x.r.statut === 'fait_anormal' && !R.estEtatReference(x.b.id); const st = x.r.statut === 'attente' ? `<i>${x.r.date ? esc(R.bilanDemandeTxt(x.r)) : 'en attente'}</i>` : anormal ? '<b>anormal</b>' : x.r.statut === 'fait_anormal' ? 'fait' : 'normal'; return `<tr${anormal ? ' class="doc-alert"' : ''}><td>${esc(x.b.cat)}</td><td>${esc(court(x.b.label))}</td><td>${st}</td><td class="m">${x.r.date ? R.fmtDate(x.r.date) : ''}</td><td>${x.r.commentaire ? esc(x.r.commentaire) : ''}</td></tr>`; }).join('');
+    return rows.map(x => { const anormal = x.r.statut === 'fait_anormal' && !R.estEtatReference(x.b.id); const st = x.r.statut === 'attente' ? `<i>${x.r.date ? esc(R.bilanDemandeTxt(x.r)) : 'en attente'}</i>` : anormal ? '<b>anormal</b>' : x.r.statut === 'fait_anormal' ? 'fait' : 'normal'; return `<tr${anormal ? ' class="doc-alert"' : ''}><td>${esc(x.b.cat)}</td><td>${anormal ? '<b>' + esc(court(x.b.label)) + '</b>' : esc(court(x.b.label))}</td><td>${st}</td><td class="m">${x.r.date ? R.fmtDate(x.r.date) : ''}</td><td>${x.r.commentaire ? esc(x.r.commentaire) : ''}</td></tr>`; }).join('');
   };
   R.estBio = s => !!(s.valeurs || ['calpro', 'tdm', 'vit', 'actnf', 'libre-bio'].includes(s.id) || (R.itemBilan(s.id) && R.itemBilan(s.id).groupe.id === 'bio'));
   R.estClin = s => s.id === 'clin' || s.type === 'clinique' || !!s.clinique;
@@ -240,9 +240,7 @@
 
 
   /* ---------- Dosage pharmacologique : molécule, taux résiduel, anticorps, interprétation ---------- */
-  R.TDM_MOLECULES = ['Infliximab', 'Adalimumab', 'Golimumab', 'Vedolizumab', 'Ustekinumab', 'Autre'];
-  /* cibles de taux résiduel en entretien, indicatives (ECCO / AGA) : [minimum, maximum ou null] */
-  R.TDM_CIBLES = { infliximab: [3, 7], adalimumab: [7.5, 12], golimumab: [1, null], vedolizumab: [12, null], ustekinumab: [1, null] };
+  /* R.TDM_MOLECULES, R.TDM_CIBLES_DEFAUT, R.tdmCibles(), R.cibleTdm(p, molecule), R.TDM_CIBLES (vue de compatibilité) : data.js — cibles pédiatriques minimales, réglables dans Paramètres */
   R.moleculeCycle = (p, cycle) => { const h = ((p && p.historiqueProtocoles) || []).find(x => x.cycle === (cycle || (p && p.cycleCourant) || 1)); const dci = ((R.proto((h && h.protocoleId) || (p && p.protocoleId)) || {}).dci || ''); const m = R.TDM_MOLECULES.find(x => new RegExp(x, 'i').test(dci)); return m || 'Autre'; };
   /* lit un dosage structuré, ou déduit la structure d'un ancien résultat en texte libre */
   R.tdmDe = (s, p) => {
@@ -253,29 +251,51 @@
     return { molecule: R.moleculeCycle(p, s.cycle), taux: m ? +m[1] : null, ac, titre };
   };
   R.AC_LIB = { neg: 'anticorps négatifs', pos: 'anticorps positifs', nd: 'anticorps non dosés' };
-  R.interpTdm = t => {
-    if (!t || t.taux == null || isNaN(t.taux)) return { niveau: '', texte: '' };
-    const cible = R.TDM_CIBLES[String(t.molecule || '').toLowerCase()];
-    if (!cible) return { niveau: '?', texte: 'Pas de cible de référence enregistrée pour cette molécule : interprétation au cas par cas.' };
-    const [lo, hi] = cible; const cibleTxt = hi ? `${lo} à ${hi} µg/mL` : `au moins ${lo} µg/mL`;
-    let niveau, texte;
-    if (t.taux < lo) { niveau = 'bas'; texte = t.ac === 'pos' ? 'Taux bas avec anticorps anti-médicament : immunisation. Discuter un changement de molécule ; si les anticorps sont faibles, une optimisation associée à un immunomodulateur peut se discuter.' : `Taux sous la cible${t.ac === 'neg' ? ' sans anticorps' : ''} : sous-exposition. Discuter une optimisation (dose plus élevée ou intervalle raccourci), puis contrôler le taux.${t.ac === 'nd' ? ' Doser les anticorps pour conclure.' : ''}`; }
-    else if (hi && t.taux > hi) { niveau = 'haut'; texte = 'Taux au-dessus de la cible. En rémission prolongée, une désescalade peut se discuter ; si la maladie reste active, discuter un changement de classe.'; }
-    else { niveau = 'cible'; texte = t.ac === 'pos' ? 'Taux dans la cible malgré des anticorps : contrôler le taux et les anticorps à la prochaine perfusion.' : 'Taux dans la cible. En rémission : poursuivre. Si la maladie reste active : échec probable du mécanisme d’action, discuter un changement de classe.'; }
-    return { niveau, cible: cibleTxt, texte };
+  /* libellés des anticorps sur les documents (constat) */
+  R.AC_DOC = { neg: 'anticorps non détectés', pos: 'anticorps détectés', nd: 'anticorps non dosés' };
+  /* phase du dosage : induction tant que la date du dosage précède la première séance d'entretien du cycle (sinon le début d'entretien du protocole) */
+  R.tdmEnInduction = (p, s) => { if (!p || !s) return false; const d = s.dateFaite || s.echeance; if (!d) return false; const cyc = s.cycle || p.cycleCourant || 1;
+    const ent = (p.cures || []).filter(c => (c.cycle || 1) === cyc && /entretien/i.test(c.phase || '') && c.statut !== 'annulee' && c.datePrevue).map(c => c.datePrevue).sort()[0]; if (ent) return d < ent;
+    const h = (p.historiqueProtocoles || []).find(x => x.cycle === cyc), pr = R.proto ? R.proto((h && h.protocoleId) || p.protocoleId) : null, j0 = R.j0(p, cyc); if (!pr || !pr.entretien || !j0) return false; return d < R.addDays(j0, +pr.entretien.debutJour || 0); };
+  /* lecture d'un dosage t = { molecule, taux, ac, titre } ; ctx = { p, s, induction } : cible du dossier (R.cibleTdm : atteinte périnéale), aucune désescalade proposée en induction
+     → { niveau: '' | '?' | 'bas' | 'cible' | 'haut', cible: '≥ 5 µg/mL', cibleMotif, perineal, induction, constat, texte }
+     constat = « Taux résiduel 5,2 µg/mL — sous la cible (≥ 7,5) — anticorps non détectés » : seul texte automatique admis sur un document (R.lectureTdmDoc) ;
+     texte = conduite à tenir proposée : À L'ÉCRAN SEULEMENT (fenêtre du contrôle, détail), jamais imprimée ni exportée */
+  R.interpTdm = (t, ctx) => {
+    ctx = ctx || {}; if (!t || t.taux == null || isNaN(t.taux)) return { niveau: '', texte: '', constat: '' };
+    const c = R.cibleTdm(ctx.p || null, t.molecule); const ind = ctx.induction != null ? !!ctx.induction : !!(ctx.p && ctx.s && R.tdmEnInduction(ctx.p, ctx.s));
+    const ac = (R.AC_DOC[t.ac] || R.AC_DOC.nd) + (t.ac === 'pos' && t.titre ? ` (titre ${t.titre})` : ''), taux = `Taux résiduel ${R.fmtV(t.taux)} µg/mL`;
+    if (!c) return { niveau: '?', cible: '', cibleMotif: '', perineal: false, induction: ind, constat: `${taux} — pas de cible enregistrée pour cette molécule — ${ac}`, texte: 'Pas de cible de référence enregistrée pour cette molécule : interprétation au cas par cas.' };
+    const lo = c.min, hi = c.max; let niveau, niv, texte;
+    if (t.taux < lo) { niveau = 'bas'; niv = 'sous la cible';
+      texte = t.ac === 'pos' ? 'Taux bas avec anticorps anti-médicament : immunisation. Discuter un changement de molécule ; si les anticorps sont faibles, une optimisation associée à un immunomodulateur peut se discuter.'
+        : `Taux sous la cible${t.ac === 'neg' ? ' sans anticorps' : ''}${ind ? ' pendant l’induction' : ''} : sous-exposition. Discuter une optimisation (dose plus élevée ou intervalle raccourci), puis contrôler le taux${ind ? ' à la séance suivante' : ''}.${t.ac === 'nd' ? ' Doser les anticorps pour conclure.' : ''}`; }
+    else if (hi != null && t.taux > hi) {
+      if (ind) { niveau = 'cible'; niv = 'taux élevé attendu en induction'; texte = 'Taux élevé pendant l’induction : attendu à ce stade, aucun allègement à proposer. Poursuivre le schéma prévu et contrôler le taux résiduel en entretien.'; } /* jamais de désescalade proposée en induction */
+      else { niveau = 'haut'; niv = 'au-dessus de la cible'; texte = 'Taux au-dessus de la cible. En rémission prolongée, une désescalade peut se discuter ; si la maladie reste active, discuter un changement de classe.'; } }
+    else { niveau = 'cible'; niv = 'dans la cible';
+      texte = t.ac === 'pos' ? 'Taux dans la cible malgré des anticorps : contrôler le taux et les anticorps à la prochaine perfusion.'
+        : ind ? 'Taux dans la cible pendant l’induction : poursuivre le schéma prévu et contrôler le taux résiduel en entretien.'
+        : 'Taux dans la cible. En rémission : poursuivre. Si la maladie reste active : échec probable du mécanisme d’action, discuter un changement de classe.'; }
+    return { niveau, cible: c.texte, cibleMotif: c.motif, perineal: c.perineal, induction: ind, constat: `${taux} — ${niv} (${c.court}${c.perineal ? ', atteinte périnéale' : ''}) — ${ac}`, texte };
   };
+  /* contexte de lecture d'un contrôle de dosage : patient qui le porte (référence dans p.surveillance) */
+  R.ctxTdm = (s, p) => ({ p: p || ((R.S && R.S.patients) || []).find(x => (x.surveillance || []).includes(s)) || null, s });
   R.formTdm = (s, p) => {
-    const t = R.tdmDe(s, p) || { molecule: R.moleculeCycle(p, s.cycle), taux: null, ac: 'nd', titre: '' }; const i = R.interpTdm(t);
+    const t = R.tdmDe(s, p) || { molecule: R.moleculeCycle(p, s.cycle), taux: null, ac: 'nd', titre: '' }; const i = R.interpTdm(t, R.ctxTdm(s, p));
     return `<div class="form-grid"><div class="field"><label>Molécule dosée</label><select name="tdm_mol" data-change="tdmInterp">${R.TDM_MOLECULES.map(m => `<option${m === t.molecule ? ' selected' : ''}>${m}</option>`).join('')}</select></div>
       <div class="field"><label>Taux résiduel (µg/mL)</label><input type="number" step="0.1" min="0" name="tdm_taux" value="${esc(t.taux ?? '')}" data-input="tdmInterp"></div>
       <div class="field"><label>Anticorps anti-médicament</label><select name="tdm_ac" data-change="tdmInterp"><option value="nd"${t.ac === 'nd' ? ' selected' : ''}>non dosés</option><option value="neg"${t.ac === 'neg' ? ' selected' : ''}>négatifs</option><option value="pos"${t.ac === 'pos' ? ' selected' : ''}>positifs</option></select></div>
       <div class="field"><label>Titre des anticorps</label><input type="text" name="tdm_titre" value="${esc(t.titre || '')}" placeholder="si positifs, ex. 45 ng/mL"></div></div>
       <div id="tdm-interp">${R.interpTdmHTML(i)}</div>
-      <p class="small muted" style="margin:0">Prélèvement à faire juste avant la perfusion ou l’injection. Lecture indicative, à confronter à la clinique et aux normes du laboratoire.</p>
-      <div class="field"><label>Remarques (conduite à tenir)</label><textarea name="note" placeholder="ex. optimisation à 10 mg/kg décidée en staff">${esc(s.note || '')}</textarea></div>`;
+      <p class="small muted" style="margin:0">Prélèvement à faire juste avant la perfusion ou l’injection. Lecture indicative, à confronter à la clinique et aux normes du laboratoire ; cibles réglables dans Paramètres. Sur les documents imprimés, seul le constat (taux, cible, anticorps) et votre remarque apparaissent.</p>
+      <div class="field"><label>Remarques (conduite à tenir, imprimée en gras sur les documents)</label><textarea name="note" placeholder="ex. optimisation à 10 mg/kg décidée en staff">${esc(s.note || '')}</textarea></div>`;
   };
-  R.interpTdmHTML = i => !i.texte ? '<div class="callout">Saisissez le taux pour obtenir une lecture.</div>' : `<div class="callout ${i.niveau === 'bas' ? 'crit' : i.niveau === 'haut' ? 'warn' : i.niveau === 'cible' ? 'good' : ''}"><b>${i.niveau === 'bas' ? 'Sous la cible' : i.niveau === 'haut' ? 'Au-dessus de la cible' : i.niveau === 'cible' ? 'Dans la cible' : 'Lecture'}</b>${i.cible ? ` (cible ${esc(String(i.cible).replace(/(\d)\.(\d)/g, '$1,$2'))})` : ''} — ${esc(i.texte)}</div>`;
-  R.actions.tdmInterp = el => { const f = el.closest('form'); if (!f) return; const g = n => (f.querySelector(`[name="${n}"]`) || {}).value; const t = { molecule: g('tdm_mol'), taux: g('tdm_taux') === '' ? null : +g('tdm_taux'), ac: g('tdm_ac'), titre: g('tdm_titre') }; const d = document.getElementById('tdm-interp'); if (d) d.innerHTML = R.interpTdmHTML(R.interpTdm(t)); };
+  /* lecture à l'écran : niveau, cible (et son motif), phase, puis la conduite proposée */
+  R.interpTdmHTML = i => !i.texte ? '<div class="callout">Saisissez le taux pour obtenir une lecture.</div>' : `<div class="callout ${i.niveau === 'bas' ? 'crit' : i.niveau === 'haut' ? 'warn' : i.niveau === 'cible' ? 'good' : ''}"><b>${i.niveau === 'bas' ? 'Sous la cible' : i.niveau === 'haut' ? 'Au-dessus de la cible' : i.niveau === 'cible' ? 'Dans la cible' : 'Lecture'}</b>${i.cible ? ` (cible ${esc(i.cible)}${i.cibleMotif ? ' — ' + esc(i.cibleMotif) : ''})` : ''}${i.induction ? ' · induction' : ''} — ${esc(i.texte)}</div>`;
+  R.actions.tdmInterp = el => { const f = el.closest('form'); if (!f) return; const g = n => (f.querySelector(`[name="${n}"]`) || {}).value; const t = { molecule: g('tdm_mol'), taux: g('tdm_taux') === '' ? null : +g('tdm_taux'), ac: g('tdm_ac'), titre: g('tdm_titre') };
+    const p = g('pid') ? R.patient(g('pid')) : null, s = p && g('i') !== undefined && g('i') !== '' ? p.surveillance[+g('i')] : null; /* fenêtre « Marquer fait » : cible du dossier et phase du contrôle */
+    const d = document.getElementById('tdm-interp'); if (d) d.innerHTML = R.interpTdmHTML(R.interpTdm(t, { p, s: s || null, induction: s ? undefined : (p ? R.tdmEnInduction(p, { echeance: g('date') || R.today(), cycle: p.cycleCourant }) : undefined) })); };
   /* ---------- Courbes : séries biologiques et cliniques ---------- */
   R.nums = s => { const t = String(s ?? '').replace(/[\u00a0\u202f]/g, ' ').replace(/(\d) (?=\d{3}(?!\d))/g, '$1').replace(/,/g, '.').replace(/(\d)\s*[-–]\s*(?=\d)/g, '$1 '); return (t.match(/-?\d+(?:\.\d+)?/g) || []).map(Number); };
   R.num = s => { const n = R.nums(s); return n.length ? n[0] : null; };
@@ -292,7 +312,9 @@
   /* transaminases : 0–40 UI/L chez l'adulte (et âge inconnu) ; avant 18 ans, ALAT ≤ 26 UI/L chez le garçon, ≤ 22 UI/L chez la fille (zone de la courbe = ALAT), ASAT gardée à 0–40 — { ch: zone de la courbe, lignes: zone de chaque ligne ou null, zone: libellé } */
   R.refTransa = p => { const a = agePatient(p); if (a == null || a >= 18) return { ch: R.REFS.transa, lignes: null, zone: '' }; const alat = p && p.sexe === 'F' ? R.REFS.alatF : R.REFS.alatG; return { ch: alat, lignes: { ALAT: alat, ASAT: R.REFS.transa }, zone: `zone : ALAT ≤ ${alat[1]}` }; };
   /* cible de taux résiduel d'une molécule (DCI du protocole) : [minimum, maximum ou null] ou null */
-  R.cibleTdmDe = dci => R.TDM_CIBLES[(R.TDM_MOLECULES.find(m => new RegExp(m, 'i').test(String(dci || ''))) || '').toLowerCase()] || null;
+  R.cibleTdmDe = (dci, p) => { const c = R.cibleTdm(p || null, dci); return c ? [c.min, c.max] : null; }; /* [minimum, maximum ou null] : réglage de Paramètres, atteinte périnéale du dossier si p est donné */
+  /* texte d'une zone de référence : « 0–5 », « ≥ 5 » (pas de borne haute) */
+  R.refTexte = ref => !ref ? '' : ref[1] == null ? `≥ ${fmtV(ref[0])}` : `${fmtV(ref[0])}–${fmtV(ref[1])}`;
   const nouvChart = (key, titre, unite, ref) => ({ key, titre, unite: unite || '', ref: ref || null, lignes: [] });
   const ajouterPt = (ch, nom, pt) => { let l = ch.lignes.find(x => x.nom === nom); if (!l) { l = { nom, pts: [] }; if (ch.refLignes && ch.refLignes[nom]) l.ref = ch.refLignes[nom]; /* zone propre à la ligne (ASAT / ALAT de l'enfant) */ ch.lignes.push(l); } const m = String(pt.brut || '').match(/[<>≤≥]/); if (m) pt.sym = m[0]; l.pts.push(pt); };
   const finaliser = charts => Object.values(charts).map(ch => { ch.lignes.forEach(l => l.pts.sort((a, b) => a.date.localeCompare(b.date))); ch.lignes = ch.lignes.filter(l => l.pts.length); return ch; }).filter(ch => ch.lignes.length);
@@ -313,10 +335,9 @@
       const td = s.id === 'tdm' ? R.tdmDe(s, p) : null; const n = td ? (td.taux != null && !isNaN(td.taux) ? [td.taux] : []) : R.nums(s.resultat); /* dosage sans taux : pas de point (le chiffre du texte serait le titre des anticorps) */ if (!n.length) return; const it = R.itemBilan(s.id) || {};
       const key = s.id + (s.nom ? ':' + s.nom : ''); const titre = s.nom ? `${s.nom}` : (s.id === 'tdm' ? 'Taux résiduel' : (it.label || s.label));
       const dciCycle = s.id === 'tdm' ? ((R.proto(((p.historiqueProtocoles || []).find(h => h.cycle === (s.cycle || 1)) || {}).protocoleId || p.protocoleId) || {}).dci || '') : '';
-      const cTdm = s.id === 'tdm' ? R.TDM_CIBLES[(R.TDM_MOLECULES.find(m => new RegExp(m, 'i').test(dciCycle)) || '').toLowerCase()] : null;
-      const refTdm = cTdm && cTdm[1] != null ? cTdm : null; /* la zone de courbe exige une borne haute */
+      const refTdm = s.id === 'tdm' ? R.cibleTdmDe(dciCycle, p) : null; /* zone cible du dossier : [minimum, maximum ou null] (sans borne haute : zone « ≥ minimum ») */
       const ref = s.id === 'calpro' ? R.REFS.calpro : s.id === 'tdm' ? refTdm : null;
-      const ch = charts[key] || (charts[key] = nouvChart(key, titre, it.unite || s.unite || R.uniteDe(s.resultat), ref)); if (s.id === 'tdm') { if (ch.dci === undefined) ch.dci = dciCycle; else if (ch.dci !== dciCycle) ch.ref = null; /* molécules différentes : pas de zone commune */ }
+      const ch = charts[key] || (charts[key] = nouvChart(key, titre, it.unite || s.unite || R.uniteDe(s.resultat), ref)); if (s.id === 'tdm') { ch.refLib = 'cible'; if (ch.dci === undefined) ch.dci = dciCycle; else if (ch.dci !== dciCycle) ch.ref = null; /* molécules différentes : pas de zone commune */ }
       ajouterPt(ch, titre, { date: s.dateFaite, v: n[0], brut: s.resultat, dci: s.id === 'tdm' ? dciCycle : undefined, note: td ? [R.AC_LIB[td.ac] + (td.titre ? ' (titre ' + td.titre + ')' : ''), note].filter(Boolean).join(' · ') : note });
     });
     return finaliser(charts);
@@ -352,14 +373,15 @@
     const dates = [...new Set(ch.lignes.flatMap(l => l.pts.map(p => p.date)))].sort(); const t0 = R.parse(dates[0]).getTime(), t1 = R.parse(dates[dates.length - 1]).getTime();
     const span = Math.max(t1 - t0, 1); const x = d => dates.length === 1 ? padL + plotW / 2 : padL + (R.parse(d).getTime() - t0) / span * plotW;
     const vals = ch.lignes.flatMap(l => l.pts.map(p => p.v)); let lo = Math.min(...vals), hi = Math.max(...vals);
-    if (ch.ref) { lo = Math.min(lo, ch.ref[0]); hi = Math.max(hi, ch.ref[1]); }
+    if (ch.ref) { lo = Math.min(lo, ch.ref[0]); if (ch.ref[1] != null) hi = Math.max(hi, ch.ref[1]); }
     if (lo === hi) { lo -= 1; hi += 1; } const marge = (hi - lo) * 0.12; lo -= marge; hi += marge; if (lo > 0 && lo < 0.35 * hi) lo = 0; if (Math.min(...vals) >= 0 && lo < 0) lo = 0;
     const step = niceStep(hi - lo); lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step; const y = v => padT + plotH - (v - lo) / (hi - lo) * plotH;
     let g = ''; for (let v = lo; v <= hi + 1e-9; v += step) g += `<line class="grid-line" x1="${padL}" x2="${W - padR}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/><text x="${padL - 6}" y="${(y(v) + 3.5).toFixed(1)}" text-anchor="end">${fmtV(v)}</text>`;
     /* graduations de l'axe des dates : au plus 5, sur des débuts de mois */
     let xt = ''; if (dates.length > 1) { const d0 = R.parse(dates[0]), d1 = R.parse(dates[dates.length - 1]); const nbMois = (d1.getFullYear() - d0.getFullYear()) * 12 + d1.getMonth() - d0.getMonth() + 1; const pas = Math.max(1, Math.ceil(nbMois / 5)); let d = new Date(d0.getFullYear(), d0.getMonth() + 1, 1); if (nbMois <= 2) d = new Date(d0.getFullYear(), d0.getMonth(), 1); for (let i = 0; d <= d1 && i < 12; d = new Date(d.getFullYear(), d.getMonth() + pas, 1), i++) { if (d < d0) continue; const px = x(R.iso(d)); xt += `<text x="${px.toFixed(1)}" y="${H - 8}" text-anchor="middle">${MOIS[d.getMonth()]} ${String(d.getFullYear()).slice(2)}</text>`; } } else xt += `<text x="${x(dates[0]).toFixed(1)}" y="${H - 8}" text-anchor="middle">${R.fmtDate(dates[0])}</text>`;
     if (dates.length > 1 && !xt) xt = [dates[0], dates[dates.length - 1]].map(d => `<text x="${x(d).toFixed(1)}" y="${H - 8}" text-anchor="middle">${R.fmtDate(d, { day: '2-digit', month: '2-digit' })}</text>`).join('');
-    const ref = ch.ref ? `<rect class="ref" x="${padL}" y="${y(ch.ref[1]).toFixed(1)}" width="${plotW}" height="${Math.max(1, y(ch.ref[0]) - y(ch.ref[1])).toFixed(1)}"/>${o.compact ? '' : `<text class="ref-lbl" x="${W - padR + 4}" y="${((y(ch.ref[0]) + y(ch.ref[1])) / 2 + 3.5).toFixed(1)}">réf. ${fmtV(ch.ref[0])}–${fmtV(ch.ref[1])}</text>`}` : '';
+    /* zone de référence ; sans borne haute (cible minimale du taux résiduel) : du minimum jusqu'au haut du graphique */
+    const ref = ch.ref ? (() => { const yH = ch.ref[1] != null ? y(ch.ref[1]) : padT, yL = y(ch.ref[0]); return `<rect class="ref" x="${padL}" y="${yH.toFixed(1)}" width="${plotW}" height="${Math.max(1, yL - yH).toFixed(1)}"/>${o.compact ? '' : `<text class="ref-lbl" x="${W - padR + 4}" y="${((yL + yH) / 2 + 3.5).toFixed(1)}">${esc(ch.refLib || 'réf.')} ${R.refTexte(ch.ref)}</text>`}`; })() : '';
     const lignes = ch.lignes.map((l, i) => { const cls = 's' + (i + 1); const d = l.pts.map((p, k) => `${k ? 'L' : 'M'}${x(p.date).toFixed(1)} ${y(p.v).toFixed(1)}`).join(' '); const last = l.pts[l.pts.length - 1]; const lab = ch.lignes.length === 1 || i === 0 ? `<text class="fin" x="${(x(last.date) + 8).toFixed(1)}" y="${(y(last.v) + 3.5).toFixed(1)}">${fmtV(last.v)}</text>` : ''; return `<path class="ligne ${cls}" d="${d}"/>${l.pts.map(p => `<circle class="pt ${cls}" cx="${x(p.date).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="4"/>`).join('')}${ch.ref ? '' : lab}`; }).join('');
     const data = { W, dates, unite: ch.unite, lignes: ch.lignes.map(l => ({ nom: l.nom, v: dates.map(d => { const p = l.pts.find(q => q.date === d); return p ? { v: p.v, brut: p.brut, note: p.note, sym: p.sym } : null; }) })), xs: dates.map(d => +x(d).toFixed(1)), ys: ch.lignes.map(l => dates.map(d => { const p = l.pts.find(q => q.date === d); return p ? +y(p.v).toFixed(1) : null; })) };
     return `<div class="courbe" data-courbe="${esc(JSON.stringify(data))}"><svg viewBox="0 0 ${W} ${H}" role="img" tabindex="0" aria-label="${esc(ch.titre)}${ch.unite ? ' en ' + esc(ch.unite) : ''}, ${dates.length} valeur(s)">${g}${ref}${xt}<line class="axis" x1="${padL}" x2="${W - padR}" y1="${(padT + plotH).toFixed(1)}" y2="${(padT + plotH).toFixed(1)}"/>${lignes}<line class="cross" x1="0" x2="0" y1="${padT}" y2="${padT + plotH}"/><circle class="focus" r="6" cx="-20" cy="-20"/></svg>${ch.lignes.length > 1 ? `<div class="legend courbe-legend">${ch.lignes.map((l, i) => `<span><i class="lk s${i + 1}"></i>${esc(l.nom)}</span>`).join('')}</div>` : ''}</div>`;
@@ -428,8 +450,8 @@
   const ORDRE_DOC = ['poids', 'crp', 'calpro', 'tdm', 'hb', 'alb', 'transa', 'ferr', 'b12', 'imc', 'temp', 'fc', 'ta'];
   /* séries des documents : taux résiduel coupé au dernier changement de molécule (zone = cible de cette molécule) */
   R.seriesDoc = p => [...R.seriesClinique(p), ...R.seriesBio(p)].map(ch => { if (ch.key !== 'tdm') return ch; const der = ch.lignes.flatMap(l => l.pts).sort((a, b) => a.date.localeCompare(b.date)).pop(); if (!der || der.dci === undefined) return ch;
-    const dci = der.dci, mol = String(dci).split(' — ')[0], c = R.cibleTdmDe(dci), lignes = ch.lignes.map(l => ({ ...l, pts: l.pts.filter(x => x.dci === dci) })).filter(l => l.pts.length);
-    return { ...ch, titre: mol ? `Taux résiduel — ${mol.toLowerCase()}` : ch.titre, dci: mol, ref: c && c[1] != null ? c : null, lignes }; });
+    const dci = der.dci, mol = String(dci).split(' — ')[0], c = R.cibleTdmDe(dci, p), lignes = ch.lignes.map(l => ({ ...l, pts: l.pts.filter(x => x.dci === dci) })).filter(l => l.pts.length);
+    return { ...ch, titre: mol ? `Taux résiduel — ${mol.toLowerCase()}` : ch.titre, dci: mol, ref: c || null, refLib: 'cible', lignes }; });
   /* température, fréquence cardiaque, tension : courbe imprimée seulement si une valeur est anormale
      FC de l'enfant : fréquence d'éveil PALS 2020 [âge maximal exclu, min, max] ; TA : ≥ 140/90 ou systolique < 90 (adulte), ≥ 130/80 avant 18 ans (seuil AAP 2017 de l'adolescent) */
   const FC_ENFANT = [[1, 100, 180], [3, 98, 140], [6, 80, 120], [12, 75, 118], [18, 60, 100]];
@@ -443,16 +465,16 @@
   R.courbesDoc = (p, o) => {
     o = o || {}; const charts = R.chartsDoc(p, o.depuis).slice(0, o.max || 6); if (!charts.length) return '';
     return `<div class="doc-courbes" style="grid-template-columns:repeat(${o.cols || 3},minmax(0,1fr))">${charts.map(ch => { const l0 = ch.lignes[0]; const last = l0.pts[l0.pts.length - 1], prev = l0.pts[l0.pts.length - 2] || l0.avant; const dv = prev ? last.v - prev.v : null;
-      return `<div class="doc-courbe"><div class="dc-t"><b>${esc(ch.titre)}</b><span>${esc([ch.unite || '', ch.zoneLib || ''].filter(Boolean).join(' · '))}</span></div>${o.valeurs === false ? '' : `<div class="dc-v">${ch.lignes.length > 1 ? esc(l0.nom) + ' ' : ''}<b>${last.sym || ''}${fmtV(last.v)}</b> le ${R.fmtDate(last.date)}${dv != null ? ` · ${dv > 0 ? '+' : ''}${fmtV(dv)}` : ''}${ch.ref ? ` · réf. ${fmtV(ch.ref[0])}–${fmtV(ch.ref[1])}` : ''}</div>`}${R.courbe(ch, { h: 150, w: 340, compact: true })}</div>`; }).join('')}</div>`;
+      return `<div class="doc-courbe"><div class="dc-t"><b>${esc(ch.titre)}</b><span>${esc([ch.unite || '', ch.zoneLib || ''].filter(Boolean).join(' · '))}</span></div>${o.valeurs === false ? '' : `<div class="dc-v">${ch.lignes.length > 1 ? esc(l0.nom) + ' ' : ''}<b>${last.sym || ''}${fmtV(last.v)}</b> le ${R.fmtDate(last.date)}${dv != null ? ` · ${dv > 0 ? '+' : ''}${fmtV(dv)}` : ''}${ch.ref ? ` · ${esc(ch.refLib || 'réf.')} ${R.refTexte(ch.ref)}` : ''}</div>`}${R.courbe(ch, { h: 150, w: 340, compact: true })}</div>`; }).join('')}</div>`;
   };
   /* dernière valeur d'une série, la précédente et le sens d'évolution (tableau des dernières valeurs, résumé du compte rendu) ; zone de la ligne si elle a la sienne (ASAT / ALAT de l'enfant) */
-  R.evolSerie = (ch, l) => { const pts = l.pts, ref = l.ref || ch.ref; const last = pts[pts.length - 1], prev = pts[pts.length - 2]; return { last, prev, sens: !last || !prev ? '' : Math.abs(last.v - prev.v) < 1e-9 ? 'stable' : last.v > prev.v ? 'en hausse' : 'en baisse', hors: !!(last && ref && (last.v < ref[0] || last.v > ref[1])) }; };
+  R.evolSerie = (ch, l) => { const pts = l.pts, ref = l.ref || ch.ref; const last = pts[pts.length - 1], prev = pts[pts.length - 2]; return { last, prev, sens: !last || !prev ? '' : Math.abs(last.v - prev.v) < 1e-9 ? 'stable' : last.v > prev.v ? 'en hausse' : 'en baisse', hors: !!(last && ref && (last.v < ref[0] || (ref[1] != null && last.v > ref[1]))) }; };
   /* dernières valeurs : une ligne par donnée suivie, avec la précédente et le sens d'évolution */
   R.tableDernieres = (p, depuis) => {
     const charts = [...R.seriesClinique(p), ...R.seriesBio(p)].filter(ch => ['poids', 'imc', 'crp', 'calpro', 'tdm', 'hb', 'alb', 'transa', 'ferr', 'b12'].includes(ch.key) || /^libre-bio|^vit/.test(ch.key));
     const rows = []; charts.forEach(ch => ch.lignes.forEach(l => { const { last, prev, sens, hors } = R.evolSerie(ch, l); if (!last || (depuis && last.date < depuis)) return;
-      rows.push(`<tr><td>${esc(ch.lignes.length > 1 ? l.nom : ch.titre)}</td><td class="m"${hors ? ' style="font-weight:700"' : ''}>${last.sym || ''}${fmtV(last.v)} ${esc(ch.unite || '')}${hors ? ' *' : ''}</td><td class="m">${R.fmtDate(last.date)}</td><td class="m">${prev ? `${prev.sym || ''}${fmtV(prev.v)} (${R.fmtDate(prev.date)})` : '—'}</td><td>${sens}</td><td>${(l.ref || ch.ref) ? `${fmtV((l.ref || ch.ref)[0])}–${fmtV((l.ref || ch.ref)[1])}` : ''}</td></tr>`); }));
-    return rows.length ? `<table class="doc-table"><thead><tr><th>Donnée</th><th>Dernière valeur</th><th>Date</th><th>Précédente</th><th>Évolution</th><th>Réf.</th></tr></thead><tbody>${rows.join('')}</tbody></table><div style="font-size:8pt;color:#5F6E69;margin-top:3px">* hors de la zone de référence indicative</div>` : '<p style="font-size:9.5pt;color:#5F6E69;margin:0">Aucun résultat chiffré sur la période.</p>';
+      rows.push(`<tr><td>${esc(ch.lignes.length > 1 ? l.nom : ch.titre)}</td><td class="m"${hors ? ' style="font-weight:700"' : ''}>${last.sym || ''}${fmtV(last.v)} ${esc(ch.unite || '')}${hors ? ' *' : ''}</td><td class="m">${R.fmtDate(last.date)}</td><td class="m">${prev ? `${prev.sym || ''}${fmtV(prev.v)} (${R.fmtDate(prev.date)})` : '—'}</td><td>${sens}</td><td>${(l.ref || ch.ref) ? `${ch.refLib === 'cible' ? 'cible ' : ''}${R.refTexte(l.ref || ch.ref)}` : ''}</td></tr>`); }));
+    return rows.length ? `<table class="doc-table"><thead><tr><th>Donnée</th><th>Dernière valeur</th><th>Date</th><th>Précédente</th><th>Évolution</th><th>Réf. ou cible</th></tr></thead><tbody>${rows.join('')}</tbody></table><div style="font-size:8pt;color:#5F6E69;margin-top:3px">* hors de la zone de référence indicative ou sous la cible</div>` : '<p style="font-size:9.5pt;color:#5F6E69;margin:0">Aucun résultat chiffré sur la période.</p>';
   };
   /* Un contrôle annulé par l'équipe n'est pas recréé par le plan ou la prolongation (tolérance de 10 jours) */
   R.bloqueParAnnulation = (p, s) => p.surveillance.some(x => x.statut === 'annulee' && x.annuleLe && !x.annuleAuto && x.id === s.id && (x.nom || '') === (s.nom || '') && x.echeance && s.echeance && Math.abs(R.diffDays(x.echeance, s.echeance)) <= 10);
@@ -467,6 +489,7 @@
       delete s.avantSeance; const c = seances.find(x => x.datePrevue === s.echeance && !prises.has(x)) || seances.find(x => x.datePrevue >= R.addDays(s.echeance, -21) && !prises.has(x)); if (!c || R.diffDays(s.echeance, c.datePrevue) > 60) return;
       prises.add(c); if (s.echeance !== c.datePrevue) { s.echeance = c.datePrevue; s.jour = R.diffDays(R.j0(p, s.cycle), s.echeance); n++; } s.avantSeance = c.label;
     });
+    if (R.rafraichirCiblesTdmPatient) R.rafraichirCiblesTdmPatient(p); /* cible écrite sur chaque dosage généré : molécule du cycle, atteinte périnéale, réglage de Paramètres (idempotent, hors compte) */
     return n;
   };
 })(window.RYZE);

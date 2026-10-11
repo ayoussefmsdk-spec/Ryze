@@ -287,7 +287,7 @@ window.RYZE = window.RYZE || {};
     { id: 'bh',     cat: 'Biologie', label: 'Bilan hépatique (ASAT, ALAT, GGT, PAL)', mode: 'cure' },
     { id: 'creat',  cat: 'Biologie', label: 'Créatinine, ionogramme', mode: 'periodique', tousLes: 91 },
     { id: 'calpro', cat: 'Biologie', label: 'Calprotectine fécale', mode: 'echeances', jours: [98, 182, 365], cible: '< 150–250 µg/g' },
-    { id: 'tdm',    cat: 'Pharmacologie', label: 'Dosage pharmacologique — taux résiduel + anticorps anti-médicament', mode: 'echeances', jours: [98], cible: 'Infliximab résiduel ≥ 5 µg/mL (AGA 2017) / 3–7 µg/mL selon consensus ; adalimumab 7,5–12 µg/mL' },
+    { id: 'tdm',    cat: 'Pharmacologie', label: 'Dosage pharmacologique — taux résiduel + anticorps anti-médicament', mode: 'echeances', jours: [98], cible: 'résiduel selon la molécule : infliximab ≥ 5 µg/mL, adalimumab ≥ 7,5 µg/mL ; atteinte périnéale : infliximab ≥ 10, adalimumab ≥ 12' },
     { id: 'endo',   cat: 'Morphologie', label: 'Iléo-coloscopie de contrôle (cicatrisation muqueuse)', mode: 'echeances', jours: [182, 365] },
     { id: 'irm',    cat: 'Morphologie', label: 'Entéro-IRM (cicatrisation transmurale)', mode: 'echeances', jours: [365] },
     { id: 'echo',   cat: 'Morphologie', label: 'Échographie intestinale', mode: 'echeances', jours: [91, 182] },
@@ -298,6 +298,50 @@ window.RYZE = window.RYZE || {};
     { id: 'lip',    cat: 'Sécurité', label: 'Bilan lipidique (inhibiteurs de JAK)', mode: 'echeances', jours: [56, 182, 365] }
   ];
   R.surv = id => R.SURVEILLANCE.find(s => s.id === id);
+
+  /* ---------- Cibles de taux résiduel (pédiatrie) ----------
+     Seuils MINIMAUX par défaut, réglables dans Paramètres (S.settings.tdmCibles = { infliximab: { entretien, perineal, max }, … }) :
+     entretien = minimum en entretien ; perineal = minimum si atteinte périnéale (fistule ou abcès périnéal dans le dossier, ou « p » de Paris) ;
+     max = borne haute facultative (null : un taux élevé n'est pas une anomalie). Lecture unique : R.cibleTdm(p, molecule).
+     Défini ici (chargé avant core.js) pour que migrer() puisse remettre à jour la cible des contrôles générés. */
+  R.TDM_MOLECULES = ['Infliximab', 'Adalimumab', 'Golimumab', 'Vedolizumab', 'Ustekinumab', 'Autre'];
+  R.TDM_CIBLES_DEFAUT = { infliximab: { entretien: 5, perineal: 10, max: null }, adalimumab: { entretien: 7.5, perineal: 12, max: null }, golimumab: { entretien: 1, perineal: null, max: null }, vedolizumab: { entretien: 12, perineal: null, max: null }, ustekinumab: { entretien: 1, perineal: null, max: null } };
+  const nbTdm = v => { const x = +v; return isFinite(x) ? String(Math.round(x * 100) / 100).replace('.', ',') : ''; };
+  const numOuNull = v => { if (v == null || v === '') return null; const x = typeof v === 'number' ? v : Number(String(v).replace(',', '.')); return isFinite(x) && x >= 0 ? x : null; };
+  /* réglage effectif : valeurs par défaut recouvertes par les nombres valides du réglage (base : objet de la base, sinon R.S) */
+  R.tdmCibles = base => { const reg = (((base || R.S || {}).settings || {}).tdmCibles) || {}; const out = {};
+    Object.keys(R.TDM_CIBLES_DEFAUT).forEach(m => { const d = R.TDM_CIBLES_DEFAUT[m], r = reg[m] && typeof reg[m] === 'object' ? reg[m] : {}; const ent = numOuNull(r.entretien);
+      /* entretien : nombre valide ou défaut ; périnéal et maximum : la clé présente (même vide) vaut réglage explicite (vide = pas de seuil), absente = défaut */
+      out[m] = { entretien: ent != null ? ent : d.entretien, perineal: 'perineal' in r ? numOuNull(r.perineal) : d.perineal, max: 'max' in r ? numOuNull(r.max) : d.max }; });
+    return out; };
+  /* nom de molécule dosée d'après une DCI ou un libellé (« Infliximab SC (CT-P13 SC) » → infliximab) ; '' si inconnue */
+  R.moleculeTdm = txt => { const t = String(txt || ''); const m = R.TDM_MOLECULES.find(x => x !== 'Autre' && new RegExp(x, 'i').test(t)); return m ? m.toLowerCase() : ''; };
+  /* atteinte périnéale lue dans le dossier : « p » de la classification de Paris (MC), sinon fistule ou abcès périnéal à un examen clinique des 12 derniers mois (séance ou consultation) → { oui, motif } */
+  R.atteintePerineale = p => { if (!p) return { oui: false, motif: '' };
+    if (p.paris && p.paris.p) return { oui: true, motif: 'atteinte périnéale (Paris p)' };
+    const depuis = R.addDays(R.today(), -365), signes = d => !!d && Array.isArray(d.perineal) && (d.perineal.includes('fistule') || d.perineal.includes('abces'));
+    const ex = [...(p.cures || []).filter(c => c.statut === 'realisee' && c.dateReelle && signes(c.clinique)).map(c => c.dateReelle), ...(p.surveillance || []).filter(s => s.statut === 'faite' && s.dateFaite && signes(s.clinique)).map(s => s.dateFaite)].filter(d => d >= depuis).sort();
+    return ex.length ? { oui: true, motif: `atteinte périnéale (examen du ${R.fmtDate ? R.fmtDate(ex[ex.length - 1]) : ex[ex.length - 1]})` } : { oui: false, motif: '' }; };
+  R.cibleTdmTexte = (min, max) => max != null ? `${nbTdm(min)}–${nbTdm(max)} µg/mL` : `≥ ${nbTdm(min)} µg/mL`;
+  /* cible du patient pour une molécule (DCI, libellé ou nom) : { min, max|null, texte '≥ 5 µg/mL' | '3–7 µg/mL', court '≥ 5', motif 'atteinte périnéale (…)' | '', perineal, molecule } ou null si la molécule n'a pas de cible */
+  R.cibleTdm = (p, molecule, base) => { const m = R.moleculeTdm(molecule); const c = m && R.tdmCibles(base)[m]; if (!c) return null;
+    const per = R.atteintePerineale(p); const perOk = per.oui && c.perineal != null; const min = perOk ? c.perineal : c.entretien, max = c.max != null && c.max > min ? c.max : null;
+    return { min, max, texte: R.cibleTdmTexte(min, max), court: R.cibleTdmTexte(min, max).replace(' µg/mL', ''), motif: perOk ? per.motif : '', perineal: perOk, molecule: m }; };
+  /* vue de compatibilité { infliximab: [min entretien, max|null], … } (sans patient) */
+  Object.defineProperty(R, 'TDM_CIBLES', { get: () => { const c = R.tdmCibles(), out = {}; Object.keys(c).forEach(m => { out[m] = [c[m].entretien, c[m].max != null && c[m].max > c[m].entretien ? c[m].max : null]; }); return out; }, configurable: true });
+  /* texte générique de la cible d'un contrôle sans molécule connue (catalogue, plan) : « résiduel selon la molécule : infliximab ≥ 5 µg/mL, adalimumab ≥ 7,5 µg/mL ; atteinte périnéale : infliximab ≥ 10, adalimumab ≥ 12 » */
+  R.cibleTdmGenerique = base => { const c = R.tdmCibles(base); const ent = ['infliximab', 'adalimumab'].map(m => `${m} ${R.cibleTdmTexte(c[m].entretien, c[m].max != null && c[m].max > c[m].entretien ? c[m].max : null)}`).join(', ');
+    const per = ['infliximab', 'adalimumab'].filter(m => c[m].perineal != null).map(m => `${m} ≥ ${nbTdm(c[m].perineal)}`).join(', '); return `résiduel selon la molécule : ${ent}${per ? ' ; atteinte périnéale : ' + per : ''}`; };
+  const protoDe = (base, id) => (((base && base.protocoles) || (R.S && R.S.protocoles) || R.PROTOCOLES_DEFAUT || []).find(x => x.id === id)) || (R.PROTOCOLES_DEFAUT || []).find(x => x.id === id) || null;
+  /* molécule d'un contrôle de dosage : dosage saisi (s.tdm.molecule), sinon DCI du protocole du cycle */
+  R.moleculeControleTdm = (p, s, base) => { if (s && s.tdm && s.tdm.molecule) return R.moleculeTdm(s.tdm.molecule); const cyc = (s && s.cycle) || (p && p.cycleCourant) || 1; const h = ((p && p.historiqueProtocoles) || []).find(x => x.cycle === cyc); const pr = protoDe(base, (h && h.protocoleId) || (p && p.protocoleId)); return R.moleculeTdm(pr && pr.dci); };
+  /* cible écrite sur un contrôle de dosage généré (par molécule et dossier) : « infliximab ≥ 10 µg/mL (atteinte périnéale) », sinon le texte générique */
+  R.cibleTdmControle = (p, s, base) => { const m = R.moleculeControleTdm(p, s, base); const c = m ? R.cibleTdm(p, m, base) : null; return c ? `${m} ${c.texte}${c.perineal ? ' (atteinte périnéale)' : ''}` : R.cibleTdmGenerique(base); };
+  /* cible générée par l'application (toutes versions), par opposition à une cible saisie à la main (importée) qui n'est jamais touchée */
+  R.estCibleTdmGeneree = txt => { const t = String(txt || '').trim(); if (!t) return true; return /^résiduel selon la molécule/i.test(t) || /^Infliximab résiduel ≥ 5 µg\/mL \(AGA 2017\)/.test(t) || /^(infliximab|adalimumab|golimumab|vedolizumab|ustekinumab) (≥ [\d,]+|[\d,]+–[\d,]+) µg\/mL( \(atteinte périnéale\))?$/.test(t); };
+  /* remet à jour la cible des contrôles de dosage générés d'un dossier (réglage, molécule du cycle, atteinte périnéale) ; idempotent ; renvoie le nombre de cibles modifiées */
+  R.rafraichirCiblesTdmPatient = (p, base) => { let n = 0; ((p && p.surveillance) || []).forEach(s => { if (!s || s.id !== 'tdm' || (s.cible != null && !R.estCibleTdmGeneree(s.cible))) return; const c = R.cibleTdmControle(p, s, base); if (s.cible !== c) { s.cible = c; n++; } }); return n; };
+  R.rafraichirCiblesTdm = base => { let n = 0; (((base || R.S || {}).patients) || []).forEach(p => { n += R.rafraichirCiblesTdmPatient(p, base); }); return n; };
 
   /* ---------- Protocoles thérapeutiques ----------
      doseType : 'mgkg' (mg/kg), 'mg' (dose fixe), 'palier' (paliers de poids), 'po' (voie orale, texte)
@@ -313,7 +357,7 @@ window.RYZE = window.RYZE || {};
       preparation: 'Reconstitution 10 mL EPPI par flacon, dilution dans 250 mL NaCl 0,9 %, filtre en ligne ≤ 1,2 µm',
       premedication: 'Non systématique. Si antécédent de réaction : paracétamol 1 g PO + dexchlorphéniramine 5 mg IV ± hydrocortisone 100–200 mg IV, 30 min avant.',
       surveillancePerf: 'Constantes (TA, FC, T°) avant, toutes les 30 min pendant, puis observation 1–2 h après (RCP). Adrénaline, antihistaminique, corticoïde disponibles.',
-      optimisation: 'Perte de réponse : 10 mg/kg (RCP MC) et/ou intervalle 4–6 semaines (pratique GETAID), guidés par le taux résiduel (≥ 5 µg/mL AGA ; 3–7 µg/mL consensus) et les anticorps anti-infliximab.',
+      optimisation: 'Perte de réponse : 10 mg/kg (RCP MC) et/ou intervalle 4–6 semaines (pratique GETAID), guidés par le taux résiduel (cible pédiatrique ≥ 5 µg/mL en entretien, ≥ 10 µg/mL si atteinte périnéale ; réglable dans Paramètres) et les anticorps anti-infliximab.',
       surveillanceDefaut: ['clin', 'colo', 'recto', 'biostd', 'calpro', 'irm', 'echo', 'tdm', 'actnf'],
       remarque: 'Immunosuppresseur associé (thiopurine) discuté pour limiter l’immunisation (SONIC / UC-SUCCESS).'
     },
@@ -396,7 +440,7 @@ window.RYZE = window.RYZE || {};
       entretien: { debutJour: 28, intervalleJours: 14, dose: 40, voie: 'SC', label: '40 mg SC toutes les 2 semaines dès S4' },
       dureePerfusion: '— (auto-injection, dispensation rétrocession)', preparation: '—',
       premedication: 'Aucune.', surveillancePerf: 'Éducation à l’auto-injection, rotation des sites.',
-      optimisation: 'Réponse insuffisante : 40 mg/semaine ou 80 mg toutes les 2 semaines (taux résiduel cible 7,5–12 µg/mL).',
+      optimisation: 'Réponse insuffisante : 40 mg/semaine ou 80 mg toutes les 2 semaines (taux résiduel cible pédiatrique ≥ 7,5 µg/mL, ≥ 12 µg/mL si atteinte périnéale ; réglable dans Paramètres).',
       surveillanceDefaut: ['clin', 'colo', 'recto', 'biostd', 'calpro', 'irm', 'echo', 'tdm', 'actnf'], remarque: 'MC : induction 80 mg S0 / 40 mg S2 possible (RCP) ; 160/80 mg = réponse plus rapide, plus d’effets indésirables.'
     },
     {
