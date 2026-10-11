@@ -13,6 +13,16 @@
    tuberculose », « yeux jaunes » (azathioprine, méthotrexate) et « hijama »
    remises. Les textes nouveaux ou modifiés sont listés dans _aValider (à
    faire valider par le médecin).
+   Version 0.5 (8 pages fixes, décision D1 du médecin) : « informez l'hôpital
+   de jour » remplace « appelez l'hôpital de jour » partout ; page 7 « Avant
+   chaque séance » adaptée à la pédiatrie (plus de question de grossesse,
+   consigne « séance manquée ») ; « Prendre 2 doses pour rattraper un oubli »
+   (texte relu) remis dans « À ne jamais faire », la hijama passe en priorité 2 ;
+   colonnes « Remarques », titres « Mes examens », « Mes rendez-vous à venir ».
+   Liste orange réordonnée pour la pédiatrie (contact varicelle / rougeole /
+   tuberculose, yeux jaunes, point d'injection en tête) ; « douleur dans la
+   poitrine… (caillot) » passe en priorité 2.
+   Les textes nouveaux ou modifiés sont ajoutés à _aValider.
    Convention : chaque texte est { fr, ar } ; si = condition d'affichage
    (voie IV|SC|PO, sexe F|M, classe antiTNF|vedolizumab|antiIL|JAK,
    associe methotrexate|thiopurine|mesalazine) ; p = priorité (1 = indispensable).
@@ -20,7 +30,7 @@
 'use strict';
 window.RYZE = window.RYZE || {};
 window.RYZE.LIVRET = {
- "version": "0.4-carnet-unique (2026-10-10)",
+ "version": "0.5-carnet-8-pages (2026-10-11)",
  "titre": {
   "fr": "Mon carnet de suivi",
   "ar": "دفتر متابعتي"
@@ -302,8 +312,8 @@ window.RYZE.LIVRET = {
     "ar": "في حالة الطوارئ"
    },
    "texte": {
-    "fr": "Fièvre à 38 °C ou plus, ou signe qui vous inquiète : appelez l’hôpital de jour. La nuit, le week-end ou si personne ne répond : allez aux urgences. Dites que vous recevez une biothérapie et montrez ce carnet.",
-    "ar": "حمى 38 درجة أو أكثر، أو أي علامة تقلقكم: اتصلوا بمستشفى النهار. في الليل، أو في نهاية الأسبوع، أو إذا لم يُجِب أحد: توجهوا إلى المستعجلات. قولوا إنكم تتلقون علاجًا بيولوجيًا وأظهروا هذا الدفتر."
+    "fr": "Fièvre à 38 °C ou plus, ou signe qui vous inquiète : informez l’hôpital de jour. La nuit, le week-end ou si personne ne répond : allez aux urgences. Dites que vous recevez une biothérapie et montrez ce carnet.",
+    "ar": "حمى 38 درجة أو أكثر، أو أي علامة تقلقكم: أخبروا مستشفى النهار. في الليل، أو في نهاية الأسبوع، أو إذا لم يُجِب أحد: توجهوا إلى المستعجلات. قولوا إنكم تتلقون علاجًا بيولوجيًا وأظهروا هذا الدفتر."
    }
   },
   "piedApporter": {
@@ -536,6 +546,14 @@ window.RYZE.LIVRET = {
    "visa": {
     "fr": "Signature / cachet",
     "ar": "التوقيع / الختم"
+   },
+   "remarques": {
+    "fr": "Remarques",
+    "ar": "ملاحظات"
+   },
+   "signature": {
+    "fr": "Signature",
+    "ar": "التوقيع"
    }
   },
   "quoi": {
@@ -554,8 +572,8 @@ window.RYZE.LIVRET = {
     "ar": "إذا لم أستطع الحضور"
    },
    "texte": {
-    "fr": "Appelez l’hôpital de jour le plus tôt possible pour avoir une nouvelle date. N’attendez pas le rendez-vous suivant.",
-    "ar": "اتصلوا بمستشفى النهار في أقرب وقت لتحديد موعد جديد. لا تنتظروا الموعد التالي."
+    "fr": "Informez l’hôpital de jour le plus tôt possible pour avoir une nouvelle date. N’attendez pas le rendez-vous suivant.",
+    "ar": "أخبروا مستشفى النهار في أقرب وقت لتحديد موعد جديد. لا تنتظروا الموعد التالي."
    },
    "tel": {
     "fr": "Téléphone de l’hôpital de jour",
@@ -630,6 +648,10 @@ window.RYZE.LIVRET = {
    "vu": {
     "fr": "Vu par le médecin",
     "ar": "اطّلع عليه الطبيب"
+   },
+   "signature": {
+    "fr": "Signature",
+    "ar": "التوقيع"
    }
   },
   "examens": {
@@ -802,6 +824,10 @@ window.RYZE.LIVRET = {
      "fr": "Perfusion — hôpital de jour",
      "ar": "تسريب وريدي — مستشفى النهار"
     }
+   },
+   "planning": {
+    "fr": "Mes rendez-vous à venir",
+    "ar": "مواعيدي القادمة"
    }
   },
   "versoCarte": {
@@ -867,6 +893,10 @@ window.RYZE.LIVRET = {
      "ar": "كل {n} سنة"
     }
    }
+  },
+  "titreCourt": {
+   "fr": "Mes examens",
+   "ar": "فحوصاتي"
   }
  },
  "p4": {
@@ -892,7 +922,7 @@ window.RYZE.LIVRET = {
     {
      "fr": "Douleur dans la poitrine, essoufflement brutal, ou jambe gonflée, rouge et douloureuse (caillot)",
      "ar": "ألم في الصدر، أو ضيق مفاجئ في التنفس، أو ساق متورمة وحمراء ومؤلمة (جلطة)",
-     "p": 1
+     "p": 2
     },
     {
      "fr": "Beaucoup de sang dans les selles (ou plus de 6 fois par jour), caillots, malaise",
@@ -923,8 +953,8 @@ window.RYZE.LIVRET = {
   },
   "orange": {
    "titre": {
-    "fr": "Appelez l’hôpital de jour le jour même",
-    "ar": "اتصلوا بمستشفى النهار في نفس اليوم"
+    "fr": "Informez l’hôpital de jour le jour même",
+    "ar": "أخبروا مستشفى النهار في نفس اليوم"
    },
    "items": [
     {
@@ -933,13 +963,47 @@ window.RYZE.LIVRET = {
      "p": 1
     },
     {
+     "fr": "Contact avec un malade : varicelle, rougeole, tuberculose",
+     "ar": "مخالطة مريض بجدري الماء أو الحصبة أو السل",
+     "p": 1
+    },
+    {
      "fr": "Brûlures en urinant, plaie rouge, dent qui fait mal",
      "ar": "حرقة عند التبول، جرح أحمر، ألم في الأسنان",
      "p": 1
     },
     {
+     "fr": "Yeux ou peau jaunes, urines très foncées",
+     "ar": "اصفرار العينين أو الجلد، بول داكن جدًا",
+     "p": 1,
+     "si": {
+      "associe": [
+       "thiopurine",
+       "methotrexate"
+      ]
+     }
+    },
+    {
+     "fr": "Point d’injection rouge, qui grandit ou dure plus de 2 jours",
+     "ar": "مكان الحقن أحمر، يكبر أو يدوم أكثر من يومين",
+     "si": {
+      "voie": "SC"
+     },
+     "p": 1
+    },
+    {
+     "fr": "Plus de selles, de sang ou de douleurs depuis 2 à 3 jours",
+     "ar": "زيادة في التبرز أو الدم أو الألم منذ 2 إلى 3 أيام",
+     "p": 1
+    },
+    {
      "fr": "Toux avec crachats, ou toux qui dure, sueurs la nuit, perte de poids",
      "ar": "سعال مع بلغم، أو سعال يدوم، تعرّق في الليل، نقص في الوزن",
+     "p": 1
+    },
+    {
+     "fr": "Un autre médecin me propose : antibiotique, cortisone, vaccin, opération",
+     "ar": "طبيب آخر يقترح عليّ: مضاد حيوي، كورتيزون، لقاح، عملية جراحية",
      "p": 1
     },
     {
@@ -959,74 +1023,9 @@ window.RYZE.LIVRET = {
      "p": 2
     },
     {
-     "fr": "Point d’injection rouge, qui grandit ou dure plus de 2 jours",
-     "ar": "مكان الحقن أحمر، يكبر أو يدوم أكثر من يومين",
-     "si": {
-      "voie": "SC"
-     },
-     "p": 1
-    },
-    {
-     "fr": "Plus de selles, de sang ou de douleurs depuis 2 à 3 jours",
-     "ar": "زيادة في التبرز أو الدم أو الألم منذ 2 إلى 3 أيام",
-     "p": 1
-    },
-    {
-     "fr": "Je suis enceinte ou je pense l’être",
-     "ar": "أنا حامل أو أظن أنني حامل",
-     "si": {
-      "classe": [
-       "antiTNF",
-       "vedolizumab",
-       "antiIL"
-      ],
-      "sexe": "F"
-     },
-     "p": 1
-    },
-    {
-     "fr": "Je suis enceinte ou je pense l’être : appelez tout de suite, ce médicament ne doit pas être pris pendant la grossesse",
-     "ar": "أنا حامل أو أظن أنني حامل: اتصلي فورًا، لأن هذا الدواء يجب ألّا يؤخذ أثناء الحمل",
-     "si": {
-      "classe": "JAK",
-      "sexe": "F"
-     },
-     "p": 1
-    },
-    {
-     "fr": "Je suis enceinte ou je pense l’être et je prends du méthotrexate : appelez tout de suite",
-     "ar": "أنا حامل أو أظن أنني حامل وآخذ دواء Méthotrexate (ميثوتريكسات): اتصلي فورًا",
-     "si": {
-      "associe": "methotrexate",
-      "sexe": "F"
-     },
-     "p": 1
-    },
-    {
-     "fr": "Un autre médecin me propose : antibiotique, cortisone, vaccin, opération",
-     "ar": "طبيب آخر يقترح عليّ: مضاد حيوي، كورتيزون، لقاح، عملية جراحية",
-     "p": 1
-    },
-    {
      "fr": "J’ai oublié une injection, une perfusion ou plusieurs comprimés",
      "ar": "نسيت حقنة أو تسريبًا أو عدة أقراص",
-     "p": 1
-    },
-    {
-     "fr": "Yeux ou peau jaunes, urines très foncées",
-     "ar": "اصفرار العينين أو الجلد، بول داكن جدًا",
-     "p": 1,
-     "si": {
-      "associe": [
-       "thiopurine",
-       "methotrexate"
-      ]
-     }
-    },
-    {
-     "fr": "Contact avec un malade : varicelle, rougeole, tuberculose",
-     "ar": "مخالطة مريض بجدري الماء أو الحصبة أو السل",
-     "p": 1
+     "p": 2
     }
    ]
   },
@@ -1052,6 +1051,11 @@ window.RYZE.LIVRET = {
      "p": 1
     },
     {
+     "fr": "Prendre 2 doses pour rattraper un oubli",
+     "ar": "أخذ جرعتين لتعويض جرعة منسية",
+     "p": 1
+    },
+    {
      "fr": "Cacher ma biothérapie au dentiste, chirurgien, pharmacien",
      "ar": "إخفاء علاجي البيولوجي عن طبيب الأسنان والجرّاح والصيدلي",
      "p": 1
@@ -1059,7 +1063,7 @@ window.RYZE.LIVRET = {
     {
      "fr": "Plantes, remèdes traditionnels, hijama sans demander",
      "ar": "الأعشاب، الوصفات التقليدية، الحجامة دون استشارة",
-     "p": 1
+     "p": 2
     }
    ]
   },
@@ -1095,21 +1099,13 @@ window.RYZE.LIVRET = {
      "p": 1
     },
     {
-     "fr": "☐ Grossesse ou projet de bébé ?",
-     "ar": "حمل أو رغبة في الإنجاب؟",
-     "p": 1,
-     "si": {
-      "sexe": "F"
-     }
-    },
-    {
      "fr": "☐ Opération ou soin dentaire prévu ?",
      "ar": "عملية أو علاج أسنان مبرمج؟",
      "p": 1
     },
     {
-     "fr": "Une case cochée → appelez AVANT de venir. La séance peut être décalée : c’est normal.",
-     "ar": "خانة معلّمة ← اتصلوا قبل المجيء. قد تُؤجَّل الحصة: هذا أمر عادي.",
+     "fr": "Une case cochée → informez l’hôpital de jour AVANT de venir. La séance peut être décalée : c’est normal.",
+     "ar": "خانة معلّمة ← أخبروا مستشفى النهار قبل المجيء. قد تُؤجَّل الحصة: هذا أمر عادي.",
      "p": 1,
      "texte": true
     },
@@ -1122,7 +1118,15 @@ window.RYZE.LIVRET = {
      "p": 2,
      "texte": true
     }
-   ]
+   ],
+   "titrePage": {
+    "fr": "Avant chaque séance",
+    "ar": "قبل كل حصة"
+   },
+   "manquee": {
+    "fr": "Séance manquée : informez l’hôpital de jour pour une nouvelle date.",
+    "ar": "حصة فائتة: أخبروا مستشفى النهار لتحديد موعد جديد."
+   }
   },
   "numeros": {
    "titre": {
@@ -1235,8 +1239,8 @@ window.RYZE.LIVRET = {
   },
   "pied": {
    "avis": {
-    "fr": "Ce carnet ne remplace pas l’avis de votre médecin. Au moindre doute, appelez l’hôpital de jour.",
-    "ar": "هذا الدفتر لا يعوّض رأي طبيبكم. عند أدنى شك، اتصلوا بمستشفى النهار."
+    "fr": "Ce carnet ne remplace pas l’avis de votre médecin. Au moindre doute, informez l’hôpital de jour.",
+    "ar": "هذا الدفتر لا يعوّض رأي طبيبكم. عند أدنى شك، أخبروا مستشفى النهار."
    },
    "maquette": {
     "fr": "MAQUETTE — contenu à valider par l’équipe médicale avant toute utilisation",
@@ -1564,6 +1568,61 @@ window.RYZE.LIVRET = {
    "cle": "p4.jamais.items[hijama] (remplace « 2 doses »)",
    "fr": "Plantes, remèdes traditionnels, hijama sans demander",
    "ar": "الأعشاب، الوصفات التقليدية، الحجامة دون استشارة"
+  },
+  {
+   "cle": "p2.cols.remarques",
+   "fr": "Remarques",
+   "ar": "ملاحظات"
+  },
+  {
+   "cle": "p3.titreCourt",
+   "fr": "Mes examens",
+   "ar": "فحوصاتي"
+  },
+  {
+   "cle": "p3.rdv.planning",
+   "fr": "Mes rendez-vous à venir",
+   "ar": "مواعيدي القادمة"
+  },
+  {
+   "cle": "p4.avant.titrePage",
+   "fr": "Avant chaque séance",
+   "ar": "قبل كل حصة"
+  },
+  {
+   "cle": "p4.avant.items[consigne] (« informez l’hôpital de jour » remplace « appelez »)",
+   "fr": "Une case cochée → informez l’hôpital de jour AVANT de venir. La séance peut être décalée : c’est normal.",
+   "ar": "خانة معلّمة ← أخبروا مستشفى النهار قبل المجيء. قد تُؤجَّل الحصة: هذا أمر عادي."
+  },
+  {
+   "cle": "p4.avant.manquee",
+   "fr": "Séance manquée : informez l’hôpital de jour pour une nouvelle date.",
+   "ar": "حصة فائتة: أخبروا مستشفى النهار لتحديد موعد جديد."
+  },
+  {
+   "cle": "p4.orange.titre (« informez » remplace « appelez »)",
+   "fr": "Informez l’hôpital de jour le jour même",
+   "ar": "أخبروا مستشفى النهار في نفس اليوم"
+  },
+  {
+   "cle": "p1.urgence.texte (« informez l’hôpital de jour » remplace « appelez »)",
+   "fr": "Fièvre à 38 °C ou plus, ou signe qui vous inquiète : informez l’hôpital de jour. La nuit, le week-end ou si personne ne répond : allez aux urgences. Dites que vous recevez une biothérapie et montrez ce carnet.",
+   "ar": "حمى 38 درجة أو أكثر، أو أي علامة تقلقكم: أخبروا مستشفى النهار. في الليل، أو في نهاية الأسبوع، أو إذا لم يُجِب أحد: توجهوا إلى المستعجلات. قولوا إنكم تتلقون علاجًا بيولوجيًا وأظهروا هذا الدفتر."
+  },
+  {
+   "cle": "p2.report.texte (« informez l’hôpital de jour » remplace « appelez »)",
+   "fr": "Informez l’hôpital de jour le plus tôt possible pour avoir une nouvelle date. N’attendez pas le rendez-vous suivant.",
+   "ar": "أخبروا مستشفى النهار في أقرب وقت لتحديد موعد جديد. لا تنتظروا الموعد التالي."
+  },
+  {
+   "cle": "p4.pied.avis (« informez l’hôpital de jour » remplace « appelez »)",
+   "fr": "Ce carnet ne remplace pas l’avis de votre médecin. Au moindre doute, informez l’hôpital de jour.",
+   "ar": "هذا الدفتر لا يعوّض رأي طبيبكم. عند أدنى شك، أخبروا مستشفى النهار."
+  },
+  {
+   "cle": "p2.cols.signature / p3.cols.signature (en-tête court des colonnes de signature)",
+   "fr": "Signature",
+   "ar": "التوقيع"
   }
  ]
 };
