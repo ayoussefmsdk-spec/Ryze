@@ -17,7 +17,8 @@
      Aucun horaire, aucune équipe (le médecin en charge seulement), aucun
      texte sous les plannings ; « informez l'hôpital de jour » partout.
      Lignes de planning à 8,5 pt au moins ; page 8 entièrement à 9 pt au
-     moins (bandeau et pied compris ; la carte garde son format de carte).
+     moins (bandeau, pied et recto de la carte compris ; la consigne
+     « pas de vaccin vivant » de la carte est au verso, page 7).
      Pages 4 et 5 : R.carnetPatientAjuster ajoute les lignes vides qui
      tiennent encore (l'estimation des hauteurs est prudente).
      Carte détachable : recto en page 8, verso en page 7, à la même place
@@ -58,6 +59,8 @@
   const tel = v => R.telImprimable(v) ? ltr(R.telImprimable(v)) : A_REMPLIR;
   const telUrgTxt = v => R.telImprimable(v) ? R.telImprimable(v).replace(/\s*\((?=[^)]*(?:urgence|24))[^)]*\)\s*$/i, '') : ''; /* « 05 … (urgences 24 h/24) » : la parenthèse est déjà dans le libellé */
   const telUrg = v => telUrgTxt(v) ? ltr(telUrgTxt(v)) : A_REMPLIR;
+  /* carte (colonne de 39 mm) : le numéro reste insécable, une précision (« (poste 4412) ») peut passer à la ligne */
+  const telCarte = t => { if (!t) return A_REMPLIR; const i = String(t).search(/\s[^\d\s+.\-]/); return i < 0 ? ltr(t) : `${ltr(t.slice(0, i))} ${ltr(t.slice(i + 1))}`; };
   const suite = v => ({ fr: `${fr(v)} ${fr(L().suite)}`, ar: `${ar(v)} ${ar(L().suite)}` });
   const joindre = (a, b) => ({ fr: `${fr(a)} → ${fr(b)}`, ar: `${ar(a)} ← ${ar(b)}` });
   const vide = v => v == null || String(v).trim() === '' || String(v).trim() === '—';
@@ -188,7 +191,7 @@
   /* examens déjà faits (échéances réalisées, hors examen clinique de séance), du plus ancien au plus récent */
   const examensFaits = c => (c.p.surveillance || []).filter(s => s && s.statut === 'faite' && s.dateFaite && String(s.dateFaite) <= c.t && s.mode !== 'cure' && s.id !== 'clin' && s.type !== 'clinique').sort((a, b) => String(a.dateFaite).localeCompare(String(b.dateFaite)));
   const libFait = s => court(libelleExamen({ id: s.id, nom: s.nom, label: s.label, libre: !EXAMENS_IDS[s.id] && s.id !== 'vit' && !!s.nom }));
-  const trExamen = s => s ? `<tr class="fait"><td class="ex">${bi(libFait(s))}</td><td class="c d">${s.echeance ? pre(ltr(dtPasse(s.echeance))) : ''}</td><td class="c d">${pre(ltr(dt(s.dateFaite)))}</td><td class="c ck">${chk(!vide(s.resultat) || (s.valeurs && Object.keys(s.valeurs).length > 0))}</td><td class="sig"></td></tr>`
+  const trExamen = s => s ? `<tr class="fait"><td class="ex">${bi(libFait(s))}</td><td class="c d">${s.echeance ? pre(ltr(dtPasse(s.echeance))) : ''}</td><td class="c d">${pre(ltr(dt(s.dateFaite)))}</td><td class="c ck">${chk()}</td><td class="sig"></td></tr>` /* « résultat vu par le médecin » : case de validation cochée à la main, comme la signature (aucune donnée du dossier ne l'atteste) */
     : `<tr class="blanc"><td class="ex"></td><td class="c d"></td><td class="c d"></td><td class="c ck">${chk()}</td><td class="sig"></td></tr>`;
   const tableExamens = rows => { const col = L().p3.cols, th = k => `<th>${bi(col[k])}</th>`; return `<table class="lv-tab planning examens"><colgroup><col><col style="width:18mm"><col style="width:18mm"><col style="width:21mm"><col style="width:19mm"></colgroup><thead><tr>${th('examen')}${th('quand')}${th('fait')}${th('resultatVu')}${th('signature')}</tr></thead><tbody>${rows.join('')}</tbody></table>`; };
   function pagesExamens(c) {
@@ -227,19 +230,21 @@
     </section>`;
   }
 
-  /* ---------- carte détachable : même taille et même hauteur sur les deux pages du feuillet ---------- */
+  /* ---------- carte détachable : même taille et même hauteur sur les deux pages du feuillet ----------
+     recto (page 8, règle des 9 pt de la page urgences) : traitement, défenses diminuées, fièvre ou urgence, téléphones ;
+     la consigne « Pas de vaccin vivant. Pas d'anti-inflammatoires sans avis. » passe au verso (page 7, déjà dans « À ne jamais faire ») pour que le recto tienne à 9 pt */
   function carteRecto(c) {
     const P4 = L().p4, e = c.e, ci = P4.carte.recto.items || [], it = i => ci[i] || { fr: '', ar: '' };
     return `<div class="carte recto"><div class="ciseaux">✂</div><div class="carte-in"><div class="ct">${bi(P4.carte.recto.titre)}</div>
-      <div class="f"><span class="lab">${bi(it(0))}</span><span class="val">${c.dci ? bi(c.dciBi) : fill()}${vide(c.p.specialite) ? '' : ' · ' + esc(c.p.specialite)}</span></div>
-      <div class="ct-l grille">${bi(it(1))}</div><div class="ct-l grille">${bi(it(2))}</div><div class="ct-l grille">${bi(it(3))}</div>
-      <div class="f ct-tel"><span class="lab">${bi(it(4))}</span><span class="val">${tel(e.telHDJ)}</span></div><div class="f ct-tel"><span class="lab">${bi(it(5))}</span><span class="val">${telUrg(e.telUrgences)}</span></div></div></div>`;
+      ${c.dci ? `<div class="f ct-trt"><span class="val">${bi(c.dciBi)}${vide(c.p.specialite) ? '' : `<span class="ct-spec"> · ${esc(c.p.specialite)}</span>`}</span></div>` /* le titre dit déjà « biothérapie » : la molécule seule, en gras, sans libellé */ : `<div class="f"><span class="lab">${bi(it(0))}</span><span class="val">${fill()}</span></div>`}
+      <div class="ct-l grille ct-def">${bi(it(1))}</div><div class="ct-l grille">${bi(it(2))}</div>
+      <div class="ct-tels"><div class="ct-tel"><span class="lab">${bi(it(4))}</span><span class="val">${telCarte(R.telImprimable(e.telHDJ))}</span></div><div class="ct-tel"><span class="lab">${bi(it(5))}</span><span class="val">${telCarte(telUrgTxt(e.telUrgences))}</span></div></div></div></div>`;
   }
   function carteVerso(c) {
-    const Lv = L(), p = c.p, e = c.e, verso = (Lv.p4.carte.verso || {}).items || [], it = i => verso[i] || { fr: '', ar: '' };
+    const Lv = L(), p = c.p, e = c.e, verso = (Lv.p4.carte.verso || {}).items || [], it = i => verso[i] || { fr: '', ar: '' }, vaccin = ((Lv.p4.carte.recto || {}).items || [])[3];
     return `<div class="carte verso"><div class="carte-in"><div class="ct">${bi(Lv.p3.versoCarte)}</div>
       ${champ(it(0), `${p.prenom || ''} ${p.nom || ''}`.trim())}${champ(it(1), p.ipp, { ltr: true })}${champ(it(2), c.maladie)}${champ(it(3), dtPasse(R.j0(p) || p.dateDebut), { ltr: true })}${champ(it(4), c.medecin)}
-      <div class="ct-etab">${esc([e.hopital, e.service].filter(Boolean).join(' · ') || e.etablissement)}</div>
+      ${vaccin ? `<div class="ct-l grille">${bi(vaccin)}</div>` : ''}<div class="ct-etab">${esc([e.hopital, e.service].filter(Boolean).join(' · ') || e.etablissement)}</div>
       <div class="ct-note">${bi2(it(5))}</div></div></div>`;
   }
 
@@ -444,7 +449,7 @@ html.imp-nb .livret{--lv-soft:transparent}
 .livret .grille .bi .sep,.livret .grille.bi .sep{display:none}
 .livret .grille .bi .ar,.livret .grille.bi .ar{text-align:right}
 .livret .urg-page .medecin-l{margin-top:.4mm}
-/* page 8 : tout le texte de la page à 9 pt au moins, bandeau et pied compris (la carte détachable garde son format de carte) ; un nom très long renvoie le titre à la ligne */
+/* page 8 : tout le texte de la page à 9 pt au moins, bandeau, pied et recto de la carte détachable compris ; un nom très long renvoie le titre à la ligne */
 .livret .urg-page .run{font-size:9pt;flex-wrap:wrap;row-gap:.2mm}
 .livret .urg-page .run .run-t{flex:1 1 auto;min-width:auto;white-space:normal;overflow:visible;text-overflow:clip}
 /* carte détachable : 85 × 54 mm, posée en bas de page à la même hauteur au recto (page 8, à gauche) et au verso (page 7, à droite) */
@@ -454,12 +459,23 @@ html.imp-nb .livret{--lv-soft:transparent}
 .livret .carte.recto{border-color:var(--lv-acc-m);background:var(--lv-acc-t)}
 .livret .carte .ct{font-weight:700;color:var(--lv-acc);font-size:8.4pt;margin-bottom:.6mm;border-bottom:.4pt solid var(--lv-acc-m);padding-bottom:.4mm}
 .livret .carte.verso .ct{color:var(--lv-ink2);border-color:var(--lv-line);font-size:7.6pt}
+.livret .carte.verso .f{padding:.25mm 0;min-height:3.1mm}.livret .carte.verso .ct-l{margin:.5mm 0 0}
 .livret .carte .f{padding:.35mm 0;min-height:3.4mm;font-size:7pt}
 .livret .carte .ct-l{margin:.3mm 0;font-size:6.9pt;line-height:1.16}
 .livret .carte .ct-tel .val{font-size:8.4pt;font-weight:700}
 .livret .carte .ct-etab{font-size:6.4pt;color:var(--lv-ink2);margin-top:.6mm}
 .livret .carte .ct-note{margin-top:.5mm;color:var(--lv-ink2);font-size:6.4pt;line-height:1.15}
-.livret .ciseaux{position:absolute;top:.4mm;right:2mm;color:var(--lv-gris);font-size:8pt;line-height:1}
+.livret .ciseaux{position:absolute;top:.4mm;right:2mm;color:var(--lv-gris);font-size:9pt;line-height:1}
+/* recto de la carte (page 8) : 9 pt au moins, téléphones à 10 pt ; le verso (page 7) garde le corps de carte */
+.livret .carte.recto{font-size:9pt;line-height:1.14;padding:2mm 2.6mm}
+.livret .carte.recto .ct{font-size:9.5pt;margin-bottom:.5mm;padding-right:4mm}
+.livret .carte.recto .f{font-size:9pt;padding:.3mm 0;min-height:0}.livret .carte.recto .ct-trt .val{font-weight:700}
+.livret .carte.recto .ct-l{font-size:9pt;line-height:1.13;margin:.4mm 0}
+/* téléphones côte à côte (hôpital de jour | urgences) : libellé FR / AR puis le numéro à 10 pt */
+.livret .carte.recto .ct-tels{display:grid;grid-template-columns:1fr 1fr;gap:0 2.5mm;margin-top:.6mm;padding-top:.6mm;border-top:.25pt dotted var(--lv-line)}
+.livret .carte.recto .ct-tel{display:flex;flex-direction:column;min-width:0}
+.livret .carte.recto .ct-tel .lab{color:var(--lv-ink2)}.livret .carte.recto .ct-tel .lab .sep{display:none}.livret .carte.recto .ct-tel .lab .ar{display:block;line-height:1.1}
+.livret .carte.recto .ct-tel .val{font-size:10pt;font-weight:700;line-height:1.15}
 .livret .bas-droite{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-end}
 .livret .pied .pied-sep{display:none}
 .livret .pied-urg{display:block;text-align:right;font-size:9pt;line-height:1.25;color:var(--lv-ink2);border-top:.35pt solid var(--lv-line);padding-top:.7mm}
@@ -522,6 +538,8 @@ html.imp-nb .livret .page .ico.oct,html.imp-nb .livret .page .ico.tri{background
     /* pages 4 et 5 : l'estimation des hauteurs est prudente — lignes vides d'examens ajoutées tant qu'elles tiennent entièrement dans la page (17 lignes au plus par page) */
     wrap.querySelectorAll('.page.p3').forEach(el => { const tb = el.querySelector('table.examens tbody'); if (!tb) return;
       for (let k = 0; k < EXAMENS_SUITE && tb.rows.length < EXAMENS_SUITE && !deborde(el); k++) { tb.insertAdjacentHTML('beforeend', trExamen(null)); if (deborde(el)) { tb.lastElementChild.remove(); break; } } });
+    /* recto de la carte (9 pt) : valeurs très longues ou police de remplacement → la spécialité, puis « diminue mes défenses » (déjà dit par le titre), sont retirées plutôt que rognées */
+    wrap.querySelectorAll('.carte.recto').forEach(el => { ['.ct-spec', '.ct-def'].forEach(sel => { const x = el.querySelector(sel); if (x && deborde(el)) x.remove(); }); });
     wrap.querySelectorAll('.page.p4').forEach(el => { for (let k = 0; k < 20 && deborde(el); k++) { const p2 = dernier(el, '.items li[data-p="2"]'); if (p2) { p2.remove(); continue; } const o = dernier(el, '.alerte.orange .items li'); if (o) { o.remove(); continue; } const r = dernier(el, '.alerte.rouge .items li'); if (r) { r.remove(); continue; } const j = dernier(el, '.jamais .items li'); if (j) { j.remove(); continue; } break; } });
   };
   /* sans la police web (poste sans accès à Internet), la police de remplacement est plus large : corps réduit pour que chaque page tienne */

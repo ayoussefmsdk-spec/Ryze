@@ -875,6 +875,7 @@
       if (!R.can('equipe', 'w')) return; const b = R.ui.importBase; if (!b || !b.plan || !b.plan.ajouts.length) return; const plan = b.plan;
       plan.ajouts.forEach(x => { const q = JSON.parse(JSON.stringify(x.q)); if (x.medecinRemplace) q.medecinId = S.user; S.patients.push(q); });
       S.rdv = S.rdv || []; plan.rdv.forEach(r => S.rdv.push(JSON.parse(JSON.stringify(r))));
+      try { R.rafraichirCiblesTdm(S); } catch (e) {} /* cibles des dosages importés : réglage de CETTE base (le fichier a été migré avec le sien) ; cible saisie à la main intacte */
       R.journal(`Import en ajout — ${plan.ajouts.length} dossier(s) ajouté(s) depuis ${b.nom}${plan.presents.length ? `, ${plan.presents.length} déjà présent(s)` : ''}${plan.ignores.length ? `, ${plan.ignores.length} ignoré(s)` : ''}`);
       R.ui.importBase = null; R.touch(); R.closeModal(); R.go('patients'); R.toast(`${plan.ajouts.length} dossier(s) ajouté(s)`, 'good');
     },

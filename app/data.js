@@ -316,16 +316,19 @@ window.RYZE = window.RYZE || {};
     return out; };
   /* nom de molécule dosée d'après une DCI ou un libellé (« Infliximab SC (CT-P13 SC) » → infliximab) ; '' si inconnue */
   R.moleculeTdm = txt => { const t = String(txt || ''); const m = R.TDM_MOLECULES.find(x => x !== 'Autre' && new RegExp(x, 'i').test(t)); return m ? m.toLowerCase() : ''; };
-  /* atteinte périnéale lue dans le dossier : « p » de la classification de Paris (MC), sinon fistule ou abcès périnéal à un examen clinique des 12 derniers mois (séance ou consultation) → { oui, motif } */
-  R.atteintePerineale = p => { if (!p) return { oui: false, motif: '' };
+  /* atteinte périnéale lue dans le dossier : « p » de la classification de Paris (MC, sans date : vaut pour tout le dossier), sinon fistule ou abcès périnéal à un examen clinique (séance ou consultation) des 12 mois qui précèdent la date de référence
+     quand (date ISO) : date du dosage pour un dosage fait (le constat d'un dosage passé ne change pas avec la date d'impression), aujourd'hui sinon → { oui, motif } */
+  R.atteintePerineale = (p, quand) => { if (!p) return { oui: false, motif: '' };
     if (p.paris && p.paris.p) return { oui: true, motif: 'atteinte périnéale (Paris p)' };
-    const depuis = R.addDays(R.today(), -365), signes = d => !!d && Array.isArray(d.perineal) && (d.perineal.includes('fistule') || d.perineal.includes('abces'));
-    const ex = [...(p.cures || []).filter(c => c.statut === 'realisee' && c.dateReelle && signes(c.clinique)).map(c => c.dateReelle), ...(p.surveillance || []).filter(s => s.statut === 'faite' && s.dateFaite && signes(s.clinique)).map(s => s.dateFaite)].filter(d => d >= depuis).sort();
+    const fin = quand || R.today(), depuis = R.addDays(fin, -365), signes = d => !!d && Array.isArray(d.perineal) && (d.perineal.includes('fistule') || d.perineal.includes('abces'));
+    const ex = [...(p.cures || []).filter(c => c.statut === 'realisee' && c.dateReelle && signes(c.clinique)).map(c => c.dateReelle), ...(p.surveillance || []).filter(s => s.statut === 'faite' && s.dateFaite && signes(s.clinique)).map(s => s.dateFaite)].filter(d => d >= depuis && d <= fin).sort();
     return ex.length ? { oui: true, motif: `atteinte périnéale (examen du ${R.fmtDate ? R.fmtDate(ex[ex.length - 1]) : ex[ex.length - 1]})` } : { oui: false, motif: '' }; };
   R.cibleTdmTexte = (min, max) => max != null ? `${nbTdm(min)}–${nbTdm(max)} µg/mL` : `≥ ${nbTdm(min)} µg/mL`;
-  /* cible du patient pour une molécule (DCI, libellé ou nom) : { min, max|null, texte '≥ 5 µg/mL' | '3–7 µg/mL', court '≥ 5', motif 'atteinte périnéale (…)' | '', perineal, molecule } ou null si la molécule n'a pas de cible */
-  R.cibleTdm = (p, molecule, base) => { const m = R.moleculeTdm(molecule); const c = m && R.tdmCibles(base)[m]; if (!c) return null;
-    const per = R.atteintePerineale(p); const perOk = per.oui && c.perineal != null; const min = perOk ? c.perineal : c.entretien, max = c.max != null && c.max > min ? c.max : null;
+  /* date de référence d'un contrôle de dosage : date de réalisation s'il est fait, sinon null (aujourd'hui) */
+  R.dateRefTdm = s => s && s.statut === 'faite' && s.dateFaite ? String(s.dateFaite) : null;
+  /* cible du patient pour une molécule (DCI, libellé ou nom) : { min, max|null, texte '≥ 5 µg/mL' | '3–7 µg/mL', court '≥ 5', motif 'atteinte périnéale (…)' | '', perineal, molecule } ou null si la molécule n'a pas de cible ; quand : date de référence de l'atteinte périnéale (R.dateRefTdm, aujourd'hui par défaut) */
+  R.cibleTdm = (p, molecule, base, quand) => { const m = R.moleculeTdm(molecule); const c = m && R.tdmCibles(base)[m]; if (!c) return null;
+    const per = R.atteintePerineale(p, quand || null); const perOk = per.oui && c.perineal != null; const min = perOk ? c.perineal : c.entretien, max = c.max != null && c.max > min ? c.max : null;
     return { min, max, texte: R.cibleTdmTexte(min, max), court: R.cibleTdmTexte(min, max).replace(' µg/mL', ''), motif: perOk ? per.motif : '', perineal: perOk, molecule: m }; };
   /* vue de compatibilité { infliximab: [min entretien, max|null], … } (sans patient) */
   Object.defineProperty(R, 'TDM_CIBLES', { get: () => { const c = R.tdmCibles(), out = {}; Object.keys(c).forEach(m => { out[m] = [c[m].entretien, c[m].max != null && c[m].max > c[m].entretien ? c[m].max : null]; }); return out; }, configurable: true });
@@ -335,10 +338,12 @@ window.RYZE = window.RYZE || {};
   const protoDe = (base, id) => (((base && base.protocoles) || (R.S && R.S.protocoles) || R.PROTOCOLES_DEFAUT || []).find(x => x.id === id)) || (R.PROTOCOLES_DEFAUT || []).find(x => x.id === id) || null;
   /* molécule d'un contrôle de dosage : dosage saisi (s.tdm.molecule), sinon DCI du protocole du cycle */
   R.moleculeControleTdm = (p, s, base) => { if (s && s.tdm && s.tdm.molecule) return R.moleculeTdm(s.tdm.molecule); const cyc = (s && s.cycle) || (p && p.cycleCourant) || 1; const h = ((p && p.historiqueProtocoles) || []).find(x => x.cycle === cyc); const pr = protoDe(base, (h && h.protocoleId) || (p && p.protocoleId)); return R.moleculeTdm(pr && pr.dci); };
-  /* cible écrite sur un contrôle de dosage généré (par molécule et dossier) : « infliximab ≥ 10 µg/mL (atteinte périnéale) », sinon le texte générique */
-  R.cibleTdmControle = (p, s, base) => { const m = R.moleculeControleTdm(p, s, base); const c = m ? R.cibleTdm(p, m, base) : null; return c ? `${m} ${c.texte}${c.perineal ? ' (atteinte périnéale)' : ''}` : R.cibleTdmGenerique(base); };
+  /* cible écrite sur un contrôle de dosage généré (par molécule et dossier) : « infliximab ≥ 10 µg/mL (atteinte périnéale) », sinon le texte générique ; dosage fait : atteinte périnéale à la date du dosage */
+  R.cibleTdmControle = (p, s, base) => { const m = R.moleculeControleTdm(p, s, base); const c = m ? R.cibleTdm(p, m, base, R.dateRefTdm(s)) : null; return c ? `${m} ${c.texte}${c.perineal ? ' (atteinte périnéale)' : ''}` : R.cibleTdmGenerique(base); };
   /* cible générée par l'application (toutes versions), par opposition à une cible saisie à la main (importée) qui n'est jamais touchée */
   R.estCibleTdmGeneree = txt => { const t = String(txt || '').trim(); if (!t) return true; return /^résiduel selon la molécule/i.test(t) || /^Infliximab résiduel ≥ 5 µg\/mL \(AGA 2017\)/.test(t) || /^(infliximab|adalimumab|golimumab|vedolizumab|ustekinumab) (≥ [\d,]+|[\d,]+–[\d,]+) µg\/mL( \(atteinte périnéale\))?$/.test(t); };
+  /* cible affichée à l'écran pour un contrôle : dosage à cible générée → cible du dossier calculée maintenant (jamais une valeur mémorisée périmée) ; cible saisie à la main ou autre contrôle → valeur mémorisée */
+  R.cibleControle = (p, s) => !s ? '' : s.id === 'tdm' && p && R.estCibleTdmGeneree(s.cible) ? R.cibleTdmControle(p, s) : (s.cible || '');
   /* remet à jour la cible des contrôles de dosage générés d'un dossier (réglage, molécule du cycle, atteinte périnéale) ; idempotent ; renvoie le nombre de cibles modifiées */
   R.rafraichirCiblesTdmPatient = (p, base) => { let n = 0; ((p && p.surveillance) || []).forEach(s => { if (!s || s.id !== 'tdm' || (s.cible != null && !R.estCibleTdmGeneree(s.cible))) return; const c = R.cibleTdmControle(p, s, base); if (s.cible !== c) { s.cible = c; n++; } }); return n; };
   R.rafraichirCiblesTdm = base => { let n = 0; (((base || R.S || {}).patients) || []).forEach(p => { n += R.rafraichirCiblesTdmPatient(p, base); }); return n; };
