@@ -575,7 +575,7 @@ window.RYZE = window.RYZE || {};
     p.protocoleId = proto.id; p.cycleCourant = cyc + 1; p.poids = o.poids || p.poids; p.specialite = o.specialite || '';
     p.statut = nouvelles.some(c => c.phase === 'Induction' && (c.statut === 'prevue' || c.statut === 'reportee')) ? 'induction' : 'entretien'; p.motifSuspension = ''; if (R.fermerSuspensions) R.fermerSuspensions(p, o.dateDebut && o.dateDebut < R.today() ? o.dateDebut : R.today(), 'relais'); /* une suspension en cours prend fin avec le relais (rapport d'activité) */
     p.historiqueProtocoles.push({ cycle: cyc + 1, protocoleId: proto.id, specialite: o.specialite || '', dateDebut: o.dateDebut, poids: o.poids || p.poids, statut: 'en cours', motif: o.motif, par: o.par, debut: o.debut || 'induction', planAvant: planAvant || undefined, survRetirees: retirees.length ? retirees : undefined, posologie: o.posologie || (o.variante ? o.variante.nom : 'Posologie standard'), intervalle: tmp.entretien ? Math.max(7, +tmp.entretien.intervalleJours || 56) : undefined, snapshot: o.snapshot || undefined, modifications: [], planifieJusqua: nouvelles.length ? nouvelles[nouvelles.length - 1].label : '—' });
-    p.notes = p.notes || []; p.notes.unshift({ date: o.dateDebut <= R.today() ? o.dateDebut : R.today(), par: o.par, txt: `Changement de protocole (cycle ${cyc + 1}) : ${proto.dci} à partir du ${R.fmtDate(o.dateDebut)} — ${o.motif}` });
+    p.notes = p.notes || []; p.notes.unshift({ date: o.dateDebut <= R.today() ? o.dateDebut : R.today(), par: o.par, txt: `Changement de protocole (cycle ${cyc + 1}) : ${proto.dci} à partir du ${R.fmtDate(o.dateDebut)} — ${o.motif}`, auto: true /* note écrite par l'application (R.noteAuto) */ });
     return nouvelles;
   };
 
@@ -697,7 +697,7 @@ window.RYZE = window.RYZE || {};
         pathologie: s.patho, paris: R.parisDepuisTexte(s.paris, s.patho, s.ddn, s.diag + '-01'), dateDiag: s.diag + '-01', medecinId: s.medecin, protocoleId: s.proto, dateDebut: dateDebutDossier, cycleCourant, historiqueProtocoles: historique, carnetMixte: i % 2 === 0, planSurveillance: cfgDemo,
         traitementsAssocies: s.tt, allergies: s.allergies, antecedentsBio: s.prev || 'Aucune biothérapie antérieure',
         statut: s.suspendu ? 'suspendu' : (cures.some(c => c.phase === 'Induction' && c.statut === 'prevue') ? 'induction' : 'entretien'),
-        motifSuspension: s.suspendu || '', cures, surveillance, bilan, notes: s.bascule ? [{ date: debut, par: s.medecin, txt: `Changement de protocole (cycle 2) : ${proto.dci} à partir du ${R.fmtDate(debut)} — ${s.bascule.motif}` }] : [], creeLe: R.addDays(dateDebutDossier, -21), creePar: s.medecin, derniereCure: derniere ? derniere.dateReelle : null
+        motifSuspension: s.suspendu || '', cures, surveillance, bilan, notes: s.bascule ? [{ date: debut, par: s.medecin, txt: `Changement de protocole (cycle 2) : ${proto.dci} à partir du ${R.fmtDate(debut)} — ${s.bascule.motif}`, auto: true }] : [], creeLe: R.addDays(dateDebutDossier, -21), creePar: s.medecin, derniereCure: derniere ? derniere.dateReelle : null
       };
     });
 

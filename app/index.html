@@ -578,6 +578,25 @@ div.cr-edit{display:block;min-height:60px;padding:6px 8px} .cr-bloc{font-size:10
 .ca4 .ca4-seances td.m,.ca4 .ca4-plan td.m,.ca4 .ca4-ctrl td.m{font-size:8pt}.ca4 .ca4-nw{white-space:nowrap}
 /* intégration (passage 2) : « Observations de l’équipe », son cadre et les signatures restent ensemble (jamais une feuille avec les seules signatures, depuis le bloc « À retenir » du bilan pré-biothérapie) ; pied rapproché à l’impression (4 mm, comme le compte rendu) */
 @media print{.ca4 .ca4-obs{break-inside:avoid}.carnet-page.ca4 .doc-foot{margin-top:4mm}}
+/* notes de suivi (M3) : « Notes épinglées » en page 1 sous « À faire » (en tête de page 2 si la page 1 ne tient plus sur une feuille), notes récentes de l’équipe dans « Observations de l’équipe » ;
+   chaque note entière (jamais coupée d’une feuille à l’autre), retours à la ligne gardés ; remarque d’un contrôle : retours à la ligne gardés */
+.ca4-epingles{border:1px solid var(--doc-ink);border-radius:4px;padding:7px 10px;margin:8px 0;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:9.5pt;line-height:1.35;color:var(--doc-ink)}
+.ca4-epingles-t{font-size:8.5pt;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+.ca4 .ca4-notes{list-style:none;margin:0;padding:0;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:9pt;line-height:1.35;color:var(--doc-ink)}
+.ca4 .ca4-notes>li{padding:3px 0;border-top:1px dotted var(--doc-line);break-inside:avoid}.ca4 .ca4-notes>li:first-child{border-top:0;padding-top:0}
+.ca4 .ca4-note-m{font-size:8.5pt;color:#4E5E59}.ca4 .ca4-note-m>b{font-family:'IBM Plex Mono',monospace;font-weight:500;color:var(--doc-ink)}
+.ca4 .ca4-note-x{white-space:pre-line;overflow-wrap:anywhere;min-width:0}
+.ca4 .ca4-obs-intro{margin:0 0 4px}
+.ca4 .ca4-ctrl-note,.ca4 .doc-tdm-note{white-space:pre-line}
+html.imp-couleur .ca4-epingles{border-color:var(--imp-acc)}html.imp-couleur .ca4-epingles-t{color:var(--imp-acc-e)}
+@media print{.ca4 .ca4-epingles-t,.ca4 .ca4-obs.avec-notes>.doc-h2,.ca4 .ca4-obs-intro{break-after:avoid}.ca4 .ca4-obs.avec-notes{break-inside:auto}.ca4 .ca4-obs-fin{break-inside:avoid;break-before:avoid}}
+/* mesure de la page 1 (R.carnetHTML) : copie hors écran dans la géométrie du papier — 210 mm moins 2 × 14 mm, mêmes règles d’impression que @media print (deux colonnes, en-tête en ligne, pied à 4 mm) */
+.ca4-mesure{position:absolute!important;left:-10000px!important;top:0!important;visibility:hidden!important;pointer-events:none;background:none!important;padding:0!important;contain:layout}
+.ca4-mesure .carnet-page{width:210mm!important;min-height:0!important;padding:0 14mm!important;margin:0!important;box-shadow:none!important}
+.ca4-mesure .carnet-page .doc-kv,.ca4-mesure .carnet-page .doc-cols{grid-template-columns:1fr 1fr!important}
+.ca4-mesure .doc-entete{flex-direction:row!important}.ca4-mesure .doc-entete-g{flex:1 1 auto!important;width:auto!important}.ca4-mesure .doc-entete-d{flex:0 0 62mm!important;width:auto!important;text-align:right!important}
+.ca4-mesure .ca4-pro-l{grid-template-columns:1fr 1fr!important}
+.ca4-mesure .carnet-page .doc-foot{position:static!important;margin-top:4mm!important}.ca4-mesure .no-print{display:none!important}
 /* ===== @impressions ===== */
 .impr .doc-h2{margin:12px 0 6px}
 .impr .doc-secu,.impr .doc-afaire{margin:6px 0}
@@ -604,6 +623,7 @@ div.cr-edit{display:block;min-height:60px;padding:6px 8px} .cr-bloc{font-size:10
 .impr .impr-bio th:first-child,.impr .impr-bio td:first-child{width:20mm}.impr .impr-pre th:first-child,.impr .impr-pre td:first-child{width:30mm}
 .impr .doc-courbes{gap:6px}
 @media print{.impr-fin{break-inside:avoid}.impr .doc-secu,.impr .doc-afaire,.impr-synth,.impr-premiere{break-inside:avoid}.impr-seances tr.impr-sep{break-after:avoid}}
+.impr-clin td.impr-mes{text-align:right} /* examens cliniques : poids, taille et IMC alignés à droite (colonnes présentes seulement quand une valeur existe) */
 /* ===== @compte-rendu ===== */
 .cr .doc-h2{margin:9px 0 4px;padding-bottom:2px}
 .cr-tete{font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:9pt;line-height:1.35;color:var(--doc-ink);border-bottom:1px solid var(--doc-line);padding-bottom:4px}

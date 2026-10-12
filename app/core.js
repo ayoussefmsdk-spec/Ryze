@@ -36,6 +36,16 @@
   /* ---------- Migration des données locales ---------- */
   function migrer(s) {
     (s.patients || []).forEach(p => { p.notes = p.notes || []; p.surveillance = p.surveillance || []; p.bilan = p.bilan || []; p.cures = p.cures || []; }); s.settings = s.settings || {};
+    /* notes écrites par l'application (n.auto, posé à la création par les actions depuis le passage 3) : drapeau posé sur les notes anciennes au format EXACT des actions — sans heure pour le
+       changement de protocole, la posologie, la suspension et la reprise (ces actions n'en mettent pas, une note saisie dans l'onglet Notes en a toujours une) et sans titre (seule la saisie en pose un) ;
+       compteurs « séance(s) … » de ces notes réécrits au pluriel accordé (documents imprimés : jamais de « (s) ») — idempotent (R.pluriel n'est pas encore chargé ici) */
+    { const pl = (n, sing, plur) => `${n} ${+n >= 2 ? plur : sing}`, FMT = [[/^Changement de protocole \(cycle \d+\) : [\s\S]+ à partir du \d{2}\/\d{2}\/\d{4} — /, true],
+        [/^Cycle \d+ supprimé — [\s\S]+ : \d+ séances?(\(s\))? retirées?(\(s\))? dont \d+ réalisées?(\(s\))?( ; retour au cycle \d+)?$/, false], [/^Posologie modifiée à partir de la séance n°\d+ : \S+ mg(\/kg)? tous les \d+ j — /, true],
+        [/^Prémédication de référence : [\s\S]* remplacée par [\s\S]*$/, false], [/^Traitement suspendu : /, true], [/^Reprise du traitement \([\s\S]*\)( — \d+ séances?(\(s\))? replanifiées?(\(s\))? à partir du \d{2}\/\d{2}\/\d{4})?$/, true],
+        [/^Traitement arrêté le \d{2}\/\d{2}\/\d{4} : /, false], [/^Dossier rouvert \([\s\S]*\)$/, false], [/^Nouveau cycle : première séance fixée au \d{2}\/\d{2}\/\d{4} ; séances suivantes selon les intervalles du protocole$/, false]];
+      (s.patients || []).forEach(p => (p.notes || []).forEach(n => { if (!n || typeof n.txt !== 'string') return;
+        if (!n.auto && !String(n.titre || '').trim() && FMT.some(([re, sansHeure]) => re.test(n.txt) && (!sansHeure || !n.heure))) n.auto = true;
+        if (n.auto && n.txt.includes('(s)')) n.txt = n.txt.replace(/(\d+) séance\(s\) retirée\(s\) dont (\d+) réalisée\(s\)/, (m, a, r) => `${pl(a, 'séance retirée', 'séances retirées')} dont ${pl(r, 'réalisée', 'réalisées')}`).replace(/(\d+) séance\(s\) replanifiée\(s\)/, (m, a) => pl(a, 'séance replanifiée', 'séances replanifiées')); })); }
     /* suspensions restées ouvertes après un relais, un arrêt ou la suppression du cycle (bases antérieures) : closes à la date de l'action suivante (note du dossier), sauf la suspension en cours (idempotent) */
     (s.patients || []).forEach(p => { const L = (p.suspensions || []).filter(x => x && !x.repriseLe && !x.finLe); if (!L.length) return; const garder = p.statut === 'suspendu' ? L[L.length - 1] : null;
       L.forEach(x => { if (x === garder) return; const suite = (p.notes || []).filter(n => n && n.date && n.date >= (x.le || '') && /^(Changement de protocole|Cycle \d+ supprimé|Traitement arrêté|Dossier rouvert|Reprise du traitement)/.test(n.txt || '')).map(n => n.date).sort()[0]; x.finLe = suite || x.le || ''; x.fin = 'migration'; }); });

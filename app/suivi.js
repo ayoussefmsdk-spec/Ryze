@@ -138,7 +138,7 @@
     const has = k => !Array.isArray(o.sous) || o.sous.includes(k);
     return `<div class="form-grid">
       ${o.avecPoids ? `<div class="field"><label>Poids (kg)</label><input type="number" step="0.1" name="cl_poids" value="${esc(d.poids ?? '')}"></div>` : ''}
-      ${has('taille') ? `<div class="field"><label>Taille (cm)</label><input type="number" name="cl_taille" value="${esc(d.taille ?? '')}"></div>` : ''}
+      ${has('taille') ? `<div class="field"><label>Taille (cm)</label><input type="number" step="0.1" name="cl_taille" value="${esc(d.taille ?? '')}"></div>` : ''}
       ${has('puberte') ? `<div class="field"><label>Puberté</label><select name="cl_puberte">${R.CLINIQUE.puberte.map(x => `<option${(d.puberte || R.CLINIQUE.puberte[0]) === x ? ' selected' : ''}>${x}</option>`).join('')}</select></div>` : ''}
       ${has('digestif') ? `<div class="field span3"><label>Syndrome digestif</label><input type="text" name="cl_digestif" value="${esc(d.digestif || '')}" placeholder="ex. 3 selles/j, sans sang, pas de douleur nocturne"></div>` : ''}
       ${!has('douleur') ? '' : `<div class="field span3"><label>Douleur</label><div class="row" style="gap:6px"><label class="check" style="padding:5px 9px"><input type="checkbox" name="cl_douleur"${d.douleur ? ' checked' : ''}> <b>Présente</b></label>${chk('cl_douleurLoc', R.CLINIQUE.douleurLoc, d.douleurLoc)}<input type="text" name="cl_douleurNote" class="grow" value="${esc(d.douleurNote || '')}" placeholder="où exactement, intensité, horaire…"></div></div>`}
@@ -346,23 +346,29 @@
     return finaliser(charts).map(ch => { if (ch.key !== 'tdm' || !ch.ref || ch.dci === undefined) return ch; const l0 = ch.lignes[0], der = l0 && l0.pts[l0.pts.length - 1]; if (der) ch.ref = R.cibleTdmDe(ch.dci, p, der.date) || ch.ref; return ch; });
   };
 
-  /* lignes cliniques : une par séance réalisée ou consultation faite */
+  /* lignes cliniques : une par séance réalisée ou consultation faite (objet : la séance ou le contrôle d'origine)
+     imc : poids du jour et taille du jour, sinon dernière taille mesurée avant, sinon celle du dossier (tailleImc) — courbe IMC (inchangée)
+     imcMesure : taille du jour, sinon dernière taille mesurée AVANT (tailleMesuree), jamais celle du dossier — tableaux des documents (relevé des bilans, carnet A4, résumé du compte rendu) :
+     p.taille est écrasé à chaque mesure (séance, consultation, dossier), il peut donc venir d'une mesure POSTÉRIEURE à la ligne (enfant qui grandit : IMC faux, et document qui change après coup) */
   R.lignesCliniques = p => {
-    const rows = [...(p.curesRetro || []).filter(c => c.statut === 'realisee' && c.date && c.poids).map(c => ({ date: c.date, src: `Séance antérieure ${c.label || ''}`.trim(), poids: c.poids, taille: null, temp: null, fc: null, ta: '', d: null, tolerance: '' })), ...p.cures.filter(c => c.statut === 'realisee' && c.dateReelle).map(c => ({ date: c.dateReelle, src: `Séance ${c.label}`, poids: c.poids || null, taille: (c.clinique && c.clinique.taille) || null, temp: R.num(c.constantes && c.constantes.temp) ?? (c.clinique && c.clinique.temperature) ?? null, fc: R.num(c.constantes && c.constantes.fc), ta: (c.constantes && c.constantes.ta) || '', d: c.clinique || null, tolerance: c.tolerance || '' })),
-      ...p.surveillance.filter(s => s.statut === 'faite' && s.dateFaite && s.clinique).map(s => ({ date: s.dateFaite, src: s.label, poids: s.clinique.poids || null, taille: s.clinique.taille || null, temp: s.clinique.temperature || null, fc: null, ta: '', d: s.clinique, tolerance: '' }))];
-    return rows.sort((a, b) => a.date.localeCompare(b.date));
+    const rows = [...(p.curesRetro || []).filter(c => c.statut === 'realisee' && c.date && c.poids).map(c => ({ objet: c, date: c.date, src: `Séance antérieure ${c.label || ''}`.trim(), poids: c.poids, taille: null, temp: null, fc: null, ta: '', d: null, tolerance: '' })), ...p.cures.filter(c => c.statut === 'realisee' && c.dateReelle).map(c => ({ objet: c, date: c.dateReelle, src: `Séance ${c.label}`, poids: c.poids || null, taille: (c.clinique && c.clinique.taille) || null, temp: R.num(c.constantes && c.constantes.temp) ?? (c.clinique && c.clinique.temperature) ?? null, fc: R.num(c.constantes && c.constantes.fc), ta: (c.constantes && c.constantes.ta) || '', d: c.clinique || null, tolerance: c.tolerance || '' })),
+      ...p.surveillance.filter(s => s.statut === 'faite' && s.dateFaite && s.clinique).map(s => ({ objet: s, date: s.dateFaite, src: s.label, poids: s.clinique.poids || null, taille: s.clinique.taille || null, temp: s.clinique.temperature || null, fc: null, ta: '', d: s.clinique, tolerance: '' }))];
+    rows.sort((a, b) => a.date.localeCompare(b.date)); let tc = null;
+    rows.forEach(r => { if (+r.taille > 0) tc = +r.taille; const t = +r.taille > 0 ? +r.taille : tc || (+p.taille > 0 ? +p.taille : null); r.tailleImc = t; r.imc = +r.poids > 0 && t ? +(r.poids / Math.pow(t / 100, 2)).toFixed(1) : null;
+      r.tailleMesuree = tc; r.imcMesure = +r.poids > 0 && tc ? +(r.poids / Math.pow(tc / 100, 2)).toFixed(1) : null; });
+    return rows;
   };
   R.seriesClinique = p => {
-    const charts = {}; const rows = R.lignesCliniques(p); let tailleConnue = null;
-    rows.forEach(r => { if (r.taille) tailleConnue = r.taille;
-      if (r.poids) { const ch = charts.poids || (charts.poids = nouvChart('poids', 'Poids', 'kg', null)); ajouterPt(ch, 'Poids', { date: r.date, v: r.poids, brut: r.poids + ' kg', note: r.src }); const taille = r.taille || tailleConnue || p.taille; if (taille) { const imc = +(r.poids / Math.pow(taille / 100, 2)).toFixed(1); const c2 = charts.imc || (charts.imc = nouvChart('imc', 'IMC', 'kg/m²', refAdulte(p, [18.5, 25])) /* enfant : IMC lu en percentile (courbes de croissance), pas de zone fixe */); ajouterPt(c2, 'IMC', { date: r.date, v: imc, brut: imc + ' kg/m²', note: `${r.poids} kg · ${taille} cm` }); } }
+    const charts = {}; const rows = R.lignesCliniques(p);
+    rows.forEach(r => {
+      if (r.poids) { const ch = charts.poids || (charts.poids = nouvChart('poids', 'Poids', 'kg', null)); ajouterPt(ch, 'Poids', { date: r.date, v: r.poids, brut: r.poids + ' kg', note: r.src }); if (r.imc != null) { const c2 = charts.imc || (charts.imc = nouvChart('imc', 'IMC', 'kg/m²', refAdulte(p, [18.5, 25])) /* enfant : IMC lu en percentile (courbes de croissance), pas de zone fixe */); ajouterPt(c2, 'IMC', { date: r.date, v: r.imc, brut: r.imc + ' kg/m²', note: `${r.poids} kg · ${r.tailleImc} cm` }); } }
       if (r.taille) { const ch = charts.taille || (charts.taille = nouvChart('taille', 'Taille', 'cm', null)); ajouterPt(ch, 'Taille', { date: r.date, v: r.taille, brut: r.taille + ' cm', note: r.src }); }
       if (r.temp != null && r.temp > 30) { const ch = charts.temp || (charts.temp = nouvChart('temp', 'Température', '°C', R.REFS.temperature)); ajouterPt(ch, 'Température', { date: r.date, v: r.temp, brut: r.temp + ' °C', note: r.src }); }
       if (r.fc) { const ch = charts.fc || (charts.fc = nouvChart('fc', 'Fréquence cardiaque', 'bpm', refAdulte(p, R.REFS.fc))); ajouterPt(ch, 'FC', { date: r.date, v: r.fc, brut: r.fc + ' bpm', note: r.src }); }
       const ta = R.nums(r.ta); if (ta.length >= 2) { const ch = charts.ta || (charts.ta = nouvChart('ta', 'Tension artérielle', 'mmHg', null)); ajouterPt(ch, 'Systolique', { date: r.date, v: ta[0], brut: r.ta, note: r.src }); ajouterPt(ch, 'Diastolique', { date: r.date, v: ta[1], brut: r.ta, note: r.src }); }
     });
-    /* la taille n'a d'intérêt en courbe que si elle change (enfant, adolescent) */
-    if (charts.taille && new Set(charts.taille.lignes[0].pts.map(x => x.v)).size < 2) delete charts.taille;
+    /* taille : courbe dès 2 mesures, même identiques, à tout âge (chez l'enfant, une taille qui stagne est une information) */
+    if (charts.taille && charts.taille.lignes[0].pts.length < 2) delete charts.taille;
     const ordre = ['poids', 'imc', 'taille', 'temp', 'fc', 'ta'];
     return finaliser(charts).sort((a, b) => ordre.indexOf(a.key) - ordre.indexOf(b.key));
   };
@@ -467,13 +473,15 @@
     if (ch.key === 'fc') { const r = a == null ? null : a >= 18 ? R.REFS.fc : (FC_ENFANT.find(x => a < x[0]) || []).slice(1); return !!(r && r.length === 2 && (v < r[0] || v > r[1])); }
     if (ch.key === 'ta') { const sys = /^sys/i.test(l.nom || ''); return a != null && a < 18 ? (sys ? v >= 130 : v >= 80) : (sys ? v >= 140 || v < 90 : v >= 90); } return false; };
   const courbeUtile = (p, ch) => !['temp', 'fc', 'ta'].includes(ch.key) || ch.lignes.some(l => l.pts.some(x => valeurAnormale(p, ch, l, x.v)));
-  /* courbes des documents : au moins 2 points sur la période ; chez l'enfant, la taille en premier */
+  /* courbes des documents : au moins 2 points sur la période ; taille (dès 2 mesures, même identiques) en premier avant 18 ans, juste après le poids sinon —
+     elle est dans l'ordre fixe, donc jamais évincée par le plafond (9 dans le carnet A4, 6 dans le relevé et le compte rendu) */
+  const ORDRE_ADULTE = ORDRE_DOC.flatMap(k => k === 'poids' ? ['poids', 'taille'] : [k]);
   /* une série par courbe (décision D2, jamais deux séries ni deux axes) : ASAT / ALAT et tension systolique / diastolique deviennent une courbe par ligne, chacune avec sa zone */
   const zoneTxt = r => !r ? '' : +r[0] === 0 && r[1] != null ? `zone : ≤ ${fmtV(r[1])}` : `zone : ${R.refTexte(r)}`;
   const titreLigne = (ch, l) => ch.key === 'transa' ? l.nom : ch.key === 'ta' ? `${ch.titre} ${String(l.nom || '').toLowerCase()}` : `${ch.titre} — ${l.nom}`;
   const uneSerie = ch => ch.lignes.length < 2 ? [ch] : ch.lignes.map(l => { const r = l.ref || ch.ref || null; return Object.assign({}, ch, { titre: titreLigne(ch, l), ref: r, zoneLib: ch.zoneLib ? zoneTxt(r) : '', lignes: [l] }); });
   /* max : plafond du document compté AVANT la scission (ASAT / ALAT ou la tension n'occupent qu'un emplacement : aucune autre courbe n'est poussée hors du document) */
-  R.chartsDoc = (p, depuis, max) => { const ordre = (agePatient(p) ?? 99) < 18 ? ['taille', ...ORDRE_DOC] : ORDRE_DOC; const rang = ch => { const i = ordre.indexOf(ch.key); return i < 0 ? 50 : i; }; const deux = ch => ch.lignes.some(l => l.pts.length >= 2);
+  R.chartsDoc = (p, depuis, max) => { const ordre = (agePatient(p) ?? 99) < 18 ? ['taille', ...ORDRE_DOC] : ORDRE_ADULTE; const rang = ch => { const i = ordre.indexOf(ch.key); return i < 0 ? 50 : i; }; const deux = ch => ch.lignes.some(l => l.pts.length >= 2);
     const L = filtrerCharts(R.seriesDoc(p), depuis || null).filter(ch => courbeUtile(p, ch) && deux(ch)).sort((a, b) => rang(a) - rang(b)); return (max ? L.slice(0, max) : L).flatMap(uneSerie).filter(deux); };
   /* o : { depuis, max (6), cols (3), valeurs (false : sans la ligne chiffrée sous le titre, quand le document a déjà le tableau des dernières valeurs),
          garderHauteur (true : si la scission ajoute une rangée au-delà du plafond, les courbes sont moins hautes et la grille garde la hauteur prévue — même nombre de pages) } */

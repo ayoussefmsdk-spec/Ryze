@@ -6,7 +6,8 @@
    patient, en-tête commun R.enteteDoc, identité sur chaque page
    imprimée R.identitePages, séances annulées automatiquement,
    événements du traitement, réactions et prémédication, blocs
-   « Statut et sécurité » et « À faire ». CSS : index.html (.doc-entete,
+   « Statut et sécurité » et « À faire », notes de suivi à imprimer
+   (R.notesEpingleesDoc, R.notesRecentesDoc). CSS : index.html (.doc-entete,
    .doc-secu, .doc-afaire…).
    Contrat des corrections (rempli ailleurs, lu ici) :
    c.corrections = [{ le: 'AAAA-MM-JJ', heure, par: userId, changements: [{ champ, avant, apres }] }]
@@ -71,7 +72,7 @@
   R.suspensionEnCours = p => {
     if (!p || p.statut !== 'suspendu') return null; const nb = (p.cures || []).filter(c => c.parSuspension && c.statut === 'reportee').length;
     const rec = (p.suspensions || []).filter(x => x && !x.repriseLe && !x.finLe).slice(-1)[0]; /* finLe : suspension close par un relais, un arrêt ou la suppression du cycle (sans « reprise ») */ if (rec) return { le: rec.le || null, motif: p.motifSuspension || rec.motif || '', nbSeances: nb };
-    const note = (p.notes || []).find(n => /^Traitement suspendu : /.test(n.txt || '')); let le = note ? note.date : null;
+    const note = (p.notes || []).find(n => R.noteAuto(n) && /^Traitement suspendu : /.test(n.txt || '')); /* note écrite par l'action (n.auto), jamais une note de l'équipe qui commence pareil */ let le = note ? note.date : null;
     if (!le) le = (p.cures || []).filter(c => c.statut === 'reportee' && (c.parSuspension || (p.motifSuspension && c.motif === p.motifSuspension))).flatMap(c => (c.reports || []).map(r => r.date)).filter(Boolean).sort()[0] || null;
     return { le, motif: p.motifSuspension || '', nbSeances: nb };
   };
@@ -94,10 +95,11 @@
     });
     const txtSusp = (motif, n) => `Traitement suspendu${motif ? ' : ' + motif : ''}${n ? ' — ' + R.pluriel(n, 'séance mise en attente', 'séances mises en attente') : ''}`;
     const txtReprise = n => `Reprise du traitement${n ? ' — ' + R.pluriel(n, 'séance replanifiée', 'séances replanifiées') : ''}`;
-    /* enregistrements structurés (action « Suspendre » / « Reprendre »), puis notes générées par les mêmes actions (données plus anciennes) */
+    /* enregistrements structurés (action « Suspendre » / « Reprendre »), puis notes générées par les mêmes actions (données plus anciennes) — notes de l'application seulement (n.auto) :
+       une note de l'équipe « Reprise du traitement prévue… » ou « Dossier rouvert après… » n'est jamais lue comme un événement */
     (p.suspensions || []).forEach(x => { if (!x) return; ajouter({ date: x.le || null, type: 'suspension', motif: x.motif || '', nbSeances: +x.nbSeances || 0, texte: txtSusp(x.motif, +x.nbSeances || 0) }); if (x.repriseLe) ajouter({ date: x.repriseLe, type: 'reprise', motif: '', nbSeances: +x.nbReplanifiees || 0, texte: txtReprise(+x.nbReplanifiees || 0) }); });
     const arretsNotes = [];
-    (p.notes || []).forEach(n => { const t = String(n.txt || ''); let m;
+    (p.notes || []).filter(R.noteAuto).forEach(n => { const t = String(n.txt || ''); let m;
       if ((m = /^Traitement suspendu : ([\s\S]*)$/.exec(t))) ajouter({ date: n.date || null, type: 'suspension', motif: m[1].trim(), nbSeances: 0, texte: txtSusp(m[1].trim(), 0) });
       else if (/^Reprise du traitement/.test(t)) { const k = +((/ — (\d+) séance/.exec(t) || [])[1]) || 0; ajouter({ date: n.date || null, type: 'reprise', motif: '', nbSeances: k, texte: txtReprise(k) }); }
       else if ((m = /^Traitement arrêté le (\d{2}\/\d{2}\/\d{4}) : ([\s\S]*)$/.exec(t))) arretsNotes.push({ date: frVersIso(m[1]) || n.date || null, motif: m[2].trim() });
@@ -285,4 +287,26 @@
     /* état du bloc pour l'impression couleur : alerte (anomalie), attente (examen en attente), ok (complet) */
     const etat = an.length ? 'alerte' : att.length ? 'attente' : 'ok';
     return `<div class="doc-box doc-retenir ${etat}" style="font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:9pt;line-height:1.35;padding:5px 9px;margin:4px 0 6px;break-inside:avoid"><div class="doc-retenir-t" style="font-size:8pt;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:2px">À retenir <span style="font-weight:400;letter-spacing:0;text-transform:none">· ${r.faits}/${r.total} ${R.pluriel(r.total, 'examen réalisé', 'examens réalisés', true)}</span></div>${corps}</div>`; };
+
+  /* ---------- Notes de suivi sur les documents (carnet A4) ----------
+     n = { date, heure, par, txt, titre?, epingle?, epingleLe?, epinglePar?, modifieLe?, modifiePar? } (onglet Notes du dossier, actions noteAdd / noteModifierSave / noteEpingle)
+     R.noteAuto(n) → vrai pour une note écrite par l'application : drapeau n.auto posé à la création par les actions (changement de protocole, cycle supprimé, posologie modifiée, prémédication de référence,
+       suspension, reprise, arrêt, réouverture, nouveau cycle) et par migrer() sur les notes anciennes au format exact — jamais d'après le seul début du texte (une note de l'équipe peut commencer par « Reprise du traitement… »)
+     R.notesEpingleesDoc(p) → notes épinglées (automatiques comprises : l'équipe les a choisies), les plus récentes d'abord
+     R.notesRecentesDoc(p, { mois: 12, max: 8 }) → { notes, total, depuis } : TOUTES les notes NON épinglées depuis « mois » mois (M3b, sans exclusion : une note de l'application est parfois la seule trace
+       sur papier — cycle supprimé, prémédication remplacée), les plus récentes d'abord, « max » au plus ; total = nombre avant le plafond
+     R.noteDocInfos(n, { epingle }) → { date: 'JJ/MM/AAAA', auteur: 'Dr …' | '', titre, texte, mentions: ['épinglée le … par …', 'modifiée le … par …'] } : textes bruts, à échapper au rendu */
+  R.noteAuto = n => !!(n && n.auto);
+  const noteCle = n => String((n && n.date) || '') + String((n && n.heure) || '');
+  const notesTriees = L => L.map((n, i) => ({ n, i })).sort((a, b) => noteCle(b.n).localeCompare(noteCle(a.n)) || a.i - b.i).map(x => x.n); /* à égalité, l'ordre du dossier (la plus récente en tête) */
+  const noteRemplie = n => { const t = String(n.txt || '').trim(); return (!!t && t !== '—') || !!String(n.titre || '').trim(); }; /* « — » : note enregistrée sans texte */
+  R.notesEpingleesDoc = p => notesTriees(((p && p.notes) || []).filter(n => n && n.epingle && noteRemplie(n)));
+  R.notesRecentesDoc = (p, o) => { o = o || {}; const mois = o.mois == null ? 12 : +o.mois, max = o.max == null ? 8 : +o.max, depuis = mois > 0 ? R.addDays(R.today(), -Math.round(mois * 30.44)) : '';
+    const L = notesTriees(((p && p.notes) || []).filter(n => n && !n.epingle && (!depuis || String(n.date || '') >= depuis) && noteRemplie(n)));
+    return { notes: max > 0 ? L.slice(0, max) : L, total: L.length, depuis }; };
+  R.noteDocInfos = (n, o) => { o = o || {}; const nom = id => { const v = id ? R.userName(id) : ''; return v && v !== '—' ? v : ''; }, par = (le, qui) => (le ? ' le ' + R.fmtDate(le) : '') + (nom(qui) ? ' par ' + nom(qui) : '');
+    const t = String((n && n.txt) || '').trim(), m = [];
+    if (o.epingle && n && n.epingle && (n.epingleLe || nom(n.epinglePar))) m.push('épinglée' + par(n.epingleLe, n.epinglePar));
+    if (n && n.modifieLe) m.push('modifiée' + par(n.modifieLe, n.modifiePar));
+    return { date: n && n.date ? R.fmtDate(n.date) : 'date inconnue', auteur: nom(n && n.par), titre: String((n && n.titre) || '').trim(), texte: t === '—' ? '' : t, mentions: m }; };
 })(window.RYZE);
