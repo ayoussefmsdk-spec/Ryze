@@ -576,6 +576,8 @@ div.cr-edit{display:block;min-height:60px;padding:6px 8px} .cr-bloc{font-size:10
 .ca4 .ca4-chaque{font-size:9.5pt}
 .ca4 .ca4-seances th,.ca4 .ca4-plan th,.ca4 .ca4-ctrl th,.ca4 .ca4-hist th{letter-spacing:.02em;font-size:7.5pt;padding:4px 5px}
 .ca4 .ca4-seances td.m,.ca4 .ca4-plan td.m,.ca4 .ca4-ctrl td.m{font-size:8pt}.ca4 .ca4-nw{white-space:nowrap}
+/* intégration (passage 2) : « Observations de l’équipe », son cadre et les signatures restent ensemble (jamais une feuille avec les seules signatures, depuis le bloc « À retenir » du bilan pré-biothérapie) ; pied rapproché à l’impression (4 mm, comme le compte rendu) */
+@media print{.ca4 .ca4-obs{break-inside:avoid}.carnet-page.ca4 .doc-foot{margin-top:4mm}}
 /* ===== @impressions ===== */
 .impr .doc-h2{margin:12px 0 6px}
 .impr .doc-secu,.impr .doc-afaire{margin:6px 0}
@@ -745,6 +747,97 @@ div.cr-edit{display:block;min-height:60px;padding:6px 8px} .cr-bloc{font-size:10
   .fp-jour-t,.fp-sem{min-width:0}
   .carnet-page .fp-sem tr{break-inside:auto}
   .fp-barre{display:none!important}
+}
+/* ===== @couleur ===== */
+/* Impression couleur sobre (décision D2) — palette UNIQUE de tous les documents : carnet A4, historique des séances, relevé des bilans, compte rendu
+   (.carnet-page), carnet patient (.livret ; règles propres dans R.carnetPatientCSS), rapport d'activité (.rapport), feuille de planning (.fp .carnet-page).
+   Réglage S.settings.impressionCouleur (Paramètres → Impression, vrai par défaut) : classe imp-couleur ou imp-nb sur <html> (R.appliquerImpression), à l'écran,
+   à l'impression et dans le fichier exporté (R.docExport). Accent = bleu du logo du CHU (filets, traits) et son encre (titres, numéros de page) ; statut
+   seulement là où il a un sens, toujours avec un mot ou un symbole (✓ ☐ ⚠ ✗ ▲ ▼) : .st-ok fait, .st-af à faire ou en retard, .st-al alerte ; tableaux à
+   en-têtes teintés et lignes alternées très claires ; fonds toujours ≥ 90 % de luminosité ; rien d'autre (aucune couleur par molécule, aucun dégradé).
+   Palette validée (dataviz, validate_palette.js, mode clair) : #0098D0, #1E7B4F, #B27B0C, #B3261E — l'orange demandé #B26B0C échouait (écart 14,0 avec le
+   rouge, sous le plancher de 15 ; 6,0 avec le vert en vision protan) : #B27B0C (18,0 et 8,1). Encres de texte à contraste ≥ 4,5:1 sur blanc et sur leur
+   fond : #0A6FA0, #1E7B4F, #8F5508, #B3261E. Rapport : rampe d'une seule teinte #5FBCE3 → #0098D0. Carnet patient : examens en vert-bleu #057558.
+   Noir et blanc : variables neutres, print-color-adjust economy, fonds retirés à l'impression, logo en niveaux de gris ; bordures, gras et symboles gardés. */
+.carnet-page,.livret,.rapport{--imp-acc:#0098D0;--imp-acc-e:#0A6FA0;--imp-acc-t:#E6F4FA;--imp-ok:#1E7B4F;--imp-ok-t:#E7F3EC;--imp-af:#B27B0C;--imp-af-e:#8F5508;--imp-af-t:#FBEFD9;--imp-al:#B3261E;--imp-al-t:#FBE9E7;--imp-alt:#F6F9FB;--imp-ref:#ECEFF1;--imp-serie:#0098D0;--imp-iv:#0098D0;--imp-sc:#5FBCE3;--imp-ex:#057558;--imp-ex-t:#E4F2EE;--imp-encre:#182421}
+html.imp-nb .carnet-page,html.imp-nb .livret,html.imp-nb .rapport{--imp-acc:#182421;--imp-acc-e:#182421;--imp-acc-t:transparent;--imp-ok:#182421;--imp-ok-t:transparent;--imp-af:#182421;--imp-af-e:#182421;--imp-af-t:transparent;--imp-al:#182421;--imp-al-t:transparent;--imp-alt:transparent;--imp-ref:#ECECEC;--imp-serie:#3A4744;--imp-iv:#3A4744;--imp-sc:#9EA6A3;--imp-ex:#182421;--imp-ex-t:transparent}
+html.imp-couleur .carnet-page,html.imp-couleur .livret .page,html.imp-couleur .rapport{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+html.imp-nb .carnet-page,html.imp-nb .livret .page,html.imp-nb .rapport{-webkit-print-color-adjust:economy;print-color-adjust:economy}
+html.imp-nb .doc-logo,html.imp-nb .lv-logo{filter:grayscale(1)}
+html.imp-nb .carnet-page .doc-table>tbody>tr>td{background-color:transparent} /* aperçu à l'écran fidèle à l'impression : lignes faites ou en alerte sans teinte */
+@media print{html.imp-nb .carnet-page *,html.imp-nb .livret .page *,html.imp-nb .rapport *{background:transparent!important;box-shadow:none!important}}
+/* rappel du réglage près des boutons d'impression (écran, jamais imprimé) */
+.imp-rappel{font-size:12px;color:var(--muted);white-space:nowrap;align-self:center}
+.imp-modifier{border:0;background:none;padding:0;font:inherit;color:var(--accent-ink);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.imp-modifier:hover{color:var(--accent)}
+/* en-tête, titres de section, filets et numéros de page : accent (numéros de page des marges @page : style #imp-pages de R.appliquerImpression) */
+html.imp-couleur .doc-entete{border-bottom-color:var(--imp-acc)}
+html.imp-couleur .doc-entete-titre{color:var(--imp-acc-e)}
+html.imp-couleur .doc-h2{color:var(--imp-acc-e);border-bottom-color:var(--imp-acc)}
+html.imp-couleur .carnet-page .doc-foot{border-top-color:var(--imp-acc)}
+html.imp-couleur .carnet-page .doc-foot span:last-child{color:var(--imp-acc-e)}
+/* tableaux : en-têtes en teinte d'accent, lignes alternées très claires, texte noir ; ligne en alerte (anomalie, signe clinique) en rouge très clair */
+html.imp-couleur .carnet-page .doc-table th{background:var(--imp-acc-t)}
+html.imp-couleur .carnet-page .doc-table>tbody>tr>td{background-color:transparent}
+html.imp-couleur .carnet-page .doc-table>tbody>tr:nth-child(even)>td{background-color:var(--imp-alt)}
+html.imp-couleur .carnet-page .doc-table>tbody>tr.doc-alert>td{background-color:var(--imp-al-t)}
+html.imp-couleur .carnet-page .doc-table>tbody>tr.doc-alert b{color:var(--imp-al)}
+/* lignes d'événement du traitement (relais, suspension, reprise, arrêt) et séparateurs de cycle ou de phase : bandeau d'accent */
+html.imp-couleur .carnet-page .doc-table>tbody>tr.ca4-ev>td,html.imp-couleur .carnet-page .doc-table>tbody>tr.impr-ev>td{border-top-color:var(--imp-acc);border-bottom-color:var(--imp-acc);background-color:var(--imp-acc-t)}
+html.imp-couleur .carnet-page .doc-table>tbody>tr.impr-sep>td{background-color:var(--imp-acc-t);color:var(--imp-acc-e);border-color:var(--imp-acc)}
+/* statuts : toujours avec un mot ou un symbole */
+html.imp-couleur .st-ok{color:var(--imp-ok)}
+html.imp-couleur .st-af{color:var(--imp-af-e)}
+html.imp-couleur .st-al{color:var(--imp-al)}
+/* blocs communs : statut et sécurité (accent ; rouge en alerte, allergie connue en rouge), à faire (orange), « À retenir » du bilan pré-biothérapie (couleur de son état) */
+html.imp-couleur .doc-secu{border-color:var(--imp-acc)}
+html.imp-couleur .doc-secu-t{color:var(--imp-acc-e)}
+html.imp-couleur .doc-secu.alerte{border-color:var(--imp-al)}
+html.imp-couleur .doc-secu.alerte .doc-secu-t,html.imp-couleur .doc-secu-r.alerte .doc-secu-k,html.imp-couleur .doc-secu-r.alerte .doc-fort,html.imp-couleur .doc-secu-r.allergie .doc-secu-v b{color:var(--imp-al)}
+html.imp-couleur .doc-afaire{border-color:var(--imp-af)}
+html.imp-couleur .doc-afaire-t,html.imp-couleur .doc-afaire-l .doc-case,html.imp-couleur .doc-afaire-l li.retard b{color:var(--imp-af-e)}
+html.imp-couleur .doc-afaire-l li.retard .doc-afaire-x{border-left-color:var(--imp-af)}
+html.imp-couleur .doc-retenir.alerte{border-color:var(--imp-al)}
+html.imp-couleur .doc-retenir.attente{border-color:var(--imp-af)}
+html.imp-couleur .doc-retenir.ok{border-color:var(--imp-ok)}
+html.imp-couleur .doc-retenir.alerte .doc-retenir-t,html.imp-couleur .doc-retenir-r.an .doc-retenir-k,html.imp-couleur .doc-retenir-r.an b{color:var(--imp-al)}
+html.imp-couleur .doc-retenir.attente .doc-retenir-t,html.imp-couleur .doc-retenir-r.att .doc-retenir-k{color:var(--imp-af-e)}
+html.imp-couleur .doc-retenir.ok .doc-retenir-t,html.imp-couleur .doc-retenir-ok{color:var(--imp-ok)}
+/* résultats : dosage hors cible, valeur hors zone, anomalie du bilan pré-biothérapie en rouge ; examen en attente en orange */
+html.imp-couleur td.tdm-hors .doc-tdm-constat,html.imp-couleur .cr-lect.hors,html.imp-couleur .impr-tdm tr.impr-hors .impr-lect,html.imp-couleur .impr-tdm tr.impr-hors td:nth-child(2) b,html.imp-couleur .impr-dern tr.impr-hors td.m b,html.imp-couleur .carnet-page td.m.hors,html.imp-couleur .impr-bio td b{color:var(--imp-al)}
+html.imp-couleur .ca4-bilan td b,html.imp-couleur .doc-bilan-compact td b{color:var(--imp-al)}
+html.imp-couleur .doc-bilan-compact td i,html.imp-couleur .impr-pre td:nth-child(3) i{color:var(--imp-af-e)}
+/* encadrés : prochaine séance (carnet A4), synthèse et première séance (impressions), dosage et consignes (compte rendu), total de la feuille de planning : filet d'accent */
+html.imp-couleur .ca4-pro,html.imp-couleur .impr-synth,html.imp-couleur .impr-premiere,html.imp-couleur .cr-tdm,html.imp-couleur .cr-consignes,html.imp-couleur .fp-total{border-color:var(--imp-acc)}
+html.imp-couleur .ca4-pro-t{color:var(--imp-acc-e)}
+/* séances : réaction (filet rouge), lot non noté (orange) */
+html.imp-couleur .impr-seances tr.impr-reac td:first-child{border-left-color:var(--imp-al)}
+html.imp-couleur .impr-nn{color:var(--imp-af-e)}
+/* courbes : une série d'une seule teinte (accent), zone de référence en gris très clair, point hors zone ou sous la cible en triangle (▲ ▼) rouge — une série par courbe (R.chartsDoc) */
+.doc-courbes .courbe .ref{fill:var(--imp-ref);opacity:1}
+.doc-courbes .courbe .ligne.s1,.doc-courbes .courbe .ligne.s2{stroke:var(--imp-serie)}
+.doc-courbe .lk.s1,.doc-courbe .lk.s2{background:var(--imp-serie)}
+.doc-courbes .courbe .pt.s1,.doc-courbes .courbe .pt.s2{fill:var(--imp-serie)}
+.doc-courbes .courbe .pt.hors{fill:var(--imp-al);stroke:#fff;stroke-width:1.2}
+/* feuille de planning : fond très léger un créneau sur deux, ✓ réalisé en vert, alertes en orange (⚠ poids, fauteuil) ou en rouge (⚠ allergie, réaction, suspension, arrêt, palier) */
+html.imp-couleur .carnet-page .fp-jour-t>tbody>tr:nth-child(n)>td,html.imp-couleur .carnet-page .fp-sem>tbody>tr:nth-child(n)>td{background-color:transparent}
+html.imp-couleur .carnet-page .fp-jour-t>tbody>tr.fp-c2>td{background-color:var(--imp-alt)}
+html.imp-couleur .fp-se.fp-c2{background-color:var(--imp-alt);margin:0 -4px;padding-left:4px;padding-right:4px}
+html.imp-couleur .fp-ok{color:var(--imp-ok)}
+html.imp-couleur .fp-alerte{color:var(--imp-af-e)}
+html.imp-couleur .fp-alerte.fort{color:var(--imp-al)}
+html.imp-couleur .fp-alerte.info{color:inherit}
+html.imp-couleur .fp-jour-t tr.fp-alerte-l td.fp-al{border-left-color:var(--imp-al)}
+html.imp-couleur .fp-sem tr.fp-sem-tot td,html.imp-couleur .fp-se-ctrl{border-top-color:var(--imp-acc)}
+/* rapport d'activité (impression) : graphique d'une seule teinte (perfusions IV foncées, injections SC claires), titres en accent, tableaux à en-têtes teintés et lignes alternées */
+@media print{
+  .rapport{--rap-iv:var(--imp-iv);--rap-sc:var(--imp-sc)}
+  html.imp-couleur .rapport .card-head h2,html.imp-couleur .rapport .rap-annexe-t{color:var(--imp-acc-e)}
+  html.imp-couleur .rapport .card-head{border-bottom-color:var(--imp-acc)}
+  html.imp-couleur .rapport .tbl th{background:var(--imp-acc-t);color:var(--imp-encre)}
+  html.imp-couleur .rapport .tbl>tbody>tr:nth-child(even)>td{background:var(--imp-alt)}
+  html.imp-couleur .rapport .rap-regul .doc-case{color:var(--imp-af-e)}
+  html.imp-couleur .rapport .kpi.attention .value{color:var(--imp-af-e);text-decoration-color:var(--imp-af)}
 }
 </style>
 <div id="app" class="app"></div>

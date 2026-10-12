@@ -22,6 +22,11 @@
    Liste orange réordonnée pour la pédiatrie (contact varicelle / rougeole /
    tuberculose, yeux jaunes, point d'injection en tête) ; « douleur dans la
    poitrine… (caillot) » passe en priorité 2.
+   Relecture D1 (même version) : libellés repris mot pour mot du médecin —
+   « Autres traitements », « Mes parents ou mon tuteur », consigne « Une case
+   cochée → informez l’hôpital de jour AVANT de venir. », « À ne jamais
+   faire » au « le traitement / la biothérapie » (carnet lu par les parents) ;
+   carte : « informez » au lieu de « prévenez ».
    Les textes nouveaux ou modifiés sont ajoutés à _aValider.
    Convention : chaque texte est { fr, ar } ; si = condition d'affichage
    (voie IV|SC|PO, sexe F|M, classe antiTNF|vedolizumab|antiIL|JAK,
@@ -220,8 +225,8 @@ window.RYZE.LIVRET = {
     "ar": "دواء يُعطى قبل التسريب (التحضير الدوائي)"
    },
    "tt-autres": {
-    "fr": "Autres médicaments pour ma maladie",
-    "ar": "أدوية أخرى لمرضي"
+    "fr": "Autres traitements",
+    "ar": "علاجات أخرى"
    }
   },
   "classes": {
@@ -398,8 +403,8 @@ window.RYZE.LIVRET = {
   },
   "parents": {
    "titre": {
-    "fr": "Mes parents ou mon tuteur (à prévenir)",
-    "ar": "والداي أو وليّ أمري (يُتَّصل بهم عند الحاجة)"
+    "fr": "Mes parents ou mon tuteur",
+    "ar": "والداي أو وليّ أمري"
    },
    "nom": {
     "fr": "Nom et prénom",
@@ -1036,17 +1041,17 @@ window.RYZE.LIVRET = {
    },
    "items": [
     {
-     "fr": "Arrêter ou décaler mon traitement sans avis",
-     "ar": "إيقاف علاجي أو تأجيله دون استشارة",
+     "fr": "Arrêter ou décaler le traitement sans avis",
+     "ar": "إيقاف العلاج أو تأجيله دون استشارة",
      "p": 1
     },
     {
-     "fr": "Un vaccin vivant : fièvre jaune, ROR, BCG, varicelle",
+     "fr": "Vaccin vivant : fièvre jaune, ROR, BCG, varicelle",
      "ar": "لقاح حيّ: الحمى الصفراء، الحصبة (ROR)، السل (BCG)، جدري الماء",
      "p": 1
     },
     {
-     "fr": "Anti-inflammatoires (ibuprofène…), cortisone sans avis",
+     "fr": "Anti-inflammatoires (ibuprofène…) ou cortisone sans avis",
      "ar": "مضادات الالتهاب مثل Ibuprofène (إيبوبروفين)، أو كورتيزون، دون استشارة",
      "p": 1
     },
@@ -1056,8 +1061,8 @@ window.RYZE.LIVRET = {
      "p": 1
     },
     {
-     "fr": "Cacher ma biothérapie au dentiste, chirurgien, pharmacien",
-     "ar": "إخفاء علاجي البيولوجي عن طبيب الأسنان والجرّاح والصيدلي",
+     "fr": "Cacher la biothérapie au dentiste, chirurgien, pharmacien",
+     "ar": "إخفاء العلاج البيولوجي عن طبيب الأسنان والجرّاح والصيدلي",
      "p": 1
     },
     {
@@ -1104,8 +1109,8 @@ window.RYZE.LIVRET = {
      "p": 1
     },
     {
-     "fr": "Une case cochée → informez l’hôpital de jour AVANT de venir. La séance peut être décalée : c’est normal.",
-     "ar": "خانة معلّمة ← أخبروا مستشفى النهار قبل المجيء. قد تُؤجَّل الحصة: هذا أمر عادي.",
+     "fr": "Une case cochée → informez l’hôpital de jour AVANT de venir.",
+     "ar": "خانة معلّمة ← أخبروا مستشفى النهار قبل المجيء.",
      "p": 1,
      "texte": true
     },
@@ -1181,7 +1186,7 @@ window.RYZE.LIVRET = {
       "p": 1
      },
      {
-      "fr": "Fièvre ou urgence : prévenez l’hôpital de jour.",
+      "fr": "Fièvre ou urgence : informez l’hôpital de jour.",
       "ar": "حمى أو حالة مستعجلة: أخبروا مستشفى النهار.",
       "p": 1
      },
@@ -1309,8 +1314,8 @@ window.RYZE.LIVRET = {
   },
   {
    "cle": "p1.parents.titre",
-   "fr": "Mes parents ou mon tuteur (à prévenir)",
-   "ar": "والداي أو وليّ أمري (يُتَّصل بهم عند الحاجة)"
+   "fr": "Mes parents ou mon tuteur",
+   "ar": "والداي أو وليّ أمري"
   },
   {
    "cle": "p1.parents.lien",
@@ -1565,7 +1570,7 @@ window.RYZE.LIVRET = {
    "ar": "اصفرار العينين أو الجلد، بول داكن جدًا"
   },
   {
-   "cle": "p4.jamais.items[hijama] (remplace « 2 doses »)",
+   "cle": "p4.jamais.items[hijama] (priorité 2 depuis la version 0.5 : non imprimé, « 2 doses » remis à sa place)",
    "fr": "Plantes, remèdes traditionnels, hijama sans demander",
    "ar": "الأعشاب، الوصفات التقليدية، الحجامة دون استشارة"
   },
@@ -1590,9 +1595,9 @@ window.RYZE.LIVRET = {
    "ar": "قبل كل حصة"
   },
   {
-   "cle": "p4.avant.items[consigne] (« informez l’hôpital de jour » remplace « appelez »)",
-   "fr": "Une case cochée → informez l’hôpital de jour AVANT de venir. La séance peut être décalée : c’est normal.",
-   "ar": "خانة معلّمة ← أخبروا مستشفى النهار قبل المجيء. قد تُؤجَّل الحصة: هذا أمر عادي."
+   "cle": "p4.avant.items[consigne] (« informez l’hôpital de jour » remplace « appelez » ; texte du médecin, sans « La séance peut être décalée : c’est normal. »)",
+   "fr": "Une case cochée → informez l’hôpital de jour AVANT de venir.",
+   "ar": "خانة معلّمة ← أخبروا مستشفى النهار قبل المجيء."
   },
   {
    "cle": "p4.avant.manquee",
@@ -1623,6 +1628,41 @@ window.RYZE.LIVRET = {
    "cle": "p2.cols.signature / p3.cols.signature (en-tête court des colonnes de signature)",
    "fr": "Signature",
    "ar": "التوقيع"
+  },
+  {
+   "cle": "p1.traitement.tt-autres (libellé du médecin « Autres traitements », à remplir)",
+   "fr": "Autres traitements",
+   "ar": "علاجات أخرى"
+  },
+  {
+   "cle": "p1.parents.titre (libellé du médecin, sans « (à prévenir) »)",
+   "fr": "Mes parents ou mon tuteur",
+   "ar": "والداي أو وليّ أمري"
+  },
+  {
+   "cle": "p4.jamais.items[arrêter] (« le traitement » au lieu de « mon traitement », libellé du médecin)",
+   "fr": "Arrêter ou décaler le traitement sans avis",
+   "ar": "إيقاف العلاج أو تأجيله دون استشارة"
+  },
+  {
+   "cle": "p4.jamais.items[vaccin vivant] (sans « Un », libellé du médecin ; arabe inchangé)",
+   "fr": "Vaccin vivant : fièvre jaune, ROR, BCG, varicelle",
+   "ar": "لقاح حيّ: الحمى الصفراء، الحصبة (ROR)، السل (BCG)، جدري الماء"
+  },
+  {
+   "cle": "p4.jamais.items[anti-inflammatoires] (« ou cortisone », libellé du médecin ; arabe inchangé)",
+   "fr": "Anti-inflammatoires (ibuprofène…) ou cortisone sans avis",
+   "ar": "مضادات الالتهاب مثل Ibuprofène (إيبوبروفين)، أو كورتيزون، دون استشارة"
+  },
+  {
+   "cle": "p4.jamais.items[cacher] (« la biothérapie » au lieu de « ma biothérapie », libellé du médecin)",
+   "fr": "Cacher la biothérapie au dentiste, chirurgien, pharmacien",
+   "ar": "إخفاء العلاج البيولوجي عن طبيب الأسنان والجرّاح والصيدلي"
+  },
+  {
+   "cle": "p4.carte.recto.items[fièvre] (« informez » au lieu de « prévenez » ; arabe inchangé)",
+   "fr": "Fièvre ou urgence : informez l’hôpital de jour.",
+   "ar": "حمى أو حالة مستعجلة: أخبروا مستشفى النهار."
   }
  ]
 };

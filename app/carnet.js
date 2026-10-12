@@ -4,8 +4,8 @@
    années). 8 pages A5 FIXES (148 × 210 mm), soit 2 feuilles A4 pliées en
    deux — structure imposée par le médecin (décision D1) :
      1 couverture et informations (logo et identité de l'établissement,
-       identité, « Moi », parents, maladie, traitement sans dose, médecin
-       en charge, « J'apporte ») ; 2 et 3 « Mes séances » : planning pur de
+       titre seul, identité, « Moi », parents, maladie, traitement sans
+       dose, médecin en charge, « J'apporte ») ; 2 et 3 « Mes séances » : planning pur de
        20 lignes numérotées par page (1 à 40), séances déjà faites
        pré-remplies, aucune date ni dose à venir ; 4 et 5 « Mes examens » :
        plan de surveillance avec sa fréquence en tête de la page 4, puis
@@ -16,6 +16,10 @@
        orange, numéros en gros, médecin, recto de la carte, pied de page.
      Aucun horaire, aucune équipe (le médecin en charge seulement), aucun
      texte sous les plannings ; « informez l'hôpital de jour » partout.
+     Lignes de planning à 8,5 pt au moins ; page 8 entièrement à 9 pt au
+     moins (bandeau et pied compris ; la carte garde son format de carte).
+     Pages 4 et 5 : R.carnetPatientAjuster ajoute les lignes vides qui
+     tiennent encore (l'estimation des hauteurs est prudente).
      Carte détachable : recto en page 8, verso en page 7, à la même place
      (même feuillet).
    Contenu : R.LIVRET (livret-data.js). Route : R.pages.carnetPatient ;
@@ -63,6 +67,8 @@
   /* libellé court pour une ligne de planning : la parenthèse finale d'un libellé long est retirée (« Prise de sang : taux du médicament (juste avant…) ») */
   const court = v => fr(v).length > 34 ? { fr: fr(v).replace(/\s*\([^()]*\)\s*$/, ''), ar: ar(v).replace(/\s*\([^()]*\)\s*$/, '') } : v;
   const medecinDe = p => { const m = R.userName(p.medecinId); return !m || m === '—' ? '' : m; };
+  /* dernier poids mesuré en séance à la date d'impression (R.dernierPoids, sans séance datée dans le futur : aucune date future pré-imprimée) */
+  const poidsPasse = (p, t) => { const d = R.dernierPoids(p); if (!d || d.date <= t) return d; const c = (p.cures || []).filter(x => x.statut === 'realisee' && +x.poids > 0 && x.dateReelle && x.dateReelle <= t).sort((a, b) => b.dateReelle.localeCompare(a.dateReelle))[0]; return c ? { poids: +c.poids, date: c.dateReelle } : null; };
 
   /* ---------- contexte du dossier ---------- */
   function contexte(p) {
@@ -93,7 +99,7 @@
   /* bandeau de page : nom et dossier (une seule fois par page), titre, numéro ; sansNom : page de la carte (le nom est sur la carte) ; sansNum : le numéro est dans le pied */
   const enTete = (c, n, titre, o) => `<div class="run">${o && o.sansNom ? '' : `<span class="run-id">${nomPatient(c.p)}${c.p.ipp ? ` · ${bi(L().dossierNo)} ${ltr(c.p.ipp)}` : ''}</span>`}<span class="run-t">${bi(titre)}</span>${o && o.sansNum ? '' : `<span class="num">${fr(L().page)} ${n}/${NB_PAGES}</span>`}</div>`;
   const etabLignes = e => [[e.service, e.unite].filter(Boolean).join(' · ')].filter(Boolean);
-  const pied = (c, n) => `<span class="maq">imprimé le ${R.fmtDate(c.t)} par Ryze</span><span class="num">${fr(L().page)} ${n}/${NB_PAGES}</span>`;
+  const pied = (c, n) => `<span class="maq">imprimé le ${R.fmtDate(c.t)} <span class="nw">par Ryze</span></span><span class="pied-sep"> · </span><span class="num">${fr(L().page)} ${n}/${NB_PAGES}</span>`; /* page 8 : texte continu « imprimé le … par Ryze · Page 8/8 » renvoyé à la ligne à côté de la carte */
   const titrePage = v => `<div class="titre-page"><h2>${bi(v)}</h2></div>`;
   /* ligne « Mon médecin : Dr … » (le médecin en charge, rien d'autre) */
   const ligneMedecin = (c, cls) => `<div class="medecin-l${cls ? ' ' + cls : ''}"><span class="lab">${bi(L().p1.equipe.medecin)}</span><span class="val">${c.medecin ? esc(c.medecin) : fill()}</span></div>`;
@@ -103,15 +109,15 @@
     const Lv = L(), P1 = Lv.p1, p = c.p, e = c.e; const moi = P1.moi, par = P1.parents, mal = P1.maladie, trt = P1.traitement;
     const sexeLib = c.sexe === 'F' ? (c.ageN != null && c.ageN < 18 ? P1.sexe.fille : P1.sexe.F) : (c.ageN != null && c.ageN < 18 ? P1.sexe.garcon : P1.sexe.M);
     const ddn = p.ddn && !isNaN(R.parse(p.ddn)) ? `${R.ddnTxt(p)}${R.ageDoc(p) ? ' (' + R.ageDoc(p) + ')' : ''}` : '';
-    const pi = R.poidsInitial(p), pd = R.dernierPoids(p); const poidsTxt = pd && pi && pd.poids !== pi ? `${nb(pi)} kg · ${nb(pd.poids)} kg (${dt(pd.date)})` : (pi || pd ? `${nb(pi || pd.poids)} kg` : '');
+    const pi = R.poidsInitial(p), pd = poidsPasse(p, c.t); const poidsTxt = pd && pi && pd.poids !== pi ? `${nb(pi)} kg · ${nb(pd.poids)} kg (${dt(pd.date)})` : (pi || pd ? `${nb(pi || pd.poids)} kg` : '');
     const allergies = vide(p.allergies) ? '' : p.allergies; /* « — » = non renseigné (assistant) : ligne laissée à compléter, jamais « Aucune allergie connue » */
     const pm = R.premedicationEnCours ? R.premedicationEnCours(p) : null; const premed = c.voies.includes('IV') && pm ? sansDose(pm.texte) : ''; /* noms des médicaments, jamais leur dose (elle suit le poids de l'enfant) */
-    const dateDiag = p.dateDiag && !isNaN(R.parse(p.dateDiag)) ? R.fmtDate(p.dateDiag, { month: '2-digit', year: 'numeric' }) : '';
+    const dateDiag = p.dateDiag && !isNaN(R.parse(p.dateDiag)) && String(p.dateDiag) <= c.t ? R.fmtDate(p.dateDiag, { month: '2-digit', year: 'numeric' }) : '';
     /* valeurs longues (allergies, prémédication, nom, « Comment » d'un protocole IV puis SC, DCI longue) : présentation resserrée dès l'estimation ; R.carnetPatientAjuster vérifie ensuite à l'affichage */
     const long = [allergies, premed].reduce((a, x) => a + String(x || '').length, 0) + Math.max(0, (p.prenom || '').length + (p.nom || '').length - 28) * 3 + Math.max(0, fr(commentBi(c)).length + ar(commentBi(c)).length - 60) + Math.max(0, String(c.dci || '').length - 14) * 2;
     return `<section class="page p1${long > 150 ? ' dense' : ''}">
       <header class="couv">${R.logoHTML('lv-logo')}<div class="couv-etab">${e.etablissement ? `<span>${esc(e.etablissement)}</span>` : ''}${e.hopital ? `<b class="hop">${esc(e.hopital)}</b>` : ''}${etabLignes(e).map(x => `<span>${esc(x)}</span>`).join('')}<span class="couv-hdj">${esc(e.hdj)}</span></div></header>
-      <div class="couv-titre"><div class="titre">${bi(Lv.titre)}</div><div class="sous">${bi(Lv.sousTitre)}</div></div>
+      <div class="couv-titre"><div class="titre">${bi(Lv.titre)}</div></div>
       <div class="nom-band"><div class="nom">${nomPatient(p)}${p.ipp ? ` <span class="ipp">${bi(Lv.dossierNo)} ${ltr(p.ipp)}</span>` : ''}</div>
         <div class="remis"><span>${bi(Lv.remisLe)} <b>${ltr(R.fmtDate(c.t))}</b></span><span>${bi(Lv.remisPar)} ${fill()}</span><span>${bi(Lv.carnetNo)} ${chk()}1 ${chk()}2 ${chk()}3</span></div></div>
       <div class="cols">
@@ -141,7 +147,7 @@
   /* ---------- séances : 20 lignes numérotées par page (rang de la séance dans le traitement en cours) ---------- */
   function lignesSeances(c) {
     const cyc = c.p.cycleCourant || 1, cap = 2 * SEANCES_PAGE;
-    const faites = (c.p.cures || []).filter(x => x.statut === 'realisee' && (x.cycle || 1) === cyc).sort((a, b) => String(a.dateReelle || a.datePrevue).localeCompare(String(b.dateReelle || b.datePrevue))); /* cycle en cours seulement */
+    const faites = (c.p.cures || []).filter(x => x.statut === 'realisee' && (x.cycle || 1) === cyc && String(x.dateReelle || x.datePrevue || '') <= c.t).sort((a, b) => String(a.dateReelle || a.datePrevue).localeCompare(String(b.dateReelle || b.datePrevue))); /* cycle en cours seulement */
     const debut = Math.max(0, faites.length - (cap - BLANCS_MIN)); /* dossier ancien : les plus récentes gardées, 10 lignes vides au moins */
     const rows = faites.slice(debut).map((x, i) => ({ rang: debut + i + 1, x })); let r = faites.length + 1;
     while (rows.length < cap) rows.push({ rang: r++, x: null });
@@ -154,7 +160,7 @@
     if (seg) { let h = seg.split(/\s+:\s+/)[0].trim(); if (!R.estReaction(h)) h = seg.trim(); h = h.replace(/\s*\([^()]*\)\s*$/, ''); h = h.charAt(0).toUpperCase() + h.slice(1); if (h.length > 60) h = h.slice(0, 60).replace(/\s+\S*$/, '') + '…'; return `<span class="pre reac">⚠ ${esc(h)}</span>`; }
     return /^(bonne|bien tol|ras\b)/i.test(t) ? pre(bi(L().p2.bienToleree)) : ''; };
   const trSeance = r => { const x = r.x, f = !!x;
-    return `<tr class="${f ? 'fait' : 'blanc'}"><td class="n">${r.rang}</td><td class="c d">${f ? pre(ltr(dt(x.datePrevue || x.dateReelle))) : ''}</td><td class="c d">${f ? pre(ltr(dt(x.dateReelle || x.datePrevue))) : ''}</td><td class="c">${f ? pre(esc(doseDonnee(x))) : ''}</td><td class="c">${f && +x.poids > 0 ? pre(esc(nb(x.poids))) : ''}</td><td class="c lot">${f && !vide(x.lot) ? `<span class="pre mono">${esc(x.lot)}</span>` : ''}</td><td class="c ck">${chk(f)}</td><td class="rem">${f ? toleranceHTML(x) : ''}</td><td class="sig"></td></tr>`; };
+    return `<tr class="${f ? 'fait' : 'blanc'}"><td class="n">${r.rang}</td><td class="c d">${f ? pre(ltr(dtPasse(x.datePrevue || x.dateReelle))) : ''}</td><td class="c d">${f ? pre(ltr(dt(x.dateReelle || x.datePrevue))) : ''}</td><td class="c">${f ? pre(esc(doseDonnee(x))) : ''}</td><td class="c">${f && +x.poids > 0 ? pre(esc(nb(x.poids))) : ''}</td><td class="c lot">${f && !vide(x.lot) ? `<span class="pre mono">${esc(x.lot)}</span>` : ''}</td><td class="c ck">${chk(f)}</td><td class="rem">${f ? toleranceHTML(x) : ''}</td><td class="sig"></td></tr>`; };
   function pageSeances(c, n, rows, premiere) {
     const Lv = L(), P2 = Lv.p2, col = P2.cols; const th = k => `<th>${bi(col[k])}</th>`;
     return `<section class="page p2">${enTete(c, n, P2.enTete)}
@@ -180,7 +186,7 @@
     return out.slice(0, PLAN_MAX).map(x => ({ id: x.id, lib: libelleExamen(x), freq: x.per ? frequenceBi(x.per) : null }));
   }
   /* examens déjà faits (échéances réalisées, hors examen clinique de séance), du plus ancien au plus récent */
-  const examensFaits = c => (c.p.surveillance || []).filter(s => s && s.statut === 'faite' && s.dateFaite && s.mode !== 'cure' && s.id !== 'clin' && s.type !== 'clinique').sort((a, b) => String(a.dateFaite).localeCompare(String(b.dateFaite)));
+  const examensFaits = c => (c.p.surveillance || []).filter(s => s && s.statut === 'faite' && s.dateFaite && String(s.dateFaite) <= c.t && s.mode !== 'cure' && s.id !== 'clin' && s.type !== 'clinique').sort((a, b) => String(a.dateFaite).localeCompare(String(b.dateFaite)));
   const libFait = s => court(libelleExamen({ id: s.id, nom: s.nom, label: s.label, libre: !EXAMENS_IDS[s.id] && s.id !== 'vit' && !!s.nom }));
   const trExamen = s => s ? `<tr class="fait"><td class="ex">${bi(libFait(s))}</td><td class="c d">${s.echeance ? pre(ltr(dtPasse(s.echeance))) : ''}</td><td class="c d">${pre(ltr(dt(s.dateFaite)))}</td><td class="c ck">${chk(!vide(s.resultat) || (s.valeurs && Object.keys(s.valeurs).length > 0))}</td><td class="sig"></td></tr>`
     : `<tr class="blanc"><td class="ex"></td><td class="c d"></td><td class="c d"></td><td class="c ck">${chk()}</td><td class="sig"></td></tr>`;
@@ -255,7 +261,7 @@
   /* ---------- page 8 : en cas d'urgence (rouge, orange, numéros en gros, médecin, recto de la carte, pied) ---------- */
   /* hauteur estimée (mm) d'un élément de liste à 9 pt : colonne française ≈ 47 caractères par ligne, arabe ≈ 44, 3,85 mm par ligne */
   const hItem = i => 1.3 + Math.max(Math.ceil((fr(i).length || 1) / 47), ar(i) ? Math.ceil(ar(i).length / 44) : 0) * 3.85;
-  const URG_FIXE = 110; /* bandeau, titres et numéros des deux encadrés, ligne du médecin, carte (54 mm), marges */
+  const URG_FIXE = 111; /* bandeau (9 pt), titres et numéros des deux encadrés, ligne du médecin, carte (54 mm), marges */
   function listesUrgence(c) {
     const P4 = L().p4; const budget = MM.bas - URG_FIXE;
     const rouge = c.items(P4.rouge.items).sort((a, b) => (a.p || 1) - (b.p || 1)), orange = c.items(P4.orange.items).sort((a, b) => (a.p || 1) - (b.p || 1));
@@ -301,9 +307,18 @@
     return `<div class="carnet-wrap livret${a4 ? ' a4' : ''}" data-pages="${N}"><style>${R.carnetPatientCSS(a4)}</style>${corps}</div>`;
   };
 
-  /* ---------- feuille de style du carnet (préfixe .livret ; @page du format choisi) ---------- */
+  /* ---------- feuille de style du carnet (préfixe .livret ; @page du format choisi) ----------
+     couleurs (décision D2) : palette unique des documents (variables --imp-* d'index.html, couloir @couleur ; valeurs de repli ici) — une couleur discrète par
+     rubrique pour se repérer vite (séances et rendez-vous : accent bleu du CHU ; examens : vert-bleu ; urgences : rouge sobre en page 8), bandeaux de titre de
+     page teintés, lignes de planning alternées très claires, carte détachable à bordure d'accent ; le reste en noir (arabe compris).
+     Noir et blanc (html.imp-nb) : variables neutres, fonds retirés, symboles (octogone, triangle, sens interdit) gardés en noir */
   R.carnetPatientCSS = a4 => `
-.livret{--lv-ink:#182421;--lv-ink2:#4E5E59;--lv-ar:#1F3B57;--lv-acc:#1C6B62;--lv-acc-t:#E2F0ED;--lv-line:#B9C6C2;--lv-soft:#EEF3F1;--lv-rouge:#B3261E;--lv-rouge-t:#FBE9E7;--lv-orange:#C76E00;--lv-orange-t:#FFF1DF;--lv-gris:#5F6E69;color-scheme:light}
+.livret{--lv-ink:#182421;--lv-ink2:#4E5E59;--lv-ar:var(--lv-ink);--lv-acc:var(--imp-acc-e,#0A6FA0);--lv-acc-m:var(--imp-acc,#0098D0);--lv-acc-t:var(--imp-acc-t,#E6F4FA);--lv-line:#B9C6C2;--lv-soft:#F2F5F7;--lv-alt:var(--imp-alt,#F6F9FB);--lv-rouge:var(--imp-al,#B3261E);--lv-rouge-t:var(--imp-al-t,#FBE9E7);--lv-orange:var(--imp-af-e,#8F5508);--lv-orange-m:var(--imp-af,#B27B0C);--lv-orange-t:var(--imp-af-t,#FBEFD9);--lv-ex:var(--imp-ex,#057558);--lv-ex-t:var(--imp-ex-t,#E4F2EE);--lv-gris:#5F6E69;color-scheme:light}
+html.imp-nb .livret{--lv-soft:transparent}
+/* rubrique de la page : séances, rendez-vous, couverture, consignes = accent ; examens (pages 4 et 5) = vert-bleu ; urgences (page 8) = rouge */
+.livret .page{--lv-rub:var(--lv-acc);--lv-rub-m:var(--lv-acc-m);--lv-rub-t:var(--lv-acc-t)}
+.livret .page.p3{--lv-rub:var(--lv-ex);--lv-rub-m:var(--lv-ex);--lv-rub-t:var(--lv-ex-t)}
+.livret .page.urg-page{--lv-rub:var(--lv-rouge);--lv-rub-m:var(--lv-rouge);--lv-rub-t:var(--lv-rouge-t)}
 .livret *{box-sizing:border-box}
 .livret .page{width:148mm;height:210mm;padding:5.5mm 7mm 5mm;background:#fff;color:var(--lv-ink);font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:7.6pt;line-height:1.3;position:relative;overflow:hidden;display:flex;flex-direction:column;margin:0 auto;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .livret table{color:inherit}
@@ -315,10 +330,10 @@
 .livret bdi.nw,.livret .nw,.livret .a-remplir{white-space:nowrap}
 .livret .a-remplir{letter-spacing:.04em;color:var(--lv-ink2);font-weight:400;font-size:9pt}
 .livret b,.livret strong{font-weight:600}
-.livret .page h2{font-size:11.5pt;font-weight:600;margin:0;line-height:1.2;text-wrap:initial;color:var(--lv-acc)}
+.livret .page h2{font-size:11.5pt;font-weight:600;margin:0;line-height:1.2;text-wrap:initial;color:var(--lv-rub)}
 .livret .page h2 .ar{font-size:1.05em}
-.livret .titre-page{display:flex;justify-content:space-between;align-items:baseline;gap:3mm;margin:.4mm 0 1.4mm}
-.livret .bt{font-size:8.8pt;font-weight:600;margin:2mm 0 .7mm;padding:0 0 .3mm;border-bottom:.35pt solid var(--lv-acc);color:var(--lv-acc);text-transform:none;display:flex;align-items:center;gap:1mm;text-wrap:initial}
+.livret .titre-page{display:flex;justify-content:space-between;align-items:baseline;gap:3mm;margin:0 0 1mm;padding:.4mm 1.6mm;background:var(--lv-rub-t);border-left:1mm solid var(--lv-rub-m);border-radius:.6mm} /* bandeau de titre teinté : même hauteur qu'avant (marges reprises dans le remplissage) */
+.livret .bt{font-size:8.8pt;font-weight:600;margin:2mm 0 .7mm;padding:0 0 .3mm;border-bottom:.35pt solid var(--lv-rub-m);color:var(--lv-rub);text-transform:none;display:flex;align-items:center;gap:1mm;text-wrap:initial}
 .livret .f{display:flex;flex-wrap:wrap;gap:0 1.5mm;padding:.8mm 0;border-bottom:.25pt dotted var(--lv-line);align-items:baseline;min-height:5.2mm;font-size:8pt}
 .livret .f .lab{flex:0 1 auto;color:var(--lv-ink2)}
 .livret .f .val{flex:1 1 18mm;font-weight:500}
@@ -329,10 +344,11 @@
 .livret .pre{color:var(--lv-gris);font-style:italic}
 .livret .pre.reac{color:var(--lv-rouge);font-style:normal;font-weight:600}
 .livret .mono{font-family:'IBM Plex Mono',monospace;font-style:normal;font-size:.95em}
-.livret .num{color:var(--lv-gris);white-space:nowrap}
+.livret .num{color:var(--lv-acc);white-space:nowrap}
 .livret .pied{margin-top:auto;padding-top:.7mm;border-top:.35pt solid var(--lv-line);display:flex;justify-content:flex-end;gap:3mm;font-size:6.6pt;color:var(--lv-ink2);line-height:1.25}
 .livret .maq{color:var(--lv-gris);font-size:6.4pt}
-.livret .run{display:flex;justify-content:space-between;align-items:baseline;gap:3mm;font-size:6.8pt;color:var(--lv-ink2);border-bottom:.35pt solid var(--lv-line);padding-bottom:.5mm;margin-bottom:1.2mm}
+.livret .run{display:flex;justify-content:space-between;align-items:baseline;gap:3mm;font-size:6.8pt;color:var(--lv-ink2);border-bottom:.35pt solid var(--lv-rub-m);padding-bottom:.5mm;margin-bottom:1.2mm}
+.livret .run .run-t{color:var(--lv-rub)}
 .livret .run .run-id{color:var(--lv-ink);white-space:nowrap;flex:none}
 .livret .run .run-t{flex:1 1 0;min-width:0;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} /* bandeau sur une ligne : le titre s'efface devant un nom long */
 .livret .medecin-l{display:flex;align-items:baseline;gap:2mm;font-size:9pt;padding:1mm 0;border-bottom:.3pt dotted var(--lv-line)}
@@ -340,7 +356,7 @@
 .livret .medecin-l .val{font-weight:600;flex:1}
 .livret .medecin-l.f{font-size:8.6pt;padding:1mm 0;margin-top:2.2mm;border-bottom:.3pt solid var(--lv-line)}
 /* couverture */
-.livret .couv{display:flex;align-items:center;gap:3.5mm;padding-bottom:1.6mm;border-bottom:.5pt solid var(--lv-acc)}
+.livret .couv{display:flex;align-items:center;gap:3.5mm;padding-bottom:1.6mm;border-bottom:.5pt solid var(--lv-acc-m)}
 .livret .lv-logo{height:16mm;width:auto;max-width:42mm;object-fit:contain;flex:none}
 .livret .couv-etab{display:flex;flex-direction:column;font-size:7pt;line-height:1.3;color:var(--lv-ink2)}
 .livret .couv-etab b.hop{font-size:8.4pt;color:var(--lv-ink);font-weight:700}
@@ -348,8 +364,7 @@
 .livret .couv-titre{margin-top:2mm}
 .livret .couv-titre .titre{font-size:16pt;font-weight:700;line-height:1.15;color:var(--lv-acc)}
 .livret .couv-titre .titre .ar{font-size:.95em}
-.livret .couv-titre .sous{font-size:7.8pt;margin-top:.4mm;font-weight:500}
-.livret .nom-band{margin:2mm 0 .6mm;padding:1.4mm 2mm;background:var(--lv-acc-t);border:.4pt solid var(--lv-acc);border-radius:1mm;display:flex;flex-direction:column;gap:.7mm}
+.livret .nom-band{margin:2mm 0 .6mm;padding:1.4mm 2mm;background:var(--lv-acc-t);border:.4pt solid var(--lv-acc-m);border-radius:1mm;display:flex;flex-direction:column;gap:.7mm}
 .livret .nom-band .nom{font-size:13pt;font-weight:500}
 .livret .nom-band .nom .ipp{font-size:7.4pt;color:var(--lv-ink2);margin-left:2mm;font-weight:400}
 .livret .nom-band .remis{font-size:7.2pt;color:var(--lv-ink2);display:flex;flex-wrap:wrap;gap:.6mm 3mm;align-items:baseline}
@@ -362,7 +377,7 @@
 .livret .p1.dense .f{padding:.4mm 0;min-height:4mm;font-size:7.3pt}.livret .p1.dense .bt{margin:1.1mm 0 .5mm;font-size:8pt}.livret .p1.dense .apporte{margin-top:1mm;padding:.8mm 1.4mm;font-size:7pt}.livret .p1.dense .couv-titre{margin-top:1mm}.livret .p1.dense .nom-band{margin:1.2mm 0 .4mm}.livret .p1.dense .medecin-l.f{font-size:7.6pt;margin-top:1.2mm}
 /* tableaux */
 .livret .lv-tab{width:100%;border-collapse:collapse;table-layout:fixed}
-.livret .lv-tab th{font-size:6.8pt;font-weight:600;text-align:left;padding:.6mm .7mm;background:var(--lv-soft);border:.3pt solid var(--lv-line);vertical-align:bottom;line-height:1.15;text-transform:none;letter-spacing:0;color:var(--lv-ink);white-space:normal}
+.livret .lv-tab th{font-size:6.8pt;font-weight:600;text-align:left;padding:.6mm .7mm;background:var(--lv-rub-t);border:.3pt solid var(--lv-line);vertical-align:bottom;line-height:1.15;text-transform:none;letter-spacing:0;color:var(--lv-ink);white-space:normal}
 .livret .lv-tab th .ar{display:block;font-size:1.05em}
 .livret .lv-tab th .sep{display:none}
 .livret .lv-tab td{border:.3pt solid var(--lv-line);padding:.4mm .8mm;vertical-align:middle;font-size:7.6pt;line-height:1.2;overflow-wrap:break-word}
@@ -373,9 +388,9 @@
 .livret .planning td .ar{font-size:1.08em}
 .livret .planning td.ck{padding:0 .3mm;text-align:center}
 .livret .planning td.ck .chk{margin:0;vertical-align:middle}
-.livret .planning tr.fait td{background:#FAFBFA}
+.livret .planning tbody tr:nth-child(even) td{background:var(--lv-alt)} /* lignes alternées très claires */
 .livret .seances td{height:8.4mm}
-.livret .seances td.n{font-weight:600;text-align:center;font-size:8.5pt;background:var(--lv-soft)}
+.livret .seances td.n,.livret .planning.seances tbody tr td.n{font-weight:600;text-align:center;font-size:8.5pt;background:var(--lv-rub-t)}
 .livret .seances td.rem{line-height:1.12;vertical-align:middle}
 .livret .seances td.rem .bi .ar{display:block;font-size:1.06em}
 .livret .seances td.rem .bi .sep{display:none}
@@ -393,18 +408,18 @@
 /* pages 7 et 8 : consignes et urgences (9 pt au moins) */
 .livret .alerte{border:.6pt solid;border-radius:1mm;padding:.8mm 1.8mm .6mm;margin-bottom:1.4mm}
 .livret .alerte.rouge{border-color:var(--lv-rouge);background:var(--lv-rouge-t);border-left-width:2mm}
-.livret .alerte.orange{border-color:var(--lv-orange);background:var(--lv-orange-t);border-left-width:2mm}
+.livret .alerte.orange{border-color:var(--lv-orange-m);background:var(--lv-orange-t);border-left-width:2mm}
 .livret .al-t{font-weight:700;font-size:10pt;display:flex;align-items:center;gap:1.8mm;line-height:1.15}
 .livret .al-t .bi2{flex:1}
 .livret .al-t .bi2 .ar{font-size:1.04em}
 .livret .rouge .al-t{color:var(--lv-rouge)}.livret .orange .al-t{color:var(--lv-orange)}
 .livret .ico{display:inline-flex;width:5mm;height:5mm;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:9pt;flex:0 0 auto}
 .livret .ico.oct{background:var(--lv-rouge);clip-path:polygon(30% 0,70% 0,100% 30%,100% 70%,70% 100%,30% 100%,0 70%,0 30%)}
-.livret .ico.tri{background:var(--lv-orange);clip-path:polygon(50% 0,100% 100%,0 100%);padding-top:1.4mm}
+.livret .ico.tri{background:var(--lv-orange-m);clip-path:polygon(50% 0,100% 100%,0 100%);padding-top:1.4mm}
 .livret .ico.non{width:3.8mm;height:3.8mm;border:.7pt solid var(--lv-ink);border-radius:50%;position:relative}
 .livret .ico.non::after{content:"";position:absolute;left:-.3mm;top:45%;width:4mm;height:.7pt;background:var(--lv-ink);transform:rotate(-45deg)}
 .livret .nums{margin:.8mm 0 .7mm;padding:.2mm 1.4mm;background:#fff;border:.6pt solid var(--lv-rouge);border-radius:.8mm}
-.livret .orange .nums{border-color:var(--lv-orange)}
+.livret .orange .nums{border-color:var(--lv-orange-m)}
 .livret .num-l{display:flex;align-items:center;justify-content:space-between;gap:3mm;padding:.35mm 0;font-size:9pt;line-height:1.15}
 .livret .num-l .lib{font-weight:600}
 .livret .tel-g{font-size:13pt;font-weight:700;line-height:1.1;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--lv-ink);flex:none}
@@ -424,17 +439,20 @@
 .livret .cases li.case::before{content:none}
 .livret .cases li.case .chk{position:absolute;left:.3mm;top:1.1mm;width:4.2mm;height:4.2mm}
 .livret .regle{font-size:9.5pt;margin-top:1mm;padding:1mm 1.8mm;background:var(--lv-soft);border:.3pt solid var(--lv-line);border-radius:.6mm;line-height:1.2;font-weight:500}
-.livret .regle.manquee{margin-top:2.2mm;border-color:var(--lv-acc);background:var(--lv-acc-t)}
+.livret .regle.manquee{margin-top:2.2mm;border-color:var(--lv-acc-m);background:var(--lv-acc-t)}
 .livret .grille .bi,.livret .grille.bi{display:grid;grid-template-columns:1.15fr 1fr;gap:0 3mm}
 .livret .grille .bi .sep,.livret .grille.bi .sep{display:none}
 .livret .grille .bi .ar,.livret .grille.bi .ar{text-align:right}
 .livret .urg-page .medecin-l{margin-top:.4mm}
+/* page 8 : tout le texte de la page à 9 pt au moins, bandeau et pied compris (la carte détachable garde son format de carte) ; un nom très long renvoie le titre à la ligne */
+.livret .urg-page .run{font-size:9pt;flex-wrap:wrap;row-gap:.2mm}
+.livret .urg-page .run .run-t{flex:1 1 auto;min-width:auto;white-space:normal;overflow:visible;text-overflow:clip}
 /* carte détachable : 85 × 54 mm, posée en bas de page à la même hauteur au recto (page 8, à gauche) et au verso (page 7, à droite) */
 .livret .bas-carte{margin-top:auto;height:54mm;flex:none;display:flex;gap:4mm;align-items:stretch}
 .livret .bas-carte.droite{justify-content:flex-end}
-.livret .carte{width:85mm;height:54mm;flex:none;border:.6pt dashed var(--lv-gris);border-radius:2.5mm;position:relative;padding:2.2mm 2.6mm;background:#fff;font-size:7pt;line-height:1.2;overflow:hidden}
-.livret .carte.recto{border-color:var(--lv-acc);background:var(--lv-acc-t)}
-.livret .carte .ct{font-weight:700;color:var(--lv-acc);font-size:8.4pt;margin-bottom:.6mm;border-bottom:.4pt solid var(--lv-acc);padding-bottom:.4mm}
+.livret .carte{width:85mm;height:54mm;flex:none;border:.6pt dashed var(--lv-acc-m);border-radius:2.5mm;position:relative;padding:2.2mm 2.6mm;background:#fff;font-size:7pt;line-height:1.2;overflow:hidden}
+.livret .carte.recto{border-color:var(--lv-acc-m);background:var(--lv-acc-t)}
+.livret .carte .ct{font-weight:700;color:var(--lv-acc);font-size:8.4pt;margin-bottom:.6mm;border-bottom:.4pt solid var(--lv-acc-m);padding-bottom:.4mm}
 .livret .carte.verso .ct{color:var(--lv-ink2);border-color:var(--lv-line);font-size:7.6pt}
 .livret .carte .f{padding:.35mm 0;min-height:3.4mm;font-size:7pt}
 .livret .carte .ct-l{margin:.3mm 0;font-size:6.9pt;line-height:1.16}
@@ -443,7 +461,9 @@
 .livret .carte .ct-note{margin-top:.5mm;color:var(--lv-ink2);font-size:6.4pt;line-height:1.15}
 .livret .ciseaux{position:absolute;top:.4mm;right:2mm;color:var(--lv-gris);font-size:8pt;line-height:1}
 .livret .bas-droite{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-end}
-.livret .pied-urg{display:flex;gap:2mm;align-items:baseline;font-size:6.6pt;color:var(--lv-ink2);border-top:.35pt solid var(--lv-line);padding-top:.7mm}
+.livret .pied .pied-sep{display:none}
+.livret .pied-urg{display:block;text-align:right;font-size:9pt;line-height:1.25;color:var(--lv-ink2);border-top:.35pt solid var(--lv-line);padding-top:.7mm}
+.livret .pied-urg .maq{font-size:9pt}
 /* police web absente (poste hors ligne) : la police de remplacement est plus large, corps réduit hors plannings (8,5 pt gardés sur les lignes à remplir, 9 pt en pages 7 et 8) */
 .livret.sans-police .page{font-size:7pt}
 .livret.sans-police .f{font-size:7.4pt}.livret.sans-police .p1.dense .f{font-size:6.8pt}
@@ -460,6 +480,9 @@
 .livret .sheet{display:flex;justify-content:center;width:297mm;height:210mm;flex:none;background:#fff;box-shadow:0 8px 24px rgba(0,0,0,.18)} /* pages centrées : pli au milieu de la feuille, carte superposée au recto et au verso */
 .livret .sheet .page{margin:0}
 .livret .sheet .page + .page{border-left:.4pt dashed #B9C6C2}
+/* noir et blanc : symboles d'alerte gardés en noir (fond de l'icône imprimé malgré l'économie d'encre) */
+html.imp-nb .livret .ico{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+html.imp-nb .livret .page .ico.oct,html.imp-nb .livret .page .ico.tri{background:var(--lv-ink)!important}
 @media print{
   .livret{background:#fff!important;padding:0!important}
   .livret .lab-page{display:none!important}
@@ -489,12 +512,16 @@
   R.actions.carnetVue = el => { R.ui.carnetA4 = el.dataset.v === 'a4'; R.render(); };
   /* page qui déborde encore une fois rendue (valeurs très longues, police de remplacement) : page 1 — présentation resserrée, puis sans l'encadré « J'apporte » ;
      plannings (pages 2 à 6) — une ligne vide de moins, puis la ligne pré-remplie la plus ancienne ; page 4 — lignes du plan au-delà de 12 ; pages 7 et 8 — éléments de
-     priorité 2, puis le dernier élément orange, puis le dernier rouge. Rien n'est jamais rogné ; le document téléchargé (R.docExport) copie ce rendu */
+     priorité 2, puis le dernier élément orange, puis le dernier rouge. Pages 4 et 5 : lignes vides ajoutées dans la place restante. Rien n'est jamais rogné ; le
+     document téléchargé (R.docExport) copie ce rendu */
   R.carnetPatientAjuster = racine => {
     const wrap = racine || document.querySelector('.carnet-wrap.livret'); if (!wrap) return; const deborde = el => el.scrollHeight - el.clientHeight > 1;
     const dernier = (el, sel) => { const l = el.querySelectorAll(sel); return l.length ? l[l.length - 1] : null; };
     wrap.querySelectorAll('.page.p1').forEach(el => { for (let k = 0; k < 4 && deborde(el); k++) { if (!el.classList.contains('dense')) { el.classList.add('dense'); continue; } const ap = el.querySelector('.apporte'); if (ap) { ap.remove(); continue; } break; } });
     wrap.querySelectorAll('.page.p2, .page.p3, .page.p6').forEach(el => { for (let k = 0; k < 40 && deborde(el); k++) { const b = dernier(el, '.planning tbody tr.blanc'); if (b) { b.remove(); continue; } const pl = el.querySelectorAll('.plan tbody tr'); if (pl.length > 12) { pl[pl.length - 1].remove(); continue; } const f = el.querySelector('.planning tbody tr.fait'); if (f) { f.remove(); continue; } break; } });
+    /* pages 4 et 5 : l'estimation des hauteurs est prudente — lignes vides d'examens ajoutées tant qu'elles tiennent entièrement dans la page (17 lignes au plus par page) */
+    wrap.querySelectorAll('.page.p3').forEach(el => { const tb = el.querySelector('table.examens tbody'); if (!tb) return;
+      for (let k = 0; k < EXAMENS_SUITE && tb.rows.length < EXAMENS_SUITE && !deborde(el); k++) { tb.insertAdjacentHTML('beforeend', trExamen(null)); if (deborde(el)) { tb.lastElementChild.remove(); break; } } });
     wrap.querySelectorAll('.page.p4').forEach(el => { for (let k = 0; k < 20 && deborde(el); k++) { const p2 = dernier(el, '.items li[data-p="2"]'); if (p2) { p2.remove(); continue; } const o = dernier(el, '.alerte.orange .items li'); if (o) { o.remove(); continue; } const r = dernier(el, '.alerte.rouge .items li'); if (r) { r.remove(); continue; } const j = dernier(el, '.jamais .items li'); if (j) { j.remove(); continue; } break; } });
   };
   /* sans la police web (poste sans accès à Internet), la police de remplacement est plus large : corps réduit pour que chaque page tienne */

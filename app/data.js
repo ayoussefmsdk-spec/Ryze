@@ -718,7 +718,7 @@ window.RYZE = window.RYZE || {};
 
     return {
       version: 3, user: null, route: { page: 'dashboard', params: {} },
-      settings: { hdj: { jours: [1, 2, 3, 4, 5], ouverture: '08:00', fermeture: '16:00', fauteuils: 6, maxParJour: 12, pas: 30 }, etablissement: 'Centre Hospitalier Universitaire', service: 'Service de Gastro-entérologie et Hépatologie', unite: 'Hôpital de jour — Biothérapies', telHDJ: '05 XX XX XX XX (poste 4412)', telUrgences: '05 XX XX XX XX (urgences 24 h/24)', chef: 'Pr Nawal BENJELLOUN', fauteuils: 6, joursPeremptionAlerte: 90, stockSecuriteJours: 15, horizonPrevisionJours: 28 },
+      settings: { hdj: { jours: [1, 2, 3, 4, 5], ouverture: '08:00', fermeture: '16:00', fauteuils: 6, maxParJour: 12, pas: 30 }, etablissement: 'Centre Hospitalier Universitaire', service: 'Service de Gastro-entérologie et Hépatologie', unite: 'Hôpital de jour — Biothérapies', telHDJ: '05 XX XX XX XX (poste 4412)', telUrgences: '05 XX XX XX XX (urgences 24 h/24)', chef: 'Pr Nawal BENJELLOUN', fauteuils: 6, joursPeremptionAlerte: 90, stockSecuriteJours: 15, horizonPrevisionJours: 28, impressionCouleur: true },
       users, protocoles: JSON.parse(JSON.stringify(R.PROTOCOLES_DEFAUT)), patients, rdv, journal: []
     };
   };

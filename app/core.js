@@ -79,6 +79,7 @@
       (s.protocoles || []).forEach(pr => { (ANC[pr.id] || []).forEach(([de, vers]) => { if (typeof pr.optimisation === 'string') pr.optimisation = pr.optimisation.replace(de, vers); }); }); }
     try { R.rafraichirCiblesTdm(s); } catch (e) { console.error('Cibles de taux résiduel', e); }
     completerEtab(s); /* identité de l'établissement (idempotent, sans changement de version) */
+    if (typeof s.settings.impressionCouleur !== 'boolean') s.settings.impressionCouleur = true; /* impression des documents en couleur par défaut (décision D2 ; idempotent, sans changement de version) */
     return s;
   }
   function charger() {
@@ -423,7 +424,7 @@
   R.saveUi = () => { try { localStorage.setItem('ryze-hdj-ui', JSON.stringify({ plies: R.ui.plies || {}, route: S.route })); } catch (e) {} };
   R.go = (page, params) => { R.closeModal(); S.route = { page, params: params || {} }; R.saveUi(); R.render(); window.scrollTo(0, 0); };
   R.render = () => {
-    try { rendre(); R.pliables(); R.accessibilite(); } catch (e) {
+    try { R.appliquerImpression(); rendre(); R.pliables(); R.accessibilite(); } catch (e) {
       console.error('Rendu impossible', e);
       /* on ne supprime jamais les données : on propose de revenir à l'accueil ou d'exporter la base */
       document.getElementById('app').innerHTML = `<div class="login-wrap"><div class="card" style="max-width:520px;margin:40px auto"><div class="card-head"><h2>Erreur d’affichage</h2></div><div class="card-body"><p class="small">Cette page n’a pas pu être affichée. Vos données sont conservées.</p><pre class="small muted" style="white-space:pre-wrap">${R.esc(e && e.message || e)}</pre><div class="row" style="gap:8px;flex-wrap:wrap"><button type="button" class="btn primary" data-action="secoursAccueil">Revenir à l’accueil</button>${R.can('equipe', 'w') ? '<button type="button" class="btn" data-action="exporterBase">Exporter la base</button>' : ''}<button type="button" class="btn ghost" data-action="secoursRecharger">Recharger la page</button></div></div></div></div>`;
@@ -757,9 +758,18 @@
       try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(ok, repli); else repli(); } catch (e) { repli(); } }
   });
 
+  /* ---------- Impression en couleur ou en noir et blanc (décision D2) ----------
+     réglage S.settings.impressionCouleur (vrai par défaut, Paramètres → Impression) : classe imp-couleur ou imp-nb sur <html>, à l'écran, à l'impression et dans le fichier exporté
+     (R.docExport) ; palette unique des documents : index.html, couloir @couleur ; numéros de page (@page) dans l'encre d'accent en couleur */
+  R.impressionCouleur = () => !(S.settings && S.settings.impressionCouleur === false);
+  R.classeImpression = () => R.impressionCouleur() ? 'imp-couleur' : 'imp-nb';
+  R.appliquerImpression = () => { const h = document.documentElement, c = R.impressionCouleur(); h.classList.toggle('imp-couleur', c); h.classList.toggle('imp-nb', !c);
+    let st = document.getElementById('imp-pages'); if (!st) { st = document.createElement('style'); st.id = 'imp-pages'; document.head.appendChild(st); } const css = c ? '@media print{@page{@bottom-center{color:#0A6FA0}}}' : ''; if (st.textContent !== css) st.textContent = css; };
+  /* rappel discret du réglage près des boutons d'impression (jamais imprimé) ; « modifier » ouvre la carte « Impression » de Paramètres (accès complet) */
+  R.rappelImpression = () => `<span class="imp-rappel no-print" title="Réglage d’impression de tous les documents et des fichiers téléchargés">Impression : ${R.impressionCouleur() ? 'couleur' : 'noir et blanc'}${R.can('equipe', 'w') ? ' · <button type="button" class="imp-modifier" data-action="impressionModifier">modifier</button>' : ''}</span>`;
   /* ---------- Impression et téléchargement du document affiché ---------- */
   /* opts.tel : avertissement « téléphones à renseigner » (défaut : documents qui impriment les téléphones — carnet, carnet patient, compte rendu) */
-  R.boutonsDoc = (lib, opts) => `${R.alerteTelsHTML(opts)}<button class="btn" data-action="telechargerDoc" title="Fichier à ouvrir puis imprimer depuis l’ordinateur">${R.icon('download')}Télécharger</button><button class="btn primary" data-action="imprimer">${R.icon('print')}${lib || 'Imprimer / PDF'}</button>`;
+  R.boutonsDoc = (lib, opts) => `${R.rappelImpression()}${R.alerteTelsHTML(opts)}<button class="btn" data-action="telechargerDoc" title="Fichier à ouvrir puis imprimer depuis l’ordinateur">${R.icon('download')}Télécharger</button><button class="btn primary" data-action="imprimer">${R.icon('print')}${lib || 'Imprimer / PDF'}</button>`;
   R.alerteTelsHTML = opts => { const o = opts || {}, page = (S.route || {}).page; const avec = o.tel != null ? !!o.tel : ['carnet', 'carnetPatient', 'compteRendu'].includes(page); if (!avec || !R.telsManquants) return ''; const m = R.telsManquants(); if (!m.length) return ''; const txt = `Téléphones à renseigner dans Paramètres (${m.join(', ')}) : le document imprime une ligne à remplir`; return R.can('equipe', 'w') ? `<button type="button" class="btn sm doc-tel-alerte no-print" data-go="parametres" title="${R.esc(txt)}">⚠ Téléphones à renseigner dans Paramètres</button>` : `<span class="doc-tel-alerte no-print" title="${R.esc(txt)}">⚠ Téléphones à renseigner dans Paramètres (accès complet)</span>`; };
   /* une impression bloquée (page intégrée dans un cadre isolé) échoue sans erreur : sans « beforeprint » on propose le fichier */
   R.imprimer = () => {
@@ -768,7 +778,7 @@
     setTimeout(() => { window.removeEventListener('beforeprint', f); if (vu) return;
       R.modal({ title: 'Impression directe indisponible ici', body: `<p style="margin:0 0 8px">Le navigateur bloque l’impression dans cette fenêtre (application affichée dans une page intégrée).</p><p class="small" style="margin:0">Téléchargez le document, ouvrez le fichier téléchargé puis <b>Ctrl+P</b> (ou <b>Cmd+P</b>) → imprimante ou « Enregistrer en PDF ».</p>`, foot: `<button type="button" class="btn" data-action="closeModal">Fermer</button><button type="button" class="btn primary" data-action="telechargerDoc">${R.icon('download')}Télécharger le document</button>` }); }, 500);
   };
-  const CSS_EXPORT = `@media screen{body.export{background:#E4E9E7}.export-barre{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;padding:10px 16px;background:#fff;border-bottom:1px solid #DCE3E0;font-size:13px;color:#4E5E59}.export-barre button{font:inherit;font-weight:600;border:0;border-radius:8px;padding:7px 18px;background:#1C6B62;color:#fff;cursor:pointer}.export .carnet-wrap{background:none;padding:22px 0 6px}.export-rapport{background:#fff;max-width:1180px;margin:22px auto;padding:24px 28px;box-shadow:0 8px 28px rgba(0,0,0,.12)}}
+  const CSS_EXPORT = `@media screen{body.export{background:#E4E9E7}.export-barre{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;padding:10px 16px;background:#fff;border-bottom:1px solid #DCE3E0;font-size:13px;color:#4E5E59}.export-barre button{font:inherit;font-weight:600;border:0;border-radius:8px;padding:7px 18px;background:#1C6B62;color:#fff;cursor:pointer}.export .carnet-wrap{background:none;padding:22px 0 6px}.export-rapport{background:#fff;max-width:1180px;margin:22px auto;padding:24px 28px;box-shadow:0 8px 28px rgba(0,0,0,.12)}.export-imp{font-size:12px;color:#5F6E69;border-left:1px solid #DCE3E0;padding-left:14px}}
 .export .rapport .print-only{display:flex!important}
 @media print{.export-rapport{margin:0;padding:0}}`;
   const sansAccents = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -784,7 +794,8 @@
     doc.querySelectorAll('*').forEach(x => { [...x.attributes].forEach(a => { if (/^data-|^(contenteditable|spellcheck|tabindex|title)$/.test(a.name) || (a.name === 'role' && /^(button|link)$/.test(a.value))) x.removeAttribute(a.name); }); x.classList.remove('cr-edit', 'vide', 'plie', 'pli-titre'); if (x.getAttribute('class') === '') x.removeAttribute('class'); });
     const titre = type[1] + (p ? ' — ' + R.nomComplet(p) : ''); const css = [...document.querySelectorAll('style')].filter(s => !root.contains(s)).map(s => s.textContent).join('\n'); /* le <style> interne au document reste dans la copie */
     const polices = window.RYZE_FONTS_CSS ? `<style>${window.RYZE_FONTS_CSS}</style>` : '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">'; /* document autonome : polices intégrées si fonts/fonts-embed.js est chargé (poste hors ligne), sinon Google Fonts */
-    const html = `${document.compatMode === 'CSS1Compat' ? '<!doctype html>' : ''}<html lang="fr" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${R.esc(titre)}</title>${polices}<style>${css}\n${CSS_EXPORT}</style></head><body class="export"><div class="export-barre no-print"><button type="button" onclick="window.print()">Imprimer</button><span>${R.esc(titre)} — exporté de Ryze le ${R.fmtDate(R.today())}. Ctrl+P (ou Cmd+P) : imprimante ou « Enregistrer en PDF ».</span></div>${r.page === 'activite' ? `<div class="export-rapport">${doc.outerHTML}</div>` : doc.outerHTML}</body></html>`;
+    const couleur = R.impressionCouleur(); /* même réglage d'impression que l'application : classe sur <html>, rappel dans la barre (jamais imprimé) */
+    const html = `${document.compatMode === 'CSS1Compat' ? '<!doctype html>' : ''}<html lang="fr" data-theme="light" class="${R.classeImpression()}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${R.esc(titre)}</title>${polices}<style>${css}\n${CSS_EXPORT}</style></head><body class="export"><div class="export-barre no-print"><button type="button" onclick="window.print()">Imprimer</button><span>${R.esc(titre)} — exporté de Ryze le ${R.fmtDate(R.today())}. Ctrl+P (ou Cmd+P) : imprimante ou « Enregistrer en PDF ».</span><span class="export-imp">Impression : ${couleur ? 'couleur' : 'noir et blanc'} (réglage de Ryze, Paramètres)</span></div>${r.page === 'activite' ? `<div class="export-rapport">${doc.outerHTML}</div>` : doc.outerHTML}</body></html>`;
     if (r.page === 'feuillePlanning') return { html, nom: ['Ryze', 'Planning', par.vue === 'semaine' ? 'semaine' : 'jour', /^\d{4}-\d{2}-\d{2}$/.test(par.date || '') ? par.date : R.today()].join('_') + '.html', droit: 'planning' };
     return { html, nom: ['Ryze', type[0], p && sansAccents(p.nom), p && sansAccents(p.prenom), R.today()].filter(Boolean).join('_') + '.html', droit: r.page === 'activite' ? 'dashboard' : 'carnet' };
   };

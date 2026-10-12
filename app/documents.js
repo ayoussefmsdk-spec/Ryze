@@ -38,8 +38,8 @@
   R.ageDoc = p => { const m = ageMois(p && p.ddn); if (m == null) return ''; return m < 24 ? `${m} mois` : `${Math.floor(m / 12)} ans`; };
   /* « Fille · 15 ans », « Garçon · 9 ans », « Femme · 22 ans » (18 ans et plus) ; âge inconnu : « Sexe féminin » */
   R.sexeAge = p => { if (!p) return ''; const m = ageMois(p.ddn), f = p.sexe === 'F', h = p.sexe === 'M'; const lib = !f && !h ? '' : m == null ? (f ? 'Sexe féminin' : 'Sexe masculin') : m < 216 ? (f ? 'Fille' : 'Garçon') : (f ? 'Femme' : 'Homme'); return [lib, R.ageDoc(p)].filter(Boolean).join(' · '); };
-  /* « née le 12/03/2011 » / « né le … » ; date estimée : « date de naissance inconnue (âge estimé) » ; '' sans date */
-  R.neLe = p => !p || !p.ddn || isNaN(R.parse(p.ddn)) ? '' : p.ddnEstimee ? 'date de naissance inconnue (âge estimé)' : `${p.sexe === 'F' ? 'née' : p.sexe === 'M' ? 'né' : 'né(e)'} le ${R.fmtDate(p.ddn)}`;
+  /* « née le 12/03/2011 » / « né le … » ; sexe non renseigné (dossier importé) : « date de naissance : 12/03/2011 », jamais « né(e) » ; date estimée : « date de naissance inconnue (âge estimé) » ; '' sans date */
+  R.neLe = p => !p || !p.ddn || isNaN(R.parse(p.ddn)) ? '' : p.ddnEstimee ? 'date de naissance inconnue (âge estimé)' : p.sexe === 'F' ? `née le ${R.fmtDate(p.ddn)}` : p.sexe === 'M' ? `né le ${R.fmtDate(p.ddn)}` : `date de naissance : ${R.fmtDate(p.ddn)}`;
   /* ligne d'identification : « NOM Prénom · IPP … · née le … » */
   R.identiteTexte = p => !p ? '' : [R.nomComplet(p), p.ipp ? 'IPP ' + p.ipp : '', R.neLe(p)].filter(Boolean).join(' · ');
 
@@ -157,10 +157,11 @@
   R.blocStatutSecurite = (p, opts) => {
     if (!p) return ''; const o = opts || {}, st = R.statutTraitement(p), reac = R.reactionsAnterieures(p), pm = R.premedicationEnCours(p);
     const ligne = (k, v, cls) => `<div class="doc-secu-r${cls ? ' ' + cls : ''}"><span class="doc-secu-k">${cls === 'alerte' ? '⚠ ' : ''}${k}</span><span class="doc-secu-v">${v}</span></div>`;
+    const allergique = !vide(p.allergies) && !R.allergieAbsente(p.allergies); /* allergie connue : ligne « allergie » (alerte en rouge à l'impression couleur, sans changer le texte) */
     const allergies = vide(p.allergies) ? '<i>non renseignées</i>' : R.allergieAbsente(p.allergies) ? 'aucune connue' : `<b>${esc(p.allergies)}</b>`;
     const reacHTML = reac.length ? `<ul class="doc-secu-reac">${reac.map(r => `<li><b>${r.date ? R.fmtDate(r.date) : 'Date inconnue'}${r.seance ? ' — ' + esc(r.seance) : ''}</b>${r.dci ? ` (${esc(r.dci)})` : ''} : ${esc(r.texte)}</li>`).join('')}</ul>` : 'aucune signalée';
     const pmHTML = pm ? `<b>${esc(pm.texte)}</b>${pm.depuis ? ` depuis le ${R.fmtDate(pm.depuis)}` : ''}` : 'aucune';
-    return `<div class="doc-secu${st.alerte || reac.length ? ' alerte' : ''}">${o.titre === false ? '' : `<div class="doc-secu-t">${esc(o.titre || 'Statut et sécurité')}</div>`}${ligne('Traitement', st.alerte ? `<span class="doc-fort">${esc(st.texte)}</span>` : esc(st.texte), st.alerte ? 'alerte' : '')}${ligne('Allergies', allergies)}${ligne(R.pluriel(reac.length, 'Réaction antérieure', 'Réactions antérieures', true), reacHTML, reac.length ? 'alerte' : '')}${ligne('Prémédication', pmHTML)}</div>`;
+    return `<div class="doc-secu${st.alerte || reac.length ? ' alerte' : ''}">${o.titre === false ? '' : `<div class="doc-secu-t">${esc(o.titre || 'Statut et sécurité')}</div>`}${ligne('Traitement', st.alerte ? `<span class="doc-fort">${esc(st.texte)}</span>` : esc(st.texte), st.alerte ? 'alerte' : '')}${ligne('Allergies', allergies, allergique ? 'allergie' : '')}${ligne(R.pluriel(reac.length, 'Réaction antérieure', 'Réactions antérieures', true), reacHTML, reac.length ? 'alerte' : '')}${ligne('Prémédication', pmHTML)}</div>`;
   };
 
   /* ---------- Dose de la prochaine séance ---------- */
@@ -279,7 +280,9 @@
   /* bloc imprimé div.doc-retenir (avant la liste complète) : « À retenir — ⚠ Anomalies : … · ☐ En attente : … » ; bilan complet sans anomalie : une ligne ; '' sans bilan retenu */
   R.bilanPreRetenirDoc = p => { const r = R.bilanPreRetenir(p); if (!r.total) return '';
     const an = r.anomalies.map(x => `<b>${esc(x.label)}</b>${x.commentaire ? ' : ' + esc(x.commentaire) : ''}${x.date ? ` (${R.fmtDate(x.date)})` : ''}`), att = r.attente.map(x => `${esc(x.label)}${x.demande ? ` (${esc(x.demande)})` : ''}`);
-    const ligne = (k, v) => `<div class="doc-retenir-r" style="display:grid;grid-template-columns:30mm minmax(0,1fr);gap:6px;padding:1px 0"><span class="doc-retenir-k" style="font-weight:700">${k}</span><span class="doc-retenir-v">${v}</span></div>`;
-    const corps = !an.length && !att.length ? `<div class="doc-retenir-ok">Bilan complet (${r.faits}/${r.total}), aucune anomalie signalée.</div>` : `${ligne(an.length ? `⚠ ${an.length > 1 ? 'Anomalies' : 'Anomalie'} (${an.length})` : 'Anomalies', an.length ? an.join(' · ') : 'aucune')}${att.length ? ligne(`☐ En attente (${att.length})`, att.join(' · ')) : ''}`;
-    return `<div class="doc-box doc-retenir" style="font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:9pt;line-height:1.35;padding:5px 9px;margin:4px 0 6px;break-inside:avoid"><div class="doc-retenir-t" style="font-size:8pt;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:2px">À retenir <span style="font-weight:400;letter-spacing:0;text-transform:none">· ${r.faits}/${r.total} ${R.pluriel(r.total, 'examen réalisé', 'examens réalisés', true)}</span></div>${corps}</div>`; };
+    const ligne = (k, v, cls) => `<div class="doc-retenir-r${cls ? ' ' + cls : ''}" style="display:grid;grid-template-columns:30mm minmax(0,1fr);gap:6px;padding:1px 0"><span class="doc-retenir-k" style="font-weight:700">${k}</span><span class="doc-retenir-v">${v}</span></div>`;
+    const corps = !an.length && !att.length ? `<div class="doc-retenir-ok">Bilan complet (${r.faits}/${r.total}), aucune anomalie signalée.</div>` : `${ligne(an.length ? `⚠ ${an.length > 1 ? 'Anomalies' : 'Anomalie'} (${an.length})` : 'Anomalies', an.length ? an.join(' · ') : 'aucune', an.length ? 'an' : '')}${att.length ? ligne(`☐ En attente (${att.length})`, att.join(' · '), 'att') : ''}`;
+    /* état du bloc pour l'impression couleur : alerte (anomalie), attente (examen en attente), ok (complet) */
+    const etat = an.length ? 'alerte' : att.length ? 'attente' : 'ok';
+    return `<div class="doc-box doc-retenir ${etat}" style="font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:9pt;line-height:1.35;padding:5px 9px;margin:4px 0 6px;break-inside:avoid"><div class="doc-retenir-t" style="font-size:8pt;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:2px">À retenir <span style="font-weight:400;letter-spacing:0;text-transform:none">· ${r.faits}/${r.total} ${R.pluriel(r.total, 'examen réalisé', 'examens réalisés', true)}</span></div>${corps}</div>`; };
 })(window.RYZE);
