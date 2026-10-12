@@ -32,6 +32,24 @@
   R.etab = () => { const st = (S && S.settings) || {}, t = v => typeof v === 'string' ? v.trim() : ''; return { etablissement: t(st.etablissement), hopital: t(st.hopital), service: t(st.service), unite: t(st.unite), hdj: t(st.libelleHdj) || HDJ_DEFAUT, logo: logoValide(st.logo) ? st.logo : '', chef: t(st.chef), telHDJ: t(st.telHDJ), telUrgences: t(st.telUrgences) }; };
   /* <img> du logo (classe CSS au choix, défaut doc-logo) ou '' sans logo */
   R.logoHTML = classe => { const e = R.etab(); return e.logo ? `<img class="${R.esc(classe || 'doc-logo')}" src="${e.logo}" alt="${R.esc('Logo — ' + (e.etablissement || 'établissement'))}">` : ''; };
+  /* ---------- Nom et icône de la fenêtre (barre de titre, barre des tâches) ----------
+     paquet installé (etablissement.js chargé) ou logo renseigné dans Paramètres : titre « HDJ — Hôpital de jour · Biothérapies » et icône = logo en data URL (tel quel, puis recadré en
+     carré sur fond blanc dès qu'il est décodé) ; sans etablissement.js ni logo (démonstration publique) : titre et icône d'origine de index.html (ryze.svg). Idempotent : appelé après chaque
+     chargement ou remplacement de la base (migration comprise), l'enregistrement des Paramètres et l'import ou le retrait du logo */
+  const TITRE_HDJ = 'HDJ — Hôpital de jour · Biothérapies'; let fenetreOrigine = null, iconeCarree = { logo: '', url: '' };
+  R.appliquerIdentiteFenetre = () => {
+    if (typeof document === 'undefined' || !document.head) return;
+    let lien = document.querySelector('link[rel~="icon"]');
+    if (!fenetreOrigine) fenetreOrigine = { titre: document.title, href: lien ? lien.getAttribute('href') || '' : '', type: lien ? lien.getAttribute('type') || '' : '' };
+    const E = typeof window !== 'undefined' && window.RYZE_ETABLISSEMENT && typeof window.RYZE_ETABLISSEMENT === 'object' ? window.RYZE_ETABLISSEMENT : null;
+    const st = (S && S.settings) || {}, logo = logoValide(st.logo) ? st.logo : E && logoValide(E.logo) ? E.logo : ''; /* logo retiré dans Paramètres : celui d'etablissement.js reste l'icône du paquet */
+    document.title = E || logoValide(st.logo) ? TITRE_HDJ : fenetreOrigine.titre;
+    const href = logo ? (iconeCarree.logo === logo && iconeCarree.url) || logo : fenetreOrigine.href, type = logo ? (/^data:([^;,]+)/.exec(href) || [])[1] || '' : fenetreOrigine.type;
+    if (!lien && href) { lien = document.createElement('link'); lien.rel = 'icon'; document.head.appendChild(lien); }
+    if (lien) { if (!href) lien.removeAttribute('href'); else if (lien.getAttribute('href') !== href) lien.setAttribute('href', href); if (type) lien.setAttribute('type', type); else lien.removeAttribute('type'); }
+    /* logo large (600 × 240) : version carrée de 128 px (fond blanc, logo centré, marge de 8 %), calculée une fois par logo puis appliquée */
+    if (logo && iconeCarree.logo !== logo) { iconeCarree = { logo, url: '' }; const img = new Image(); img.onload = () => { if (iconeCarree.logo !== logo || !img.naturalWidth) return; try { const T = 128, u = T * 0.84, k = Math.min(u / img.naturalWidth, u / img.naturalHeight), w = img.naturalWidth * k, h = img.naturalHeight * k, c = document.createElement('canvas'); c.width = c.height = T; const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, T, T); g.imageSmoothingQuality = 'high'; g.drawImage(img, (T - w) / 2, (T - h) / 2, w, h); iconeCarree.url = c.toDataURL('image/png'); R.appliquerIdentiteFenetre(); } catch (e) {} }; img.src = logo; }
+  };
 
   /* ---------- Migration des données locales ---------- */
   function migrer(s) {
@@ -103,7 +121,7 @@
     if (!s.dirty && s.semaineSeed !== R.semaineRef()) return null;
     try { return migrer(s); } catch (e) { return illisible('erreur pendant la mise à niveau des données : ' + (e && e.message)); }
   }
-  function remplacer(obj) { Object.keys(S).forEach(k => delete S[k]); Object.assign(S, obj); completerEtab(S); /* base de démonstration neuve comprise (R.seed ne passe pas par migrer) */ if (R.ui) R.ui.tailleBase = 0; }
+  function remplacer(obj) { Object.keys(S).forEach(k => delete S[k]); Object.assign(S, obj); completerEtab(S); /* base de démonstration neuve comprise (R.seed ne passe pas par migrer) */ if (R.ui) R.ui.tailleBase = 0; R.appliquerIdentiteFenetre(); /* titre et icône de la fenêtre d'après la base chargée, importée ou réinitialisée */ }
   remplacer(charger() || Object.assign(R.seed(), { semaineSeed: R.semaineRef(), version: VERSION }));
   S.version = VERSION; if (uiInit.route && uiInit.route.page) S.route = uiInit.route;
   /* si un autre onglet a enregistré une version plus récente, on l'adopte au lieu de l'écraser */

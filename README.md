@@ -17,20 +17,25 @@ app/
 
 Ouvrir `app/index.html` dans un navigateur suffit : aucune dépendance, aucun serveur, aucun accès Internet (polices incluses dans `app/fonts/`). Les modifications sont conservées dans le navigateur (localStorage) ; le bouton « Réinitialiser » des Paramètres régénère le jeu de démonstration.
 
-## Installation sur un poste de travail (Windows)
+## Installation sur un poste de travail (Windows) — paquet « HDJ »
 
-Le dossier `pc/` contient de quoi installer Ryze comme une application sur un PC du service, sans serveur :
+Le dossier `pc/` contient de quoi installer l'application comme un logiciel du service, sous le nom **HDJ** et avec le logo du CHU comme icône, sans serveur ni Internet ni droits administrateur :
 
 ```
 pc/
-  Ryze.bat        lance Ryze dans une fenêtre d'application (Chrome ou Edge, mode --app),
-                  avec son propre espace de données dans le sous-dossier « donnees »
-  Installer.bat   crée le raccourci « Ryze » sur le Bureau et dans le menu Démarrer
-  ryze.ico        icône
-  LISEZMOI.txt    mode d'emploi (installation, données, sauvegardes, impression)
+  HDJ.bat            lance HDJ dans une fenêtre d'application (moteur d'Edge ou de Chrome, mode --app,
+                     1280 × 860), profil et données dans le sous-dossier « donnees » ; reprend toujours
+                     le navigateur déjà utilisé avec ces données (donnees\navigateur.txt), sinon Edge, sinon Chrome
+  Installer.bat      crée le raccourci « HDJ » (icône hdj.ico, cible HDJ.bat) sur le Bureau et dans le menu
+                     Démarrer, débloque les fichiers du paquet, note l'emplacement du dossier
+                     (%LOCALAPPDATA%\HDJ\chemin.txt) ; avertit si le dossier est sur une clé USB, le réseau ou OneDrive
+  Mettre-a-jour.bat  lancé depuis un nouveau paquet décompressé : remplace le dossier app du HDJ installé
+                     (l'ancien est gardé en app-ancien-AAAAMMJJ), sans jamais toucher au dossier donnees
+  hdj.ico, hdj.png   icône multi-taille (256, 64, 48, 32, 16 px) tirée du logo du CHU
+  LISEZMOI.txt       mode d'emploi : installation, usage, sauvegardes, mise à jour, problèmes fréquents
 ```
 
-Copier `app/` et le contenu de `pc/` dans un même dossier (par exemple `C:\Ryze`), lancer `Installer.bat`, puis importer la base depuis Paramètres. La **sauvegarde automatique sur le disque** (Paramètres) écrit la base dans un dossier choisi après chaque modification (`ryze-base.json` + une copie datée par jour) ; les documents exportés embarquent les polices et s'impriment hors ligne.
+Paquet à copier sur le PC : un dossier `HDJ\` contenant `app\` (tout le dossier, `etablissement.js` et `fonts\` compris) et le contenu de `pc/`. Le copier dans `C:\HDJ`, lancer `Installer.bat`, puis ouvrir HDJ par l'icône du Bureau (importer la base depuis Paramètres, ou démarrer avec une base vide). Avec `etablissement.js`, la fenêtre s'intitule « HDJ — Hôpital de jour · Biothérapies » et prend le logo du CHU comme icône (`R.appliquerIdentiteFenetre`, core.js) ; sans lui (démonstration publique), titre et icône Ryze inchangés. Les fichiers `.bat` sont en ASCII et en CRLF, `LISEZMOI.txt` en UTF-8 avec BOM et CRLF (voir `.gitattributes`). La **sauvegarde automatique sur le disque** (Paramètres) écrit la base dans un dossier choisi après chaque modification (`ryze-base.json` + une copie datée par jour) ; les documents exportés embarquent les polices et s'impriment hors ligne.
 
 ## Modules
 

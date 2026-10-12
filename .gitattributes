@@ -1,0 +1,3 @@
+# Paquet Windows (pc/) : .bat et .txt gardes en CRLF tels quels (cmd.exe, Bloc-notes)
+pc/*.bat -text
+pc/*.txt -text
