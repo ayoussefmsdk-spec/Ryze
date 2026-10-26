@@ -271,7 +271,7 @@ window.RYZE = window.RYZE || {};
       const d = R.doseEtape(sch.pr, et, poids, ind ? 'induction' : 'entretien'); if (d.dose == null) return; c.dose = d.dose; c.flacons = d.flacons; c.doseTexte = d.texte; if (d.articleId) c.articleId = d.articleId; n++; });
     return n;
   };
-  R.dernierPoids = p => { const c = (p.cures || []).filter(x => x.statut === 'realisee' && +x.poids > 0 && x.dateReelle).sort((a, b) => b.dateReelle.localeCompare(a.dateReelle))[0]; return c ? { poids: +c.poids, date: c.dateReelle } : null; };
+  R.dernierPoids = p => { const c = (p.cures || []).filter(x => x && x.statut === 'realisee' && +x.poids > 0 && /^\d{4}-\d{2}-\d{2}$/.test(x.dateReelle || '')).sort((a, b) => b.dateReelle.localeCompare(a.dateReelle))[0]; return c ? { poids: +c.poids, date: c.dateReelle } : null; };
   /* flacons (ou unités SC) réellement utilisés pour une séance réalisée, sinon prévus */
   R.flaconsCure = c => c.statut === 'realisee' && c.flaconsUtilises != null && c.flaconsUtilises !== '' ? +c.flaconsUtilises : (+c.flacons || 0);
   R.BILAN_STATUTS = { attente: 'En attente', fait_normal: 'Fait — normal', fait_anormal: 'Fait — anormal', na: 'Non applicable' };
@@ -343,9 +343,17 @@ window.RYZE = window.RYZE || {};
   /* cible générée par l'application (toutes versions), par opposition à une cible saisie à la main (importée) qui n'est jamais touchée */
   R.estCibleTdmGeneree = txt => { const t = String(txt || '').trim(); if (!t) return true; return /^résiduel selon la molécule/i.test(t) || /^Infliximab résiduel ≥ 5 µg\/mL \(AGA 2017\)/.test(t) || /^(infliximab|adalimumab|golimumab|vedolizumab|ustekinumab) (≥ [\d,]+|[\d,]+–[\d,]+) µg\/mL( \(atteinte périnéale\))?$/.test(t); };
   /* cible affichée à l'écran pour un contrôle : dosage à cible générée → cible du dossier calculée maintenant (jamais une valeur mémorisée périmée) ; cible saisie à la main ou autre contrôle → valeur mémorisée */
-  R.cibleControle = (p, s) => !s ? '' : s.id === 'tdm' && p && R.estCibleTdmGeneree(s.cible) ? R.cibleTdmControle(p, s) : (s.cible || '');
-  /* remet à jour la cible des contrôles de dosage générés d'un dossier (réglage, molécule du cycle, atteinte périnéale) ; idempotent ; renvoie le nombre de cibles modifiées */
-  R.rafraichirCiblesTdmPatient = (p, base) => { let n = 0; ((p && p.surveillance) || []).forEach(s => { if (!s || s.id !== 'tdm' || (s.cible != null && !R.estCibleTdmGeneree(s.cible))) return; const c = R.cibleTdmControle(p, s, base); if (s.cible !== c) { s.cible = c; n++; } }); return n; };
+  /* dosage FAIT : cible figée au moment de « Marquer fait » (s.cibleFigee = { texte '≥ 5 µg/mL', court, min, max|null, molecule, perineal, motif, le } ; texte '' : pas de cible pour cette molécule) ;
+     un changement du réglage des cibles, de l'atteinte périnéale ou un import ne réécrit plus l'interprétation des dosages passés (seulement celle des dosages prévus) */
+  R.figerCibleTdm = (p, s, base) => { if (!s || s.id !== 'tdm') return null; const m = R.moleculeControleTdm(p, s, base); const c = m ? R.cibleTdm(p, m, base, R.dateRefTdm(s)) : null;
+    s.cibleFigee = c ? { texte: c.texte, court: c.court, min: c.min, max: c.max, molecule: m, perineal: !!c.perineal, motif: c.motif || '', le: R.today() } : { texte: '', molecule: m || '', le: R.today() }; return s.cibleFigee; };
+  /* migration (idempotente) : dosages déjà faits sans cible figée → cible actuelle figée une fois */
+  R.figerCiblesTdm = base => { let n = 0; (((base || R.S || {}).patients) || []).forEach(p => ((p && p.surveillance) || []).forEach(s => { if (s && s.id === 'tdm' && s.statut === 'faite' && !s.cibleFigee) { R.figerCibleTdm(p, s, base); n++; } })); return n; };
+  /* texte de la cible figée d'un dosage fait : « infliximab ≥ 10 µg/mL (atteinte périnéale) » ; '' sans cible figée ou sans cible */
+  R.cibleFigeeTexte = s => { const f = s && s.statut === 'faite' && s.cibleFigee; return f && f.texte ? `${f.molecule} ${f.texte}${f.perineal ? ' (atteinte périnéale)' : ''}` : ''; };
+  R.cibleControle = (p, s) => !s ? '' : s.id === 'tdm' && s.statut === 'faite' && s.cibleFigee ? R.cibleFigeeTexte(s) : s.id === 'tdm' && p && R.estCibleTdmGeneree(s.cible) ? R.cibleTdmControle(p, s) : (s.cible || '');
+  /* remet à jour la cible des contrôles de dosage générés d'un dossier (réglage, molécule du cycle, atteinte périnéale) ; dosage fait à cible figée : texte figé ; idempotent ; renvoie le nombre de cibles modifiées */
+  R.rafraichirCiblesTdmPatient = (p, base) => { let n = 0; ((p && p.surveillance) || []).forEach(s => { if (!s || s.id !== 'tdm' || (s.cible != null && !R.estCibleTdmGeneree(s.cible))) return; const c = s.statut === 'faite' && s.cibleFigee ? (R.cibleFigeeTexte(s) || s.cible || '') : R.cibleTdmControle(p, s, base); if (s.cible !== c) { s.cible = c; n++; } }); return n; };
   R.rafraichirCiblesTdm = base => { let n = 0; (((base || R.S || {}).patients) || []).forEach(p => { n += R.rafraichirCiblesTdmPatient(p, base); }); return n; };
 
   /* ---------- Protocoles thérapeutiques ----------

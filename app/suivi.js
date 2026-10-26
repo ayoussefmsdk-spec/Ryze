@@ -168,7 +168,7 @@
   };
   R.lireSaisieControle = (s, fd) => {
     const it = R.itemBilan(s.id) || {};
-    if (s.id === 'tdm' && fd.has('tdm_taux')) { const taux = fd.get('tdm_taux') === '' ? null : +fd.get('tdm_taux'); s.tdm = { molecule: fd.get('tdm_mol'), taux, ac: fd.get('tdm_ac') || 'nd', titre: (fd.get('tdm_titre') || '').trim() }; const i = R.interpTdm(s.tdm, R.ctxTdm(s)); /* conduite proposée (écran) ; les documents recalculent le constat */ s.interpretation = i.texte; s.resultat = `${s.tdm.molecule} : résiduel ${taux == null ? '—' : R.fmtV(taux) + ' µg/mL'} — ${R.AC_LIB[s.tdm.ac]}${s.tdm.ac === 'pos' && s.tdm.titre ? ' (titre ' + s.tdm.titre + ')' : ''}`; s.note = (fd.get('note') || '').trim();
+    if (s.id === 'tdm' && fd.has('tdm_taux')) { const taux = fd.get('tdm_taux') === '' ? null : +fd.get('tdm_taux'); s.tdm = { molecule: fd.get('tdm_mol'), taux, ac: fd.get('tdm_ac') || 'nd', titre: (fd.get('tdm_titre') || '').trim() }; delete s.cibleFigee; if (s.statut === 'faite') R.figerCibleTdm(R.ctxTdm(s).p, s); /* cible du jour figée : un réglage changé ensuite ne réécrit pas ce dosage */ const i = R.interpTdm(s.tdm, R.ctxTdm(s)); /* conduite proposée (écran) ; les documents recalculent le constat */ s.interpretation = i.texte; s.resultat = `${s.tdm.molecule} : résiduel ${taux == null ? '—' : R.fmtV(taux) + ' µg/mL'} — ${R.AC_LIB[s.tdm.ac]}${s.tdm.ac === 'pos' && s.tdm.titre ? ' (titre ' + s.tdm.titre + ')' : ''}`; s.note = (fd.get('note') || '').trim();
       { const p = R.ctxTdm(s).p; if (p && R.rafraichirCiblesTdmPatient) R.rafraichirCiblesTdmPatient(p); } /* cible écrite sur le dosage fait : molécule saisie, atteinte périnéale à la date du dosage */ return; }
     if (s.type === 'clinique' || it.type === 'clinique') { s.clinique = R.lireClinique(fd); if (Array.isArray(s.sous)) s.clinique.sous = s.sous.slice(); /* éléments proposés à la saisie (bande des signes) */ s.resultat = R.resumeClinique(s.clinique); s.note = s.clinique.remarques || '';
       { const p = R.ctxTdm(s).p; if (p && R.rafraichirCiblesTdmPatient) R.rafraichirCiblesTdmPatient(p); } /* fistule ou abcès périnéal saisi en consultation : la cible écrite sur les dosages à venir du dossier suit aussitôt (sinon elle n'est réécrite qu'au prochain chargement) */ return; }
@@ -265,7 +265,8 @@
      texte = conduite à tenir proposée : À L'ÉCRAN SEULEMENT (fenêtre du contrôle, détail), jamais imprimée ni exportée */
   R.interpTdm = (t, ctx) => {
     ctx = ctx || {}; if (!t || t.taux == null || isNaN(t.taux)) return { niveau: '', texte: '', constat: '' };
-    const c = R.cibleTdm(ctx.p || null, t.molecule, null, ctx.date !== undefined ? ctx.date : R.dateRefTdm(ctx.s)); /* atteinte périnéale à la date du dosage (fait), sinon aujourd'hui */ const ind = ctx.induction != null ? !!ctx.induction : !!(ctx.p && ctx.s && R.tdmEnInduction(ctx.p, ctx.s));
+    const fig = ctx.date === undefined && ctx.s && ctx.s.statut === 'faite' && ctx.s.cibleFigee && ctx.s.cibleFigee.molecule === R.moleculeTdm(t.molecule) ? ctx.s.cibleFigee : null; /* dosage fait : cible figée au jour du dosage (R.figerCibleTdm) */
+    const c = fig ? (fig.texte ? fig : null) : R.cibleTdm(ctx.p || null, t.molecule, null, ctx.date !== undefined ? ctx.date : R.dateRefTdm(ctx.s)); /* sinon : atteinte périnéale à la date du dosage (fait), ou aujourd'hui */ const ind = ctx.induction != null ? !!ctx.induction : !!(ctx.p && ctx.s && R.tdmEnInduction(ctx.p, ctx.s));
     const ac = (R.AC_DOC[t.ac] || R.AC_DOC.nd) + (t.ac === 'pos' && t.titre ? ` (titre ${t.titre})` : ''), taux = `Taux résiduel ${R.fmtV(t.taux)} µg/mL`;
     if (!c) return { niveau: '?', cible: '', cibleMotif: '', perineal: false, induction: ind, constat: `${taux} — pas de cible enregistrée pour cette molécule — ${ac}`, texte: 'Pas de cible de référence enregistrée pour cette molécule : interprétation au cas par cas.' };
     const lo = c.min, hi = c.max; let niveau, niv, texte, phase = '';
@@ -282,7 +283,7 @@
     return { niveau, cible: c.texte, cibleMotif: c.motif, perineal: c.perineal, induction: ind, constat: `${taux} — ${niv} (${c.court}${c.perineal ? ', atteinte périnéale' : ''}${phase}) — ${ac}`, texte }; /* constat factuel (D3) : au-dessus du maximum pendant l'induction, la phase est notée sans appréciation */
   };
   /* contexte de lecture d'un contrôle de dosage : patient qui le porte (référence dans p.surveillance) */
-  R.ctxTdm = (s, p) => ({ p: p || ((R.S && R.S.patients) || []).find(x => (x.surveillance || []).includes(s)) || null, s });
+  R.ctxTdm = (s, p) => ({ p: p || ((R.S && R.S.patients) || []).find(x => (x.surveillance || []).includes(s)) || null, s, figee: (s && s.statut === 'faite' && s.cibleFigee) || null }); /* figee : cible figée d'un dosage fait, lue par R.interpTdm */
   R.formTdm = (s, p) => {
     const t = R.tdmDe(s, p) || { molecule: R.moleculeCycle(p, s.cycle), taux: null, ac: 'nd', titre: '' }; const i = R.interpTdm(t, R.ctxTdm(s, p));
     return `<div class="form-grid"><div class="field"><label>Molécule dosée</label><select name="tdm_mol" data-change="tdmInterp">${R.TDM_MOLECULES.map(m => `<option${m === t.molecule ? ' selected' : ''}>${m}</option>`).join('')}</select></div>
@@ -319,7 +320,7 @@
   R.refTexte = ref => !ref ? '' : ref[1] == null ? `≥ ${fmtV(ref[0])}` : `${fmtV(ref[0])}–${fmtV(ref[1])}`;
   const nouvChart = (key, titre, unite, ref) => ({ key, titre, unite: unite || '', ref: ref || null, lignes: [] });
   const ajouterPt = (ch, nom, pt) => { let l = ch.lignes.find(x => x.nom === nom); if (!l) { l = { nom, pts: [] }; if (ch.refLignes && ch.refLignes[nom]) l.ref = ch.refLignes[nom]; /* zone propre à la ligne (ASAT / ALAT de l'enfant) */ ch.lignes.push(l); } const m = String(pt.brut || '').match(/[<>≤≥]/); if (m) pt.sym = m[0]; l.pts.push(pt); };
-  const finaliser = charts => Object.values(charts).map(ch => { ch.lignes.forEach(l => l.pts.sort((a, b) => a.date.localeCompare(b.date))); ch.lignes = ch.lignes.filter(l => l.pts.length); return ch; }).filter(ch => ch.lignes.length);
+  const finaliser = charts => Object.values(charts).map(ch => { ch.lignes.forEach(l => { l.pts = l.pts.filter(pt => /^\d{4}-\d{2}-\d{2}$/.test(pt.date || '') && !isNaN(R.parse(pt.date)) && isFinite(pt.v)); /* date ou valeur invalide (texte saisi) : point absent, jamais NaN sur la courbe */ l.pts.sort((a, b) => a.date.localeCompare(b.date)); }); ch.lignes = ch.lignes.filter(l => l.pts.length); return ch; }).filter(ch => ch.lignes.length);
 
   R.seriesBio = p => {
     const charts = {}; const bio = R.itemBilan('biostd') || { sous: [] }; const antiTNF = /TNF/.test((R.proto(p.protocoleId) || {}).classe || ''); const rt = R.refTransa(p);
@@ -337,13 +338,13 @@
       const td = s.id === 'tdm' ? R.tdmDe(s, p) : null; const n = td ? (td.taux != null && !isNaN(td.taux) ? [td.taux] : []) : R.nums(s.resultat); /* dosage sans taux : pas de point (le chiffre du texte serait le titre des anticorps) */ if (!n.length) return; const it = R.itemBilan(s.id) || {};
       const key = s.id + (s.nom ? ':' + s.nom : ''); const titre = s.nom ? `${s.nom}` : (s.id === 'tdm' ? 'Taux résiduel' : (it.label || s.label));
       const dciCycle = s.id === 'tdm' ? ((R.proto(((p.historiqueProtocoles || []).find(h => h.cycle === (s.cycle || 1)) || {}).protocoleId || p.protocoleId) || {}).dci || '') : '';
-      const refTdm = s.id === 'tdm' ? R.cibleTdmDe(dciCycle, p) : null; /* zone cible du dossier : [minimum, maximum ou null] (sans borne haute : zone « ≥ minimum ») */
+      const fig = s.id === 'tdm' && s.statut === 'faite' && s.cibleFigee && s.cibleFigee.texte ? s.cibleFigee : null; const refTdm = s.id === 'tdm' ? (fig ? [fig.min, fig.max] : R.cibleTdmDe(dciCycle, p)) : null; /* dosage fait : cible figée */ /* zone cible du dossier : [minimum, maximum ou null] (sans borne haute : zone « ≥ minimum ») */
       const ref = s.id === 'calpro' ? R.REFS.calpro : s.id === 'tdm' ? refTdm : null;
       const ch = charts[key] || (charts[key] = nouvChart(key, titre, it.unite || s.unite || R.uniteDe(s.resultat), ref)); if (s.id === 'tdm') { ch.refLib = 'cible'; if (ch.dci === undefined) ch.dci = dciCycle; else if (ch.dci !== dciCycle) ch.ref = null; /* molécules différentes : pas de zone commune */ }
-      ajouterPt(ch, titre, { date: s.dateFaite, v: n[0], brut: s.resultat, dci: s.id === 'tdm' ? dciCycle : undefined, note: td ? [R.AC_LIB[td.ac] + (td.titre ? ' (titre ' + td.titre + ')' : ''), note].filter(Boolean).join(' · ') : note });
+      ajouterPt(ch, titre, { date: s.dateFaite, v: n[0], brut: s.resultat, dci: s.id === 'tdm' ? dciCycle : undefined, fig: fig || undefined, note: td ? [R.AC_LIB[td.ac] + (td.titre ? ' (titre ' + td.titre + ')' : ''), note].filter(Boolean).join(' · ') : note });
     });
     /* zone cible du taux résiduel : atteinte périnéale à la date du dernier dosage (comme son constat), pas à la date d'impression */
-    return finaliser(charts).map(ch => { if (ch.key !== 'tdm' || !ch.ref || ch.dci === undefined) return ch; const l0 = ch.lignes[0], der = l0 && l0.pts[l0.pts.length - 1]; if (der) ch.ref = R.cibleTdmDe(ch.dci, p, der.date) || ch.ref; return ch; });
+    return finaliser(charts).map(ch => { if (ch.key !== 'tdm' || !ch.ref || ch.dci === undefined) return ch; const l0 = ch.lignes[0], der = l0 && l0.pts[l0.pts.length - 1]; if (der) ch.ref = (der.fig ? [der.fig.min, der.fig.max] : R.cibleTdmDe(ch.dci, p, der.date)) || ch.ref; return ch; });
   };
 
   /* lignes cliniques : une par séance réalisée ou consultation faite (objet : la séance ou le contrôle d'origine)
@@ -464,7 +465,7 @@
   const ORDRE_DOC = ['poids', 'crp', 'calpro', 'tdm', 'hb', 'alb', 'transa', 'ferr', 'b12', 'imc', 'temp', 'fc', 'ta'];
   /* séries des documents : taux résiduel coupé au dernier changement de molécule (zone = cible de cette molécule) */
   R.seriesDoc = p => [...R.seriesClinique(p), ...R.seriesBio(p)].map(ch => { if (ch.key !== 'tdm') return ch; const der = ch.lignes.flatMap(l => l.pts).sort((a, b) => a.date.localeCompare(b.date)).pop(); if (!der || der.dci === undefined) return ch;
-    const dci = der.dci, mol = String(dci).split(' — ')[0], c = R.cibleTdmDe(dci, p, der.date), lignes = ch.lignes.map(l => ({ ...l, pts: l.pts.filter(x => x.dci === dci) })).filter(l => l.pts.length);
+    const dci = der.dci, mol = String(dci).split(' — ')[0], c = der.fig ? [der.fig.min, der.fig.max] : R.cibleTdmDe(dci, p, der.date), lignes = ch.lignes.map(l => ({ ...l, pts: l.pts.filter(x => x.dci === dci) })).filter(l => l.pts.length);
     return { ...ch, titre: mol ? `Taux résiduel — ${mol.toLowerCase()}` : ch.titre, dci: mol, ref: c || null, refLib: 'cible', lignes }; });
   /* température, fréquence cardiaque, tension : courbe imprimée seulement si une valeur est anormale
      FC de l'enfant : fréquence d'éveil PALS 2020 [âge maximal exclu, min, max] ; TA : ≥ 140/90 ou systolique < 90 (adulte), ≥ 130/80 avant 18 ans (seuil AAP 2017 de l'adolescent) */

@@ -226,16 +226,16 @@ H.executer(async () => {
 
   /* ---------------- Documents des dossiers créés par l'assistant ---------------- */
   H.section('Documents des dossiers créés par l’assistant');
-  const BUG_CREATION = /\d+ séance\(s\) d’induction/, BUG_TOUS = new RegExp(BUG_CREATION.source, 'g'); /* note « Dossier créé — … » écrite par l'assistant (bug connu, signalé à part) */
-  const fautes = [], connu = [];
+  const CREATION = /\d+ séance\(s\) d’induction/; /* note « Dossier créé — … » écrite par l'assistant : pluriel accordé (ancien bug, corrigé dans wizard.js construirePatient) */
+  const fautes = [], creation = [];
   for (const id of [iv, sc]) {
     for (const [r, par] of [['carnet', { id }], ['impression', { id, quoi: 'seances' }], ['impression', { id, quoi: 'bilans' }], ['compteRendu', { id }], ['carnetPatient', { id }]]) {
       await H.aller(page, r, par);
       const txt = await H.texte(page, '#app .carnet-wrap'), lib = `${id === iv ? 'IV' : 'SC'} ${r}${par.quoi ? ' ' + par.quoi : ''}`;
-      const m = txt.match(BUG_CREATION); if (m) connu.push(`${lib} : « ${m[0]} »`);
-      interditsDans(txt.replace(BUG_TOUS, '')).forEach(f => fautes.push(`${lib} : ${f}`));
+      const m = txt.match(CREATION); if (m) creation.push(`${lib} : « ${m[0]} »`);
+      interditsDans(txt).forEach(f => fautes.push(`${lib} : ${f}`));
     }
   }
   t('documents des dossiers créés (carnets, impressions, compte rendu) : aucun « (s) », « 05 XX », « undefined », « NaN »', !fautes.length, fautes.slice(0, 4));
-  H.aCorriger('carnet A4 d’un dossier créé par l’assistant : note « Dossier créé — … » sans « (s) »', !connu.length, connu.slice(0, 2), 'app/wizard.js:277-278 : « ${ind.length} séance(s) d’induction » dans la note de création, imprimée dans « Observations de l’équipe »');
+  t('carnet A4 d’un dossier créé par l’assistant : note « Dossier créé — … » au pluriel accordé, sans « (s) »', !creation.length && /^Dossier créé — .*\b3 séances d’induction\b/.test(((await etat(page, iv)).notes.find(n => /^Dossier créé — /.test(n.txt)) || {}).txt || ''), creation.slice(0, 2));
 });

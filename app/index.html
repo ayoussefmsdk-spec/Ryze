@@ -219,7 +219,7 @@ input[readonly]{background:var(--surface-2);color:var(--ink-2)}
 .empty{padding:36px 16px;text-align:center;color:var(--muted)}
 
 /* ---------- Modales / toasts ---------- */
-.modal-overlay{position:fixed;inset:0;background:rgba(10,20,18,.5);display:grid;place-items:center;z-index:50;padding:16px}
+.modal-overlay{position:fixed;top:0;right:0;bottom:0;left:0;inset:0;background:rgba(10,20,18,.5);display:grid;place-items:center;z-index:50;padding:16px}
 .modal{background:var(--surface);border-radius:12px;width:min(820px,100%);max-height:92vh;overflow:auto;box-shadow:var(--shadow);border:1px solid var(--line)}
 .modal.wide{width:min(1040px,100%)}
 .modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface);z-index:1}
@@ -387,6 +387,7 @@ input[readonly]{background:var(--surface-2);color:var(--ink-2)}
 .jour-row:last-child{border-bottom:0}
 
 .bandeau{position:fixed;left:0;right:0;bottom:0;z-index:80;background:#B8322A;color:#fff;padding:10px 20px;font-size:13px;text-align:center}
+.bandeau-x{margin-left:8px;border:1px solid rgba(255,255,255,.7);background:none;color:#fff;border-radius:6px;padding:1px 8px;font:inherit;font-size:12px;cursor:pointer}
 body:has(#bandeau) .toasts{bottom:76px;z-index:90} /* bandeau affiché : toasts au-dessus, sinon cachés en partie (ou en entier sur écran étroit) */
 
 /* ---------- Protocoles ---------- */
@@ -520,7 +521,7 @@ div.cr-edit{display:block;min-height:60px;padding:6px 8px} .cr-bloc{font-size:10
   .shell{grid-template-columns:1fr}
   .rail{position:fixed;left:-260px;width:244px;z-index:45;transition:left .2s ease;box-shadow:none}
   .rail.open{left:0;box-shadow:var(--shadow)}
-  .rail-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44}
+  .rail-backdrop{position:fixed;top:0;right:0;bottom:0;left:0;inset:0;background:rgba(0,0,0,.35);z-index:44}
   .menu-btn{display:grid}
   .topbar{padding:10px 16px}
   .content{padding:18px 16px 48px}
@@ -646,7 +647,7 @@ html.imp-couleur .ca4-epingles{border-color:var(--imp-acc)}html.imp-couleur .ca4
 .cr-defil{max-width:100%;overflow-x:auto} /* téléphone : le tableau des résultats défile dans son cadre, pas la page */
 @media print{.cr-defil{overflow:visible}.cr .carnet-page .doc-foot{margin-top:4mm}.cr .doc-secu,.cr .doc-afaire,.cr .cr-consignes,.cr .cr-sign{break-inside:avoid}}
 /* ===== @carnet-patient ===== */
-@media screen and (max-width:860px){#app .carnet-wrap.livret{overflow-x:auto;max-width:100%}} /* téléphone : le livret A5 (taille réelle) défile dans son cadre, pas l'écran */
+@media screen{#app .carnet-wrap.livret{overflow-x:auto;max-width:100%}} /* écran étroit (téléphone, portable de 861 à 1320 px) : le livret A5 (taille réelle, pages côte à côte) défile dans son cadre, pas l'écran */
 /* ===== @rapport ===== */
 :root{--rap-iv:#2a78d6;--rap-sc:#a9c9ee}
 @media screen and (prefers-color-scheme: dark){:root:not([data-theme="light"]){--rap-iv:#3987e5;--rap-sc:#6f93bf}}
@@ -793,6 +794,7 @@ html.imp-nb .carnet-page .doc-table>tbody>tr>td{background-color:transparent} /*
 @media print{html.imp-nb .carnet-page *,html.imp-nb .livret .page *,html.imp-nb .rapport *{background:transparent!important;box-shadow:none!important}}
 /* rappel du réglage près des boutons d'impression (écran, jamais imprimé) */
 .imp-rappel{font-size:12px;color:var(--muted);white-space:nowrap;align-self:center}
+.imp-consigne{flex-basis:100%;order:99;font-size:11.5px;line-height:1.35;color:var(--muted);text-align:right} /* consigne de la fenêtre d'impression d'Edge : ligne à part, sous les boutons */
 .imp-modifier{border:0;background:none;padding:0;font:inherit;color:var(--accent-ink);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
 .imp-modifier:hover{color:var(--accent)}
 /* en-tête, titres de section, filets et numéros de page : accent (numéros de page des marges @page : style #imp-pages de R.appliquerImpression) */
@@ -865,7 +867,7 @@ html.imp-couleur .fp-sem tr.fp-sem-tot td,html.imp-couleur .fp-se-ctrl{border-to
   html.imp-couleur .rapport .kpi.attention .value{color:var(--imp-af-e);text-decoration-color:var(--imp-af)}
 }
 </style>
-<div id="app" class="app"></div>
+<div id="app" class="app"><div style="max-width:560px;margin:60px auto;padding:0 20px;font:15px/1.5 system-ui,sans-serif;color:#26332F">Chargement de HDJ… Si ce message reste affiché, votre navigateur est trop ancien : Microsoft Edge 87 ou plus récent est nécessaire (edge://settings/help).</div></div>
 <div id="modal-root"></div>
 <div id="toast-root" class="toasts" role="status" aria-live="polite"></div>
 <div id="tooltip" class="tooltip" hidden></div>
