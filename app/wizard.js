@@ -370,6 +370,38 @@
     const ent = po && n && +e.debutJour === +(pr.entretien || {}).debutJour ? e.label || '' : po ? `${dose(e, 'entretien')} ${e.voie} dès ${R.libelleJour(+e.debutJour || 0)} — renouvellement ${freq(e)}` : `entretien dès ${R.libelleJour(+e.debutJour || 0)} ${freq(e)} — ${dose(e, 'entretien')} ${e.voie}`;
     return ind + (n ? ', puis ' : ' : ') + ent + (s.modif ? ` ; posologie modifiée${s.modif.date ? ' le ' + R.fmtDate(s.modif.date) : ''} : ${dose(s.actuel, 'entretien')} ${s.actuel.voie} ${freq(s.actuel)}` : '');
   };
+  /* lignes de contrôle des documents (carnet A4, impression de la planification) : libellé, molécule et cible du dosage, prélèvement avant la séance du même jour, fait, résultat et remarque
+     curesVis : séances visibles du document (seanceDuJour : séance prévue ou réalisée à la date du contrôle) */
+  R.ctrlDoc = (p, curesVis) => {
+      const t = R.today(), surv = p.surveillance || [], arrete = p.statut === 'termine', fd = d => R.fmtDate(d);
+      const isTdm = s => s.id === 'tdm' || /taux résiduel/i.test(s.label || '');
+      const seanceDuJour = s => curesVis.find(c => c.datePrevue === s.echeance && (c.statut === 'prevue' || c.statut === 'realisee'));
+      /* molécule d'un dosage : celle saisie s'il est fait (même source que le constat, R.lectureTdm), sinon celle du protocole du cycle */
+      const molCtrl = s => String((s.statut === 'faite' && R.tdmDe ? (R.tdmDe(s, p) || {}).molecule : '') || (R.moleculeCycle ? R.moleculeCycle(p, s.cycle) : '') || '');
+      const cibleCtrl = s => { if (isTdm(s) && R.moleculeCycle && R.cibleTdm) { const m = molCtrl(s), c = R.cibleTdm(p, m, null, R.dateRefTdm ? R.dateRefTdm(s) : null); if (c) return `${m.toLowerCase()} ${c.texte}${c.perineal ? ' (atteinte périnéale)' : ''}`; if (s.statut === 'faite') return ''; /* molécule sans cible (« Autre ») : le constat le dit, pas de texte générique à côté */ } return s.cible || ''; }; /* cible du dossier (réglage de Paramètres, atteinte périnéale à la date du dosage fait) */
+      const libCtrl = s => { if (s.id === 'tdm' && R.moleculeCycle) { const m = molCtrl(s); if (m && m !== 'Autre') return `Taux résiduel ${m.toLowerCase()} + anticorps`; } return s.label || ''; }; /* « Taux résiduel infliximab + anticorps » au lieu du libellé générique du catalogue */
+      const memeCtrl = (a, b) => a.id === b.id && (a.nom || '') === (b.nom || '');
+      const aReprog = s => s.statut === 'annulee' && !s.annuleAuto && !!s.annuleLe && R.diffDays(s.annuleLe, t) <= 365 && !arrete && !surv.some(x => x !== s && memeCtrl(x, s) && ((x.statut === 'prevue' && x.echeance && x.echeance >= (s.echeance || s.annuleLe)) || (x.statut === 'faite' && (x.dateFaite || '') >= s.annuleLe)));
+      const enRetard = s => s.statut === 'prevue' && !!s.echeance && s.echeance < t && !arrete;
+      const faitCtrl = s => s.statut === 'faite' ? `<span class="st-ok">✓ ${fd(s.dateFaite)}</span>` : s.statut === 'annulee' ? 'annulé' : enRetard(s) ? '<span class="st-af">☐</span>' : '☐';
+      /* colonne Fait de l'impression de la planification : ✓ date · ☐ · ☐ EN RETARD depuis le … · annulé (— à reprogrammer) */
+      const faitPlanif = s => enRetard(s) ? `<span class="st-af"><b>☐ EN RETARD</b> depuis le ${fd(s.echeance)}</span>` : s.statut === 'annulee' && aReprog(s) ? 'annulé — <span class="st-af"><b>à reprogrammer</b></span>' : faitCtrl(s);
+      /* remarque saisie sur le contrôle (s.note : fenêtre « Marquer fait », « Remarques ») : imprimée en entier dans la ligne du contrôle, retours à la ligne gardés (.ca4-ctrl-note) ;
+         examen clinique : R.resumeClinique finit déjà par la remarque (« … · remarque »), qui n'est plus imprimée deux fois — seulement quand la note EST la remarque de l'examen
+         (intégration : un résultat libre qui finit par le texte de la note, « 310 » et « 10 », n'est jamais raccourci) */
+      const noteCtrl = s => String(s.note || '').trim();
+      const resCtrl = s => { const r = String(s.resultat || '').trim(), n = noteCtrl(s), rem = String((s.clinique && s.clinique.remarques) || '').trim(); if (!n || n !== rem) return r; return r === n ? '' : r.endsWith(' · ' + n) ? r.slice(0, r.length - n.length - 3).trim() : r; };
+      /* o.planif (impression de la planification) : « à reprogrammer » et « EN RETARD » sont dans la colonne Fait (faitPlanif), pas répétés ici ; carnet : un contrôle annulé n'y figure que s'il est à reprogrammer (aReprog) */
+      const remCtrl = (s, o) => { const L = [], pl = !!(o && o.planif);
+        if (s.statut === 'annulee') L.push(`<b>Annulé</b> le ${fd(s.annuleLe)}${s.note ? ' (' + esc(s.note) + ')' : ''}${!pl && aReprog(s) ? ' — <span class="st-af"><b>à reprogrammer</b></span>' : ''}`);
+        else if (s.statut === 'faite' && isTdm(s) && R.lectureTdmDoc && R.lectureTdmDoc(p, s)) L.push(R.lectureTdmDoc(p, s)); /* dosage : remarque du médecin en gras, puis le constat (taux, cible, anticorps) — jamais la conduite proposée par l'application */
+        else { const rs = resCtrl(s); if (s.statut === 'faite' && rs) L.push(esc(R.virguleTexte(rs))); if (!pl && enRetard(s)) L.push(`<span class="st-af"><b>EN RETARD</b> depuis le ${fd(s.echeance)}</span>`); if (noteCtrl(s)) L.push(`<i class="ca4-ctrl-note">${esc(noteCtrl(s))}</i>`); }
+        return L.join('<br>'); };
+      const avantTxt = s => { if (!isTdm(s) || s.statut !== 'prevue' || p.statut === 'suspendu') return ''; /* suspendu : séances en attente (même règle que R.seanceAvantTdm) */ const c = seanceDuJour(s); return c ? `<br><span class="st-af"><b>À PRÉLEVER AVANT la séance ${esc(c.label)}</b></span>` : ''; };
+      const horsTdm = s => s.statut === 'faite' && isTdm(s) && !!R.lectureTdm && R.lectureTdm(p, s).hors; /* dosage hors cible : constat en rouge à l'impression couleur (cellule td.tdm-hors) */
+      const parCtrl = s => s.par ? esc(R.userName(s.par)) : '';
+      return { isTdm, seanceDuJour, molCtrl, cibleCtrl, libCtrl, memeCtrl, aReprog, enRetard, faitCtrl, faitPlanif, noteCtrl, resCtrl, remCtrl, avantTxt, horsTdm, parCtrl };
+  };
   /* carnet de suivi A4 : rapport réservé aux soignants (aucune partie destinée au patient : le carnet remis au patient est le carnet patient FR/AR)
      page 1 (une feuille) : en-tête commun, statut et sécurité, à faire, prochaine séance, patient et maladie, traitement ; page 2 : historique, séances (et contrôles), à chaque séance, bilan pré-biothérapie, observations de l'équipe ; page 3 : courbes */
   R.carnetHTML = function (p) {
@@ -438,29 +470,8 @@
       const ligneCureSep = c => `<tr class="${c.statut === 'realisee' ? 'doc-done' : ''}"><td class="m">${esc(c.n)}</td><td>${esc(c.phase)} ${esc(c.label)}${etapeCycle(c)} <span class="ca4-mut">· ${esc(c.voie)}</span></td><td class="m">${fd(c.datePrevue)}</td><td class="m ca4-nw">${faitCure(c)}</td><td class="ca4-nw">${poidsCol(c)}</td><td>${doseCell(c)}</td><td class="m">${c.statut === 'realisee' ? esc(c.lot || '') : ''}</td><td class="ca4-rem">${remCure(c, false)}</td><td class="ca4-visa">${visa(c)}</td></tr>`;
       const ligneCure = c => `<tr class="${c.statut === 'realisee' ? 'doc-done' : ''}"><td class="m">${fd(c.datePrevue)}${c.heure && c.voie === 'IV' ? '<br><span class="ca4-mut">' + esc(c.heure) + '</span>' : ''}</td><td><b>Séance</b> ${esc(c.label)} <span class="ca4-mut">· ${esc([(c.phase || '').toLowerCase(), c.voie, plusieursDci ? dciDe(c.protocoleId || p.protocoleId) : ''].filter(Boolean).join(' · '))}</span></td><td>${doseCell(c)}</td><td class="m ca4-nw">${faitCure(c)}</td><td class="ca4-rem">${remCure(c, true)}</td><td class="ca4-visa">${visa(c)}</td></tr>`;
       /* ---- contrôles : taux résiduel avant la séance du même jour, retards, contrôle annulé non refait « à reprogrammer » ---- */
-      const isTdm = s => s.id === 'tdm' || /taux résiduel/i.test(s.label || '');
-      const seanceDuJour = s => curesVis.find(c => c.datePrevue === s.echeance && (c.statut === 'prevue' || c.statut === 'realisee'));
-      /* molécule d'un dosage : celle saisie s'il est fait (même source que le constat, R.lectureTdm), sinon celle du protocole du cycle */
-      const molCtrl = s => String((s.statut === 'faite' && R.tdmDe ? (R.tdmDe(s, p) || {}).molecule : '') || (R.moleculeCycle ? R.moleculeCycle(p, s.cycle) : '') || '');
-      const cibleCtrl = s => { if (isTdm(s) && R.moleculeCycle && R.cibleTdm) { const m = molCtrl(s), c = R.cibleTdm(p, m, null, R.dateRefTdm ? R.dateRefTdm(s) : null); if (c) return `${m.toLowerCase()} ${c.texte}${c.perineal ? ' (atteinte périnéale)' : ''}`; if (s.statut === 'faite') return ''; /* molécule sans cible (« Autre ») : le constat le dit, pas de texte générique à côté */ } return s.cible || ''; }; /* cible du dossier (réglage de Paramètres, atteinte périnéale à la date du dosage fait) */
-      const libCtrl = s => { if (s.id === 'tdm' && R.moleculeCycle) { const m = molCtrl(s); if (m && m !== 'Autre') return `Taux résiduel ${m.toLowerCase()} + anticorps`; } return s.label || ''; }; /* « Taux résiduel infliximab + anticorps » au lieu du libellé générique du catalogue */
-      const memeCtrl = (a, b) => a.id === b.id && (a.nom || '') === (b.nom || '');
-      const aReprog = s => s.statut === 'annulee' && !s.annuleAuto && !!s.annuleLe && R.diffDays(s.annuleLe, t) <= 365 && !arrete && !surv.some(x => x !== s && memeCtrl(x, s) && ((x.statut === 'prevue' && x.echeance && x.echeance >= (s.echeance || s.annuleLe)) || (x.statut === 'faite' && (x.dateFaite || '') >= s.annuleLe)));
+      const { isTdm, seanceDuJour, molCtrl, cibleCtrl, libCtrl, aReprog, faitCtrl, noteCtrl, resCtrl, remCtrl, avantTxt, horsTdm, parCtrl } = R.ctrlDoc(p, curesVis);
       const ech = surv.filter(x => x.mode === 'echeance' && (x.statut !== 'annulee' || aReprog(x))).sort((a, b) => String(a.echeance || '').localeCompare(String(b.echeance || '')));
-      const faitCtrl = s => s.statut === 'faite' ? `<span class="st-ok">✓ ${fd(s.dateFaite)}</span>` : s.statut === 'annulee' ? 'annulé' : s.statut === 'prevue' && s.echeance && s.echeance < t && !arrete ? '<span class="st-af">☐</span>' : '☐';
-      /* remarque saisie sur le contrôle (s.note : fenêtre « Marquer fait », « Remarques ») : imprimée en entier dans la ligne du contrôle, retours à la ligne gardés (.ca4-ctrl-note) ;
-         examen clinique : R.resumeClinique finit déjà par la remarque (« … · remarque »), qui n'est plus imprimée deux fois — seulement quand la note EST la remarque de l'examen
-         (intégration : un résultat libre qui finit par le texte de la note, « 310 » et « 10 », n'est jamais raccourci) */
-      const noteCtrl = s => String(s.note || '').trim();
-      const resCtrl = s => { const r = String(s.resultat || '').trim(), n = noteCtrl(s), rem = String((s.clinique && s.clinique.remarques) || '').trim(); if (!n || n !== rem) return r; return r === n ? '' : r.endsWith(' · ' + n) ? r.slice(0, r.length - n.length - 3).trim() : r; };
-      const remCtrl = s => { const L = [];
-        if (s.statut === 'annulee') L.push(`<b>Annulé</b> le ${fd(s.annuleLe)}${s.note ? ' (' + esc(s.note) + ')' : ''} — <span class="st-af"><b>à reprogrammer</b></span>`);
-        else if (s.statut === 'faite' && isTdm(s) && R.lectureTdmDoc && R.lectureTdmDoc(p, s)) L.push(R.lectureTdmDoc(p, s)); /* dosage : remarque du médecin en gras, puis le constat (taux, cible, anticorps) — jamais la conduite proposée par l'application */
-        else { const rs = resCtrl(s); if (s.statut === 'faite' && rs) L.push(esc(R.virguleTexte(rs))); if (s.statut === 'prevue' && s.echeance && s.echeance < t && !arrete) L.push(`<span class="st-af"><b>EN RETARD</b> depuis le ${fd(s.echeance)}</span>`); if (noteCtrl(s)) L.push(`<i class="ca4-ctrl-note">${esc(noteCtrl(s))}</i>`); }
-        return L.join('<br>'); };
-      const avantTxt = s => { if (!isTdm(s) || s.statut !== 'prevue' || p.statut === 'suspendu') return ''; /* suspendu : séances en attente (même règle que R.seanceAvantTdm) */ const c = seanceDuJour(s); return c ? `<br><span class="st-af"><b>À PRÉLEVER AVANT la séance ${esc(c.label)}</b></span>` : ''; };
-      const horsTdm = s => s.statut === 'faite' && isTdm(s) && !!R.lectureTdm && R.lectureTdm(p, s).hors; /* dosage hors cible : constat en rouge à l'impression couleur (cellule td.tdm-hors) */
-      const parCtrl = s => s.par ? esc(R.userName(s.par)) : '';
       const ligneCtrl = s => `<tr class="${s.statut === 'faite' ? 'doc-done' : ''}"><td class="m">${fd(s.echeance)}</td><td><b>Contrôle</b> ${esc(libCtrl(s))}${avantTxt(s)}<br><span class="ca4-mut">${esc([s.cat, R.libelleControle(s.jour || 0), cibleCtrl(s) ? 'cible ' + cibleCtrl(s) : ''].filter(Boolean).join(' · '))}</span></td><td></td><td class="m ca4-nw">${faitCtrl(s)}</td><td class="ca4-rem${horsTdm(s) ? ' tdm-hors' : ''}">${remCtrl(s)}</td><td class="ca4-visa">${parCtrl(s)}</td></tr>`;
       const ligneCtrlSep = s => `<tr class="${s.statut === 'faite' ? 'doc-done' : ''}"><td>${esc(libCtrl(s))}${avantTxt(s)}${cibleCtrl(s) ? `<br><span class="ca4-mut">Cible : ${esc(cibleCtrl(s))}</span>` : ''}</td><td class="m">${fd(s.echeance)} (${esc(R.libelleControle(s.jour || 0))})</td><td class="m ca4-nw">${faitCtrl(s)}</td><td class="ca4-rem${horsTdm(s) ? ' tdm-hors' : ''}">${remCtrl(s)}</td><td class="ca4-visa">${parCtrl(s)}</td></tr>`;
       const ligneEv = (e, cols) => `<tr class="ca4-ev"><td colspan="${cols}"><span class="ca4-ev-d">${e.date ? fd(e.date) : 'Date inconnue'}</span> ▸ <b>${esc(evTexte(e))}</b></td></tr>`;
@@ -581,13 +592,14 @@
   R.pages.impression = {
     render(params) {
       const p = R.patient(params.id); if (!p) return '<div class="empty">Dossier introuvable.</div>';
-      const quoi = params.quoi === 'seances' ? 'seances' : 'bilans'; const mois = params.mois == null ? 12 : +params.mois; const avenir = !!params.avenir;
+      const quoi = params.quoi === 'seances' || params.quoi === 'planification' ? params.quoi : 'bilans'; const mois = params.mois == null ? 12 : +params.mois;
+      const avenir = quoi === 'planification' && params.avenir == null ? true : !!params.avenir; /* planification : ce qui est à venir est imprimé par défaut */
       const depuis = mois ? R.addDays(R.today(), -Math.round(mois * 30.44)) : null; const lien = o => R.params(Object.assign({ id: p.id, quoi, mois, avenir }, o));
       const opts = [[3, '3 mois'], [6, '6 mois'], [12, '12 mois'], [24, '24 mois'], [0, 'Tout']];
       return `<div class="row between no-print mb16" style="flex-wrap:wrap;gap:8px"><button class="btn" data-go="patient" data-params='${R.params({ id: p.id, tab: quoi === 'bilans' ? 'bilans' : (p.carnetMixte ? 'plan' : 'cures') })}'>${R.icon('back')}Retour au dossier</button>
         <div class="row" style="gap:6px;flex-wrap:wrap"><span class="small muted">Période</span>${opts.map(o => `<button type="button" class="btn sm${mois === o[0] ? ' primary' : ''}" data-go="impression" data-params='${lien({ mois: o[0] })}'>${o[1]}</button>`).join('')}
-        <label class="check" style="padding:5px 9px"><input type="checkbox" data-go="impression" data-params='${lien({ avenir: !avenir })}'${avenir ? ' checked' : ''}> ${quoi === 'seances' ? 'inclure les séances à venir' : 'inclure les contrôles prévus au-delà de 3 mois'}</label>
-        ${R.boutonsDoc()}</div></div>${quoi === 'bilans' ? R.impressionBilans(p, depuis, mois, avenir) : R.impressionSeances(p, depuis, mois, avenir)}`;
+        <label class="check" style="padding:5px 9px"><input type="checkbox" data-go="impression" data-params='${lien({ avenir: !avenir })}'${avenir ? ' checked' : ''}> ${quoi === 'seances' ? 'inclure les séances à venir' : quoi === 'planification' ? 'inclure ce qui est à venir' : 'inclure les contrôles prévus au-delà de 3 mois'}</label>
+        ${R.boutonsDoc()}</div></div>${quoi === 'bilans' ? R.impressionBilans(p, depuis, mois, avenir) : quoi === 'planification' ? R.impressionPlanification(p, depuis, mois, avenir) : R.impressionSeances(p, depuis, mois, avenir)}`;
     }
   };
   /* ---------- Impressions des séances et des bilans : outils communs ---------- */
@@ -601,8 +613,9 @@
 
   /* ---------- Impression des séances : une ligne par séance, événements du traitement, statut et sécurité en tête ----------
      colonnes Date · Séance · Dose · Poids · Lot · Tolérance · Statut · IDE ; séparateur par cycle et par phase ; séances annulées ou mises en attente automatiquement remplacées par une ligne d'événement (non comptées comme annulations) */
-  R.impressionSeances = (p, depuis, mois, avenir) => {
+  R.impressionSeances = (p, depuis, mois, avenir, o) => {
     if (!p) return ''; depuis = typeof depuis === 'string' ? depuis : null; /* appel direct sans période (tests, anciens appels) : tout le suivi */
+    o = o || {}; /* o.titre : titre du document ; o.controles(fin) : section ajoutée après les séances, qui garde la signature et le pied (fin) avec ses dernières lignes (impression de la planification) */
     const t = R.today(), cures = p.cures || [], susp = p.statut === 'suspendu', arrete = p.statut === 'termine', nonVenu = p.sexe === 'F' ? 'Non venue' : 'Non venu', cycleCour = p.cycleCourant || 1;
     const couverteSusp = c => susp && c.statut === 'reportee' && !videI(p.motifSuspension) && c.motif === p.motifSuspension; /* report « à la main » au motif de la suspension en cours : couvert par la ligne de suspension (comme R.blocAFaire et le carnet) */
     /* séance annulée par l'arrêt ou le relais APRÈS une absence ou un report saisis par l'équipe : gardée avec son état d'avant (st), jamais comptée comme annulation automatique */
@@ -677,12 +690,48 @@
     const table = (L, avecTete) => L.length ? `<div class="impr-defil"><table class="doc-table impr-seances">${colg}${avecTete ? tete : ''}<tbody>${L.join('')}</tbody></table></div>` : '';
     const nFin = Math.min(3, rows.length), corps = rows.slice(0, rows.length - nFin), fin = rows.slice(rows.length - nFin);
     const sign = `<div class="doc-sign" style="grid-template-columns:1fr 1fr"><div>Visa<br><span style="color:#5F6E69">${esc(R.etab().hdj)}</span></div><div>Date et signature</div></div>`;
-    return `<div class="carnet-wrap impr">${R.identitePages(p)}<div class="carnet-page impr-s">${R.enteteDoc({ titre: 'Historique des séances', sousTitre: sousTitreImpr(p), patient: p })}
+    const apres = typeof o.controles === 'function' ? o.controles(sign + piedImpr(p)) : ''; /* section suivante non vide : toutes les séances dans le tableau, la signature la suit */
+    return `<div class="carnet-wrap impr">${R.identitePages(p)}<div class="carnet-page impr-s">${R.enteteDoc({ titre: o.titre || 'Historique des séances', sousTitre: sousTitreImpr(p), patient: p })}
       ${R.blocStatutSecurite(p)}${R.blocAFaire(p, { pour: 'soignant', jours: 90, max: 5 })}${synth}
       ${(() => { const L = R.retroCycles(p); return L.length ? `<div class="doc-h2">Traitements antérieurs <span class="ui" style="font-weight:400;color:#5F6E69">(saisie rétrospective)</span></div><div class="impr-defil"><table class="doc-table"><thead><tr><th>Traitement</th><th>Période</th><th>Séances</th><th>Arrêt</th></tr></thead><tbody>${L.map(h => `<tr><td><b>${esc((R.proto(h.protocoleId) || {}).dci || h.protocoleId)}</b>${h.specialite ? " (" + esc(h.specialite) + ")" : ""}</td><td class="m">${R.fmtDate(h.dateDebut)}${h.dateFin ? " → " + R.fmtDate(h.dateFin) : " — fin non précisée"}</td><td style="font-size:8.5pt">${h.mode === "resume" ? esc(String(h.nbSeances || "—")) + " (résumé)" : R.curesRetroDe(p, h.cycle).map(c => R.fmtDate(c.date) + (c.statut === "manquee" ? " (non faite)" : "") + (c.doseTexte ? " · " + esc(c.doseTexte) : "")).join("<br>") || "—"}</td><td style="font-size:8.5pt">${esc(h.motifFin || "")}${h.remarques ? "<br><i>" + esc(h.remarques) + "</i>" : ""}</td></tr>`).join("")}</tbody></table></div>` : ""; })()}
-      <div class="doc-h2">Séances</div>${table(corps, true)}
-      <div class="impr-fin">${table(fin, !corps.length)}${!rows.length && !premiere ? '<p class="impr-vide">Aucune séance sur cette période.</p>' : ''}${premiereTxt}${sign}${piedImpr(p)}</div></div></div>`;
+      <div class="doc-h2">Séances</div>${apres ? table(rows, true) : table(corps, true)}
+      ${apres ? `${!rows.length && !premiere ? '<p class="impr-vide">Aucune séance sur cette période.</p>' : ''}${premiereTxt}${apres}` : `<div class="impr-fin">${table(fin, !corps.length)}${!rows.length && !premiere ? '<p class="impr-vide">Aucune séance sur cette période.</p>' : ''}${premiereTxt}${sign}${piedImpr(p)}</div>`}</div></div>`;
   };
+
+  /* ---------- Contrôles et examens (impression de la planification) : contrôles faits dans la période, tous les contrôles prévus jusqu'à aujourd'hui (en retard compris), ceux d'après si « à venir » ;
+     annulés automatiquement (relais, arrêt) exclus, annulés à la main gardés (« annulé », « à reprogrammer » selon le carnet) ; lignes et logique du carnet A4 (R.ctrlDoc) ; rien sans contrôle
+     fin : signature et pied gardés avec les 3 dernières lignes (jamais de signature seule sur une feuille) */
+  R.impressionControles = (p, depuis, avenir, fin) => {
+    if (!p) return ''; depuis = typeof depuis === 'string' ? depuis : null;
+    const t = R.today(), surv = Array.isArray(p.surveillance) ? p.surveillance : [], C = R.ctrlDoc(p, p.cures || []);
+    const dans = d => !!d && (!depuis || d >= depuis) && d <= t, apres = d => !d || d > t;
+    const garde = s => { if (!s || s.mode !== 'echeance') return false;
+      if (s.statut === 'faite') return dans(s.dateFaite || s.echeance) || (!s.dateFaite && !s.echeance && !depuis);
+      if (s.statut === 'prevue') return (!!s.echeance && s.echeance <= t) || (avenir && apres(s.echeance));
+      if (s.statut === 'annulee') { if (s.annuleAuto) return false; const d = s.annuleLe || s.echeance; return C.aReprog(s) || dans(d) || (avenir && apres(d)); }
+      return false; };
+    const dateTri = s => String(s.echeance || s.dateFaite || s.annuleLe || '9999-12-31');
+    const L = surv.filter(garde).sort((a, b) => dateTri(a).localeCompare(dateTri(b)) || String(a.dateFaite || '').localeCompare(String(b.dateFaite || '')));
+    if (!L.length) return '';
+    const fd = d => d ? fdI(d) : '—';
+    const ligne = s => { const fait = s.statut === 'faite', cib = C.cibleCtrl(s), mut = [s.cat || '', cib ? 'cible ' + cib : ''].filter(Boolean).join(' · ');
+      return `<tr class="${fait ? 'impr-fait' : 'impr-non'}"><td class="m">${fd(s.echeance)}<br><span class="impr-mut">${esc(R.libelleControle(s.jour || 0))}</span></td><td><b>${esc(C.libCtrl(s))}</b>${C.avantTxt(s)}${mut ? `<div class="impr-mut">${esc(mut)}</div>` : ''}</td><td class="impr-fait-c">${C.faitPlanif(s)}</td><td class="impr-rem${C.horsTdm(s) ? ' tdm-hors' : ''}">${C.remCtrl(s, { planif: true })}</td><td>${C.parCtrl(s)}</td></tr>`; };
+    const sep = txt => `<tr class="impr-sep"><td colspan="5">${txt}</td></tr>`;
+    const passes = L.filter(s => !(s.statut === 'prevue' && apres(s.echeance))), futurs = L.filter(s => s.statut === 'prevue' && apres(s.echeance));
+    const rows = passes.map(ligne);
+    if (futurs.length && passes.length) rows.push(sep(`À venir — ${R.pluriel(futurs.length, 'contrôle prévu', 'contrôles prévus')}${futurs[futurs.length - 1].echeance ? ` (jusqu’au ${fdI(futurs[futurs.length - 1].echeance)})` : ''}`));
+    futurs.forEach(s => rows.push(ligne(s)));
+    const nFait = L.filter(s => s.statut === 'faite').length, nRet = L.filter(C.enRetard).length, nPrev = L.filter(s => s.statut === 'prevue').length - nRet, nAnn = L.filter(s => s.statut === 'annulee').length;
+    const resume = [nFait ? R.pluriel(nFait, 'contrôle fait', 'contrôles faits') : '', nRet ? `<span class="st-af"><b>${R.pluriel(nRet, 'contrôle en retard', 'contrôles en retard')}</b></span>` : '', nPrev ? R.pluriel(nPrev, 'contrôle prévu', 'contrôles prévus') : '', nAnn ? R.pluriel(nAnn, 'contrôle annulé', 'contrôles annulés') : ''].filter(Boolean).join(' · ');
+    const colg = '<colgroup><col style="width:20mm"><col style="width:50mm"><col style="width:27mm"><col><col style="width:20mm"></colgroup>';
+    const tete = '<thead><tr><th>Date prévue</th><th>Contrôle</th><th>Fait</th><th>Résultat · remarque</th><th>Visa</th></tr></thead>';
+    const table = (R2, avecTete) => R2.length ? `<div class="impr-defil"><table class="doc-table impr-seances impr-ctrl">${colg}${avecTete ? tete : ''}<tbody>${R2.join('')}</tbody></table></div>` : '';
+    const nFin = Math.min(3, rows.length), corps = rows.slice(0, rows.length - nFin), dern = rows.slice(rows.length - nFin);
+    return `<div class="doc-h2">Contrôles et examens <span class="ui impr-ctrl-res">${resume}</span></div>${table(corps, true)}
+      <div class="impr-fin">${table(dern, !corps.length)}${fin || ''}</div>`;
+  };
+  /* ---------- Planification complète (carnet unifié) : historique des séances, puis contrôles et examens, une seule signature ---------- */
+  R.impressionPlanification = (p, depuis, mois, avenir) => R.impressionSeances(p, depuis, mois, avenir, { titre: 'Planification — séances et contrôles', controles: fin => R.impressionControles(p, depuis, avenir, fin) });
 
   /* ---------- Relevé des bilans et contrôles ----------
      en tête : maladie, traitement complet (posologie, optimisation, traitement associé, suspension), à faire sur 3 mois ; puis dernières valeurs (une fois chacune), au plus 6 courbes, résultats (unités dans les en-têtes, anomalies en gras), dosages (remarque du médecin avant la lecture automatique), endoscopies (score de référence → score actuel), examens cliniques avec un signe, bilan pré-biothérapie ; sections vides masquées */
