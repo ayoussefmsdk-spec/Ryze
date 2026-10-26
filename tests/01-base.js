@@ -29,9 +29,9 @@ H.executer(async () => {
   t('code en minuscules accepté (med001)', await H.connexion(page, 'med001'));
   await H.deconnexion(page);
 
-  t('connexion du médecin MED001', await H.connexion(page, 'MED001'));
+  const okMed = await H.connexion(page, 'MED001');
   const med = await page.evaluate(() => { const R = window.RYZE; const nav = [...document.querySelectorAll('.nav [data-go]')].map(b => b.dataset.go); return { id: R.S.user, nav, dossier: R.can('dossier', 'w'), equipe: R.can('equipe', 'w'), protocoles: R.can('protocoles', 'w') }; });
-  t('médecin : accès complet (dossier, équipe, protocoles en écriture ; menu complet)', med.id === 'u-med1' && med.dossier && med.equipe && med.protocoles && ['nouveau', 'equipe', 'activite'].every(x => med.nav.includes(x)), med);
+  t('connexion du médecin MED001 : accès complet (dossier, équipe, protocoles en écriture ; menu complet)', okMed && med.id === 'u-med1' && med.dossier && med.equipe && med.protocoles && ['nouveau', 'equipe', 'activite'].every(x => med.nav.includes(x)), med);
   await H.aller(page, 'parametres');
   t('médecin : page Paramètres accessible', (await page.evaluate(() => window.RYZE.S.route.page)) === 'parametres' && /Paramètres/.test(await H.texte(page, 'main h1')));
   await H.deconnexion(page);
@@ -117,6 +117,8 @@ H.executer(async () => {
   await page.waitForSelector('#login-code');
   const rempl = await page.evaluate(() => ({ n: window.RYZE.S.patients.length, user: window.RYZE.S.user }));
   t('import en remplacement : base remplacée, reconnexion demandée', rempl.n === reduit.patients.length && !rempl.user, rempl);
+  const fidele = await page.evaluate(ref => { const S = window.RYZE.S; return ref.patients.filter(q => JSON.stringify(S.patients.find(x => x.id === q.id)) !== JSON.stringify(q)).map(q => q.id); }, reduit);
+  t('import en remplacement : dossiers restaurés à l’identique (aller-retour export → import sans perte)', !fidele.length, fidele);
   t('import en remplacement : connexion avec les codes du fichier', await H.connexion(page, 'MED001'));
 
   /* ---------------- Base vide ---------------- */
@@ -133,6 +135,18 @@ H.executer(async () => {
   const okNeuf = await H.connexion(page, vide.code);
   const apresNeuf = await page.evaluate(() => ({ user: window.RYZE.S.user, n: window.RYZE.S.patients.length, erreur: /Erreur d’affichage/.test(document.body.innerText) }));
   t('base vide : connexion avec le nouveau code (accès complet), tableau de bord affiché', okNeuf && apresNeuf.n === 0 && !apresNeuf.erreur && await page.evaluate(() => window.RYZE.can('equipe', 'w')), apresNeuf);
+  /* base vide demandée depuis Paramètres par un médecin connecté avec un code de démonstration : son code est remplacé, il reste connecté */
+  await H.demo(page);
+  await H.connexion(page, 'MED001');
+  await H.aller(page, 'parametres');
+  await page.click('main [data-action="viderDemoConfirm"]');
+  await page.click('#modal-root [data-action="viderDemo"]');
+  const vide2 = await page.evaluate(() => { const R = window.RYZE, u = R.user(); return { user: R.S.user, code: u ? u.code : '', n: R.S.patients.length, fenetre: (document.querySelector('#modal-root .modal') || {}).innerText || '' }; });
+  await page.click('#modal-root [data-action="closeModal"]');
+  await H.deconnexion(page);
+  const medRefuse = !(await H.connexion(page, 'MED001'));
+  const neufOk = await H.connexion(page, vide2.code);
+  t('base vide depuis Paramètres : nouveau code du médecin connecté affiché, ancien code refusé, nouveau accepté', vide2.user === 'u-med1' && vide2.n === 0 && /^[A-Z]{3}\d{3}$/.test(vide2.code) && vide2.fenetre.includes(vide2.code) && medRefuse && neufOk, { vide2: { user: vide2.user, code: vide2.code, n: vide2.n }, medRefuse, neufOk });
 
   /* ---------------- Identité de l'établissement (etablissement.js chargé) ---------------- */
   H.section('Identité de l’établissement et logo (etablissement.js)');
@@ -159,6 +173,9 @@ H.executer(async () => {
   await H.connexion(B.page, 'MED001');
   await H.aller(B.page, 'carnet', { id: 'p1' });
   const ent2 = await B.page.evaluate(() => { const w = document.querySelector('#app .carnet-wrap'); return { txt: w ? w.innerText : '', logo: !!(w && w.querySelector('img.doc-logo')) }; });
-  t('sans etablissement.js : carnet imprimable, en-tête générique sans logo ni « undefined » / « 05 XX »', ent2.txt.length > 500 && !ent2.logo && ent2.txt.includes(id2.etab) && !/undefined|05 XX/i.test(ent2.txt), { logo: ent2.logo, n: ent2.txt.length });
+  /* téléphones factices de la démonstration (« 05 XX … ») : jamais imprimés, une ligne à remplir à la place */
+  const autres = [];
+  for (const [r, par] of [['compteRendu', { id: 'p1' }], ['carnetPatient', { id: 'p1' }]]) { await H.aller(B.page, r, par); autres.push(await H.texte(B.page, '#app .carnet-wrap')); }
+  t('sans etablissement.js : carnet, compte rendu et carnet patient génériques, sans logo ni « undefined » / « 05 XX »', ent2.txt.length > 500 && !ent2.logo && ent2.txt.includes(id2.etab) && autres.every(x => x.length > 500) && ![ent2.txt, ...autres].some(x => /undefined|05 XX/i.test(x)), { logo: ent2.logo, n: [ent2.txt.length, ...autres.map(x => x.length)] });
   t('sans etablissement.js : aucune erreur JavaScript après connexion et carnet', H.erreursJS.length === avant, H.erreursJS.slice(avant));
 });

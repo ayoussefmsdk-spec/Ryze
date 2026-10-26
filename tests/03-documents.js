@@ -72,8 +72,8 @@ H.executer(async () => {
   t('carnet A4 : notes épinglées imprimées (4 dossiers)', !ko.notes.length, ko.notes);
 
   /* ---------------- Historique des séances et relevé des bilans ---------------- */
-  H.section('Historique des séances, relevé des bilans');
-  const koS = [], koB = [];
+  H.section('Historique des séances, relevé des bilans, planification');
+  const koS = [], koB = [], koPl = [];
   for (const d of D) {
     await H.aller(page, 'impression', { id: d.id, quoi: 'seances' });
     const ts = garder(`séances ${d.id}`, await racine());
@@ -86,10 +86,18 @@ H.executer(async () => {
     const pB = await H.pdf(page, `bilans-${d.id}`);
     if (!(/Relevé des bilans et contrôles/.test(tb) && thB.includes('Poids (kg)') && thB.includes('Taille (cm)') && thB.includes('IMC') && /à retenir/i.test(tb) && pB.pages >= 1)) koB.push(`${d.id} : ${thB.join('|')}`);
     if (pS.textes) garder(`séances ${d.id} (PDF)`, pS.textes.join('\n'));
+    await H.aller(page, 'impression', { id: d.id, quoi: 'planification' });
+    const tpl = garder(`planification ${d.id}`, await racine());
+    const thPl = await page.evaluate(() => [...document.querySelectorAll('#app .carnet-wrap th')].map(x => x.textContent.trim()));
+    const pPl = await H.pdf(page, `planification-${d.id}`);
+    if (pPl.textes) garder(`planification ${d.id} (PDF)`, pPl.textes.join('\n'));
+    const tplN = norm(tpl + ' ' + (pPl.textes || []).join(' '));
+    if (!(/Planification — séances et contrôles/.test(tpl) && tpl.includes(d.nom) && thPl.includes('Séance') && thPl.includes('Contrôle') && pPl.pages >= 1 && !CONDUITES.some(re => re.test(tplN)) && !contexte.conduites.some(c => tplN.includes(norm(c))))) koPl.push(`${d.id} : ${thPl.join('|')}`);
     if (pB.textes) garder(`bilans ${d.id} (PDF)`, pB.textes.join('\n'));
   }
   t('historique des séances : titre, identité, colonne Poids (4 dossiers)', !koS.length, koS);
   t('relevé des bilans : colonnes Poids (kg) / Taille (cm) / IMC et « À retenir » (4 dossiers)', !koB.length, koB);
+  t('planification imprimée : séances puis contrôles, sans conduite automatique (4 dossiers)', !koPl.length, koPl);
 
   /* ---------------- Compte rendu ---------------- */
   H.section('Compte rendu de suivi');
@@ -132,6 +140,16 @@ H.executer(async () => {
   t('carnet patient : consigne « informez l’hôpital de jour » (4 dossiers)', !koP.informez.length, koP.informez);
   t('carnet patient : page 8 (urgences) en 9 pt au moins (4 dossiers)', !koP.p8.length, koP.p8);
   t('carnet patient : aucune note médicale (note épinglée absente)', !koP.notes.length, koP.notes);
+  /* dossier ancien : 45 séances faites (données d'essai ajoutées au dossier SC) → les 30 plus récentes, 10 lignes vides au moins, toujours 8 pages */
+  const dAncien = D[1];
+  await page.evaluate(id => { const R = window.RYZE, p = R.patient(id), t0 = R.today(), cyc = p.cycleCourant || 1, modele = p.cures.find(c => c.statut === 'realisee') || p.cures[0];
+    const faites = Array.from({ length: 45 }, (_, i) => { const d = R.addDays(t0, -14 * (45 - i)); return Object.assign(JSON.parse(JSON.stringify(modele)), { datePrevue: d, dateReelle: d, statut: 'realisee', cycle: cyc, lot: 'ESSAI-' + (i + 1) }); });
+    p.cures = p.cures.filter(c => c.statut !== 'realisee').concat(faites).sort((a, b) => a.datePrevue.localeCompare(b.datePrevue)); p.cures.forEach((c, i) => { c.n = i + 1; }); R.touch(); }, dAncien.id);
+  await H.aller(page, 'carnetPatient', { id: dAncien.id });
+  const pAncien = await H.pdf(page, `carnet-patient-ancien-${dAncien.id}`);
+  const lignesAncien = await page.evaluate(() => { let faites = 0, vides = 0, premier = null; document.querySelectorAll('#app .livret table').forEach(tb => { const th = [...tb.querySelectorAll('th')].map(x => x.textContent); const iF = th.findIndex(x => /Faite le/.test(x)); if (iF < 0 || !th.some(x => /Dose donnée/.test(x))) return; tb.querySelectorAll('tr').forEach(tr => { const td = tr.querySelectorAll('td'); if (td.length <= iF) return; if (td[iF].textContent.trim()) { faites++; if (premier === null) premier = +td[0].textContent.trim(); } else vides++; }); }); return { faites, vides, premier }; });
+  t('carnet patient d’un dossier ancien (45 séances faites) : 30 dernières séances, 10 lignes vides, toujours 8 pages A5', pAncien.pages === 8 && lignesAncien.faites === 30 && lignesAncien.vides >= 10 && lignesAncien.premier === 16, { pages: pAncien.pages, lignesAncien });
+  garder(`carnet patient ancien ${dAncien.id}`, await racine('#app .livret'));
 
   /* ---------------- Carnet patient vierge ---------------- */
   H.section('Carnet patient vierge');

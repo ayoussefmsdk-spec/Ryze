@@ -7,7 +7,7 @@
    Dossiers d'essai fictifs « ESSAI … » créés sur la démonstration.
    ===================================================================== */
 'use strict';
-const { suite } = require('./lib');
+const { suite, interditsDans } = require('./lib');
 const H = suite('02-dossier');
 const { t } = H;
 
@@ -223,4 +223,19 @@ H.executer(async () => {
   await H.aller(page, 'impression', { id: iv, quoi: 'seances' });
   const imp = await H.texte(page, '#app .carnet-wrap');
   t('trace « corrigée le … » imprimée dans le carnet A4 et l’historique des séances', /Corrigée le \d{2}\/\d{2}\/\d{4}/.test(carnet) && /corrigée le \d{2}\/\d{2}\/\d{4}/i.test(imp), { carnet: /Corrigée le/.test(carnet), imp: /corrigée le/i.test(imp) });
+
+  /* ---------------- Documents des dossiers créés par l'assistant ---------------- */
+  H.section('Documents des dossiers créés par l’assistant');
+  const BUG_CREATION = /\d+ séance\(s\) d’induction/g; /* note « Dossier créé — … » écrite par l'assistant (bug connu, signalé à part) */
+  const fautes = [], connu = [];
+  for (const id of [iv, sc]) {
+    for (const [r, par] of [['carnet', { id }], ['impression', { id, quoi: 'seances' }], ['impression', { id, quoi: 'bilans' }], ['compteRendu', { id }], ['carnetPatient', { id }]]) {
+      await H.aller(page, r, par);
+      const txt = await H.texte(page, '#app .carnet-wrap'), lib = `${id === iv ? 'IV' : 'SC'} ${r}${par.quoi ? ' ' + par.quoi : ''}`;
+      if (BUG_CREATION.test(txt)) connu.push(`${lib} : « ${(txt.match(BUG_CREATION) || [''])[0]} »`);
+      interditsDans(txt.replace(BUG_CREATION, '')).forEach(f => fautes.push(`${lib} : ${f}`));
+    }
+  }
+  t('documents des dossiers créés (carnets, impressions, compte rendu) : aucun « (s) », « 05 XX », « undefined », « NaN »', !fautes.length, fautes.slice(0, 4));
+  H.aCorriger('carnet A4 d’un dossier créé par l’assistant : note « Dossier créé — … » sans « (s) »', !connu.length, connu.slice(0, 2), 'app/wizard.js:277-278 : « ${ind.length} séance(s) d’induction » dans la note de création, imprimée dans « Observations de l’équipe »');
 });
