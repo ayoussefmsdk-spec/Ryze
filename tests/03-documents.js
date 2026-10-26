@@ -215,6 +215,18 @@ H.executer(async () => {
   const px = await H.pdf(X.page, `export-carnet-${dIV.id}`);
   t('export ouvert hors ligne : polices et logo chargés sans réseau, même nombre de pages que dans l’application', ouvert.police && ouvert.nom && ouvert.logo && X.reseau.length === 0 && px.pages === pagesCarnet[dIV.id], { ouvert, reseau: X.reseau, pages: [px.pages, pagesCarnet[dIV.id]] });
   await X.context.close();
+  /* fichier .html de chaque type de document (R.docExport, après chargement des polices intégrées) */
+  await page.evaluate(() => new Promise(r => window.RYZE.chargerPolicesExport(r)));
+  const koX = [];
+  for (const [r, par] of [['carnet', { id: D[2].id }], ['impression', { id: D[3].id, quoi: 'seances' }], ['impression', { id: D[1].id, quoi: 'bilans' }], ['impression', { id: D[0].id, quoi: 'planification' }], ['compteRendu', { id: D[3].id }], ['carnetPatient', { id: D[2].id }], ['carnetPatient', { id: 'vierge' }], ['activite', {}], ['feuillePlanning', { vue: 'jour' }], ['feuillePlanning', { vue: 'semaine' }]]) {
+    await H.aller(page, r, par);
+    const e = await page.evaluate(() => { const x = window.RYZE.docExport(); if (!x) return null; const div = document.createElement('div'); div.innerHTML = x.html.replace(/<style[\s\S]*?<\/style>/g, ''); return { nom: x.nom, autorise: window.RYZE.can(x.droit, 'r'), polices: /url\(data:font\/woff2;base64,/.test(x.html), texte: div.textContent }; });
+    const lib = `${r}${par.quoi || par.vue ? ' ' + (par.quoi || par.vue) : ''}`;
+    if (!e) { koX.push(`${lib} : aucun export`); continue; }
+    garder(`export ${lib}`, e.texte);
+    if (!(/^Ryze_[A-Za-z-]+(_[A-Za-z0-9-]+)*_\d{4}-\d{2}-\d{2}\.html$/.test(e.nom) && e.autorise && e.polices && e.texte.length > 500)) koX.push(`${lib} : ${e.nom} (${e.texte.length} car.)`);
+  }
+  t('fichier .html de chacun des 10 types de document : nom daté, polices intégrées, contenu complet', !koX.length, koX);
 
   /* ---------------- Couleur / noir et blanc ---------------- */
   H.section('Impression couleur et noir et blanc');

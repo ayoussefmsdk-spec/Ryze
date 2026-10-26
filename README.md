@@ -52,7 +52,7 @@ Paquet à copier sur le PC : un dossier `HDJ\` contenant `app\` (tout le dossier
 ## Tests
 
 ```bash
-bash tests/run.sh          # toutes les suites (≈ 20 s) ; bash tests/run.sh 03 pour une partie
+bash tests/run.sh          # toutes les suites (≈ 25 s) ; bash tests/run.sh 03 pour une partie
 ```
 
 Suites de non-régression dans `tests/` (Playwright + Chromium, application ouverte en `file://`) : `01-base` (connexion, droits, sauvegarde, export / import, base vide, migration, identité de l'établissement), `02-dossier` (assistant IV / SC, séances, notes, contrôles et cibles de dosage, suspension, changement de protocole, corrections tracées), `03-documents` (carnets, impressions, compte rendu, carnet patient 8 pages A5, rapport, planning, exports, couleur / noir et blanc), `04-hors-ligne` (tout sans réseau). Une ligne de résultat par suite, code de sortie 1 au moindre échec ; PDF et journaux dans `tests/out/` (ignoré par git). Prérequis, détail des contrôles et règle « jamais de données réelles » : [`tests/README.md`](tests/README.md).
