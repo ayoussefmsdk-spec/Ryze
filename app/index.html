@@ -624,6 +624,11 @@ html.imp-couleur .ca4-epingles{border-color:var(--imp-acc)}html.imp-couleur .ca4
 .impr .doc-courbes{gap:6px}
 @media print{.impr-fin{break-inside:avoid}.impr .doc-secu,.impr .doc-afaire,.impr-synth,.impr-premiere{break-inside:avoid}.impr-seances tr.impr-sep{break-after:avoid}}
 .impr-clin td.impr-mes{text-align:right} /* examens cliniques : poids, taille et IMC alignés à droite (colonnes présentes seulement quand une valeur existe) */
+/* impression de la planification : section « Contrôles et examens » (R.impressionControles) — remarques saisies avec leurs retours à la ligne, résumé en minuscules dans le titre, titre et lignes jamais coupés */
+.impr .ca4-ctrl-note,.impr .doc-tdm-note{white-space:pre-line}
+.impr-ctrl-res{text-transform:none;letter-spacing:0;font-weight:400;font-size:8.5pt;color:#4E5E59;margin-left:4px}
+.impr-ctrl td.impr-fait-c{font-size:8pt}.impr-ctrl td.impr-rem{font-size:8.5pt}
+@media print{.impr-ctrl-h{break-after:avoid}.impr-ctrl tr{break-inside:avoid}}
 /* ===== @compte-rendu ===== */
 .cr .doc-h2{margin:9px 0 4px;padding-bottom:2px}
 .cr-tete{font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:9pt;line-height:1.35;color:var(--doc-ink);border-bottom:1px solid var(--doc-line);padding-bottom:4px}

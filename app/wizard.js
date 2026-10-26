@@ -710,24 +710,25 @@
       if (s.statut === 'prevue') return (!!s.echeance && s.echeance <= t) || (avenir && apres(s.echeance));
       if (s.statut === 'annulee') { if (s.annuleAuto) return false; const d = s.annuleLe || s.echeance; return C.aReprog(s) || dans(d) || (avenir && apres(d)); }
       return false; };
-    const dateTri = s => String(s.echeance || s.dateFaite || s.annuleLe || '9999-12-31');
+    /* ordre chronologique : date prévue (contrôle fait en avance : date où il a été fait) ; la ligne « À venir » sépare ce qui tombe après aujourd'hui */
+    const dateTri = s => { const e = s.echeance || '', f = s.statut === 'faite' ? s.dateFaite || '' : ''; return String((f && (!e || f < e) ? f : e) || s.annuleLe || '9999-12-31'); };
     const L = surv.filter(garde).sort((a, b) => dateTri(a).localeCompare(dateTri(b)) || String(a.dateFaite || '').localeCompare(String(b.dateFaite || '')));
     if (!L.length) return '';
     const fd = d => d ? fdI(d) : '—';
     const ligne = s => { const fait = s.statut === 'faite', cib = C.cibleCtrl(s), mut = [s.cat || '', cib ? 'cible ' + cib : ''].filter(Boolean).join(' · ');
       return `<tr class="${fait ? 'impr-fait' : 'impr-non'}"><td class="m">${fd(s.echeance)}<br><span class="impr-mut">${esc(R.libelleControle(s.jour || 0))}</span></td><td><b>${esc(C.libCtrl(s))}</b>${C.avantTxt(s)}${mut ? `<div class="impr-mut">${esc(mut)}</div>` : ''}</td><td class="impr-fait-c">${C.faitPlanif(s)}</td><td class="impr-rem${C.horsTdm(s) ? ' tdm-hors' : ''}">${C.remCtrl(s, { planif: true })}</td><td>${C.parCtrl(s)}</td></tr>`; };
     const sep = txt => `<tr class="impr-sep"><td colspan="5">${txt}</td></tr>`;
-    const passes = L.filter(s => !(s.statut === 'prevue' && apres(s.echeance))), futurs = L.filter(s => s.statut === 'prevue' && apres(s.echeance));
+    const passes = L.filter(s => dateTri(s) <= t), futurs = L.filter(s => dateTri(s) > t), prevF = futurs.filter(s => s.statut === 'prevue' && s.echeance);
     const rows = passes.map(ligne);
-    if (futurs.length && passes.length) rows.push(sep(`À venir — ${R.pluriel(futurs.length, 'contrôle prévu', 'contrôles prévus')}${futurs[futurs.length - 1].echeance ? ` (jusqu’au ${fdI(futurs[futurs.length - 1].echeance)})` : ''}`));
+    if (futurs.length && passes.length) rows.push(sep(`À venir${prevF.length ? ` — ${R.pluriel(prevF.length, 'contrôle prévu', 'contrôles prévus')} (jusqu’au ${fdI(prevF[prevF.length - 1].echeance)})` : ''}`));
     futurs.forEach(s => rows.push(ligne(s)));
     const nFait = L.filter(s => s.statut === 'faite').length, nRet = L.filter(C.enRetard).length, nPrev = L.filter(s => s.statut === 'prevue').length - nRet, nAnn = L.filter(s => s.statut === 'annulee').length;
     const resume = [nFait ? R.pluriel(nFait, 'contrôle fait', 'contrôles faits') : '', nRet ? `<span class="st-af"><b>${R.pluriel(nRet, 'contrôle en retard', 'contrôles en retard')}</b></span>` : '', nPrev ? R.pluriel(nPrev, 'contrôle prévu', 'contrôles prévus') : '', nAnn ? R.pluriel(nAnn, 'contrôle annulé', 'contrôles annulés') : ''].filter(Boolean).join(' · ');
-    const colg = '<colgroup><col style="width:20mm"><col style="width:50mm"><col style="width:27mm"><col><col style="width:20mm"></colgroup>';
+    const colg = '<colgroup><col style="width:20mm"><col style="width:60mm"><col style="width:25mm"><col><col style="width:20mm"></colgroup>';
     const tete = '<thead><tr><th>Date prévue</th><th>Contrôle</th><th>Fait</th><th>Résultat · remarque</th><th>Visa</th></tr></thead>';
     const table = (R2, avecTete) => R2.length ? `<div class="impr-defil"><table class="doc-table impr-seances impr-ctrl">${colg}${avecTete ? tete : ''}<tbody>${R2.join('')}</tbody></table></div>` : '';
     const nFin = Math.min(3, rows.length), corps = rows.slice(0, rows.length - nFin), dern = rows.slice(rows.length - nFin);
-    return `<div class="doc-h2">Contrôles et examens <span class="ui impr-ctrl-res">${resume}</span></div>${table(corps, true)}
+    return `<div class="doc-h2 impr-ctrl-h">Contrôles et examens <span class="ui impr-ctrl-res">${resume}</span></div>${table(corps, true)}
       <div class="impr-fin">${table(dern, !corps.length)}${fin || ''}</div>`;
   };
   /* ---------- Planification complète (carnet unifié) : historique des séances, puis contrôles et examens, une seule signature ---------- */
