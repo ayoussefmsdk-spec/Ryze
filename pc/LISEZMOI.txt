@@ -28,6 +28,8 @@ Installation et utilisation sur un PC Windows (sans Internet, sans serveur)
     app\                l'application elle-même
     donnees\            LA BASE, créé à la première ouverture : ne jamais
                         le supprimer
+  (Windows masque souvent « .bat » : HDJ.bat apparaît comme « HDJ », type
+  « Fichier de commandes Windows ».)
 
 
 2. INSTALLATION (5 étapes, environ 5 minutes)
@@ -36,13 +38,18 @@ Installation et utilisation sur un PC Windows (sans Internet, sans serveur)
      disque du PC : de préférence C:\HDJ (possible sans droits
      administrateur), sinon dans Documents, si ce dossier n'est pas
      synchronisé par OneDrive.
-     Vous avez reçu HDJ-PC.zip : clic droit sur le fichier > « Extraire
-     tout… », puis copier le dossier HDJ obtenu. Ne pas travailler depuis
-     la clé USB ni depuis l'intérieur du zip.
+     Vous avez reçu HDJ-PC.zip : clic droit sur le fichier > Propriétés >
+     cocher « Débloquer » s'il apparaît (en bas) > OK ; puis clic droit >
+     « Extraire tout… », et copier le dossier HDJ obtenu dans C:\ (il
+     devient C:\HDJ, chemin sans accent). Ne pas travailler depuis la clé
+     USB, Téléchargements, ni l'intérieur du zip.
 
   2) Ouvrir C:\HDJ et double-cliquer sur Installer.bat.
      Si Windows affiche « Windows a protégé votre ordinateur » : cliquer
      « Informations complémentaires », puis « Exécuter quand même ».
+     Si plusieurs personnes ont chacune leur compte Windows sur ce PC :
+     chaque compte Windows lance Installer.bat une fois (l'icône est créée
+     pour le compte ouvert ; la base, dans C:\HDJ\donnees, reste commune).
 
   3) L'icône « HDJ » (emblème du GST Casablanca-Settat) apparaît sur le
      Bureau et dans le menu Démarrer. C'est toujours par elle qu'on ouvre HDJ.
@@ -52,12 +59,18 @@ Installation et utilisation sur un PC Windows (sans Internet, sans serveur)
      Au départ, la base contient des patients FICTIFS de démonstration :
        - pour reprendre une base existante : se connecter avec le code
          CHEF01, ouvrir Paramètres (roue dentée en haut à droite) >
-         « Importer un fichier », choisir le fichier de sauvegarde (.json),
-         mode « Remplacer toute la base », puis se reconnecter avec son
-         propre code ;
+         « Importer un fichier », choisir le fichier de sauvegarde (.json,
+         obtenu dans l'ancienne installation ou sur le lien : Paramètres >
+         « Exporter la base »), mode « Remplacer toute la base », puis se
+         reconnecter avec son propre code ;
        - pour partir de zéro : cliquer « Démarrer avec une base vide » sur
          l'écran de connexion. Un nouveau code d'accès complet s'affiche
          une seule fois : le noter.
+     Vérifier ensuite (1 minute) : fermer la fenêtre HDJ, la rouvrir par
+     l'icône, se reconnecter : les patients importés (ou, pour une base
+     vide, le nouveau code) doivent toujours être là. Sinon, le navigateur
+     efface ses données à la fermeture (réglage du service informatique) :
+     ne pas utiliser HDJ sur ce PC, prévenir l'informatique.
 
   5) Avec un accès complet, régler une fois pour toutes :
        - Équipe & codes (menu de gauche) : un code d'accès personnel par
@@ -66,7 +79,8 @@ Installation et utilisation sur un PC Windows (sans Internet, sans serveur)
        - Paramètres > Établissement : chef de service, téléphone de l'HDJ
          et des urgences (imprimés sur les carnets des patients) ;
        - Paramètres > Capacité de l'hôpital de jour : fauteuils, horaires,
-         jours d'ouverture ;
+         jours d'ouverture, puis cliquer « Enregistrer » (sous le cadre
+         Établissement) ;
        - Paramètres > Sauvegarde automatique sur le disque : choisir le
          dossier de sauvegarde (voir 4).
 
@@ -75,20 +89,28 @@ Installation et utilisation sur un PC Windows (sans Internet, sans serveur)
 ---------------------------
   - Ouvrir HDJ par l'icône du Bureau (toujours la même) et entrer son code
     personnel. Se déconnecter en quittant le poste (en haut à droite).
-  - Tout est enregistré immédiatement, à chaque action : il n'y a pas de
-    bouton « Enregistrer ». On peut fermer la fenêtre à tout moment.
+  - Chaque saisie est enregistrée dès qu'on la valide (bouton
+    « Enregistrer », « Valider »…), sans fichier à gérer. Un formulaire
+    non validé est perdu si l'on change de page ou ferme la fenêtre.
   - Tableau de bord : séances et contrôles du jour et de la semaine,
     retards et alertes. Planning HDJ : mois, journée, semaine et feuille de
     planning à imprimer. Patients : dossier, séances, surveillance, bilan,
     notes, carnets, compte rendu.
-  - Imprimer : le bouton Imprimer ouvre la fenêtre d'impression de Windows
-    (imprimante du service, ou « Enregistrer au format PDF »). Télécharger
-    enregistre le document dans Téléchargements (fichier .html autonome,
-    qui s'ouvre et s'imprime sans Internet).
-  - Carnet patient (A5, français / arabe) : marges « Aucune »,
-    « Graphiques d'arrière-plan » coché, recto verso sur le bord long ; ou
-    la « Vue A4 recto-verso » pour un carnet plié (A4 paysage, retournement
-    sur le bord court).
+  - Imprimer : le bouton Imprimer ouvre la fenêtre d'impression du
+    navigateur (imprimante du service, ou « Enregistrer au format PDF »).
+    Télécharger enregistre le document dans Téléchargements (fichier .html
+    autonome, qui s'ouvre et s'imprime sans Internet).
+  - Dans la fenêtre d'impression d'Edge : Plus de paramètres > décocher
+    « En-têtes et pieds de page » (une seule fois, le réglage est
+    mémorisé) et garder Marges : Par défaut.
+  - Carnet patient (français / arabe) : choisir « Vue A4 recto-verso »
+    (A4 paysage, retournement sur le bord court, puis plier en deux) sauf
+    si l'imprimante a du papier A5 (alors recto verso sur le bord long) ;
+    faire un essai sur une feuille.
+  - Edge 131 ou plus récent est conseillé pour que les numéros de page et
+    l'identité du patient s'impriment sur les pages suivantes ; Edge 87
+    minimum. Vérifier la version dans edge://version (chrome://version
+    pour Chrome).
 
 
 4. SAUVEGARDES — OÙ SONT LES DONNÉES
@@ -108,9 +130,19 @@ Installation et utilisation sur un PC Windows (sans Internet, sans serveur)
      réseau du service ou une clé USB laissée branchée. HDJ y écrit
      lui-même la base après chaque modification (ryze-base.json) et une
      copie datée par jour (ryze-sauvegarde-AAAA-MM-JJ.json).
-     Après un redémarrage du PC, le navigateur redemande l'autorisation
-     d'écrire : Paramètres > « Réactiver (autoriser l'écriture) », puis
-     « Autoriser » (ou « Autoriser à chaque visite » si proposé).
+     À chaque réouverture de HDJ (pas seulement après un redémarrage),
+     l'autorisation d'écrire est redemandée à la connexion : cliquer
+     « Autoriser » (ou « Autoriser à chaque visite » si proposé), sinon
+     Paramètres > « Réactiver (autoriser l'écriture) ». Tant que personne
+     n'a cliqué, la sauvegarde automatique est arrêtée et une alerte
+     l'indique sur le tableau de bord.
+     Sécurités : avant tout remplacement de la base (import en mode
+     « Remplacer toute la base », par exemple), HDJ écrit d'abord dans ce
+     dossier une copie de la base actuelle, « ryze-avant-… », qui peut se
+     réimporter comme une sauvegarde. Les copies datées récentes sont
+     toutes gardées ; au-delà, HDJ ne garde que la plus ancienne copie de
+     chaque mois. Une alerte apparaît si la clé ou le dossier de
+     sauvegarde est introuvable (clé USB retirée, par exemple).
   2) Export, chaque semaine et avant toute mise à jour : Paramètres >
      « Exporter la base » enregistre ryze-sauvegarde-AAAA-MM-JJ.json dans
      Téléchargements. Copier ce fichier sur une clé USB rangée ailleurs.
@@ -123,8 +155,9 @@ Installation et utilisation sur un PC Windows (sans Internet, sans serveur)
   Avant tout : Paramètres > « Exporter la base » (voir 4).
 
   Méthode simple (recommandée) :
-  1) Décompresser le nouveau HDJ-PC.zip sur la clé USB (ou ailleurs, mais
-     PAS dans le dossier HDJ installé).
+  1) Débloquer le nouveau HDJ-PC.zip (Propriétés, comme en 2, étape 1),
+     puis le décompresser sur la clé USB (ou ailleurs, mais PAS dans le
+     dossier HDJ installé).
   2) Fermer HDJ.
   3) Dans le NOUVEAU dossier HDJ, double-cliquer sur Mettre-a-jour.bat.
      Il retrouve le dossier HDJ installé (noté par Installer.bat) ou le
@@ -143,8 +176,10 @@ Installation et utilisation sur un PC Windows (sans Internet, sans serveur)
 
   Revenir à la version précédente : HDJ fermé, supprimer app et renommer
   app-ancien-AAAAMMJJ en app. Si la nouvelle version a déjà mis la base à
-  niveau, l'ancienne peut refuser de l'ouvrir : importer alors l'export
-  fait avant la mise à jour.
+  niveau, l'ancienne peut refuser de l'ouvrir : cliquer « Continuer avec
+  une base neuve », se connecter avec CHEF01, puis importer l'export fait
+  avant la mise à jour (Paramètres > « Importer un fichier » >
+  « Remplacer toute la base »).
 
 
 6. PROBLÈMES FRÉQUENTS
@@ -184,5 +219,6 @@ Installation et utilisation sur un PC Windows (sans Internet, sans serveur)
 
 7. VERSION
 ----------
-  Paquet HDJ 1.0 du 12 octobre 2026 — application Ryze (format de la base :
-  version 12), pour Windows 10 et 11 avec Microsoft Edge ou Google Chrome.
+  Paquet HDJ 1.0 du 26/10/2026 — application Ryze (format de la base :
+  version 12), pour Windows 10 et 11 avec Microsoft Edge ou Google Chrome
+  (version 131 ou plus récente conseillée, 87 au minimum).

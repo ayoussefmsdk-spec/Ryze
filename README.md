@@ -24,18 +24,23 @@ Le dossier `pc/` contient de quoi installer l'application comme un logiciel du s
 ```
 pc/
   HDJ.bat            lance HDJ dans une fenêtre d'application (moteur d'Edge ou de Chrome, mode --app,
-                     1280 × 860), profil et données dans le sous-dossier « donnees » ; reprend toujours
-                     le navigateur déjà utilisé avec ces données (donnees\navigateur.txt), sinon Edge, sinon Chrome
+                     --start-maximized, --lang=fr pour les champs de date), profil et données dans le
+                     sous-dossier « donnees » ; adresse file:/// encodée en ASCII par PowerShell (chemin
+                     avec accent accepté, repli sur une simple conversion) ; reprend toujours le navigateur
+                     déjà utilisé avec ces données (donnees\navigateur.txt, jamais réécrit lors d'un repli),
+                     sinon Edge, sinon Chrome ; messages d'erreur dans une boîte de dialogue au premier plan
   Installer.bat      crée le raccourci « HDJ » (icône hdj.ico, cible HDJ.bat) sur le Bureau et dans le menu
                      Démarrer, débloque les fichiers du paquet, note l'emplacement du dossier
-                     (%LOCALAPPDATA%\HDJ\chemin.txt) ; avertit si le dossier est sur une clé USB, le réseau ou OneDrive
+                     (%LOCALAPPDATA%\HDJ\chemin.txt) ; avertit si le dossier est sur une clé USB, le réseau
+                     (UNC), OneDrive, dans Téléchargements ou le dossier temporaire (pas d'avertissement si
+                     PowerShell est restreint) ; à lancer une fois par compte Windows
   Mettre-a-jour.bat  lancé depuis un nouveau paquet décompressé : remplace le dossier app du HDJ installé
                      (l'ancien est gardé en app-ancien-AAAAMMJJ), sans jamais toucher au dossier donnees
   hdj.ico, hdj.png   icône multi-taille (256, 64, 48, 32, 16 px) tirée de l'emblème du GST Casablanca-Settat
   LISEZMOI.txt       mode d'emploi : installation, usage, sauvegardes, mise à jour, problèmes fréquents
 ```
 
-Paquet à copier sur le PC : un dossier `HDJ\` contenant `app\` (tout le dossier, `etablissement.js` et `fonts\` compris) et le contenu de `pc/`. Le copier dans `C:\HDJ`, lancer `Installer.bat`, puis ouvrir HDJ par l'icône du Bureau (importer la base depuis Paramètres, ou démarrer avec une base vide). Avec `etablissement.js`, la fenêtre s'intitule « HDJ — Hôpital de jour · Biothérapies » et prend l'emblème du GST comme icône (`R.appliquerIdentiteFenetre`, core.js) ; sans lui (démonstration publique), titre et icône Ryze inchangés. Les fichiers `.bat` sont en ASCII et en CRLF, `LISEZMOI.txt` en UTF-8 avec BOM et CRLF (voir `.gitattributes`). La **sauvegarde automatique sur le disque** (Paramètres) écrit la base dans un dossier choisi après chaque modification (`ryze-base.json` + une copie datée par jour) ; les documents exportés embarquent les polices et s'impriment hors ligne.
+Paquet à copier sur le PC : un dossier `HDJ\` contenant `app\` (tout le dossier, `etablissement.js` et `fonts\` compris) et le contenu de `pc/`. Le copier dans `C:\HDJ` (chemin sans accent conseillé, zip débloqué dans ses Propriétés avant « Extraire tout »), lancer `Installer.bat`, puis ouvrir HDJ par l'icône du Bureau (importer la base depuis Paramètres, ou démarrer avec une base vide). Impression : décocher une fois « En-têtes et pieds de page » (Plus de paramètres) et garder les marges par défaut ; Edge 87 minimum, Edge 131 ou plus récent conseillé (numéros de page et identité du patient sur les pages suivantes, boîtes de marge `@page`). Avec `etablissement.js`, la fenêtre s'intitule « HDJ — Hôpital de jour · Biothérapies » et prend l'emblème du GST comme icône (`R.appliquerIdentiteFenetre`, core.js) ; sans lui (démonstration publique), titre et icône Ryze inchangés. Les fichiers `.bat` sont en ASCII et en CRLF, `LISEZMOI.txt` en UTF-8 avec BOM et CRLF (voir `.gitattributes`). La **sauvegarde automatique sur le disque** (Paramètres) écrit la base dans un dossier choisi après chaque modification (`ryze-base.json` + une copie datée par jour) ; les documents exportés embarquent les polices et s'impriment hors ligne.
 
 ## Modules
 

@@ -19,14 +19,16 @@ if not exist "%HDJ_RACINE%\hdj.ico" goto incomplet
 if not exist "%HDJ_RACINE%\app\index.html" goto incomplet
 
 rem --- le dossier doit etre sur le disque du PC : pas une cle USB, pas le reseau,
-rem     pas OneDrive (la base, ecrite en continu, y serait synchronisee) ---
-powershell -NoProfile -ExecutionPolicy Bypass -Command "try { if ($env:HDJ_RACINE -like '*\OneDrive*') { exit 4 }; if (([IO.DriveInfo]([IO.Path]::GetPathRoot($env:HDJ_RACINE))).DriveType -eq 'Fixed') { exit 0 } else { exit 3 } } catch { exit 3 }" 2>nul
+rem     pas OneDrive (la base, ecrite en continu, y serait synchronisee), pas
+rem     Telechargements ni le dossier temporaire (zip ouvert sans extraction).
+rem     PowerShell restreint ou en erreur : pas d'avertissement ---
+powershell -NoProfile -ExecutionPolicy Bypass -Command "try { if ($env:HDJ_RACINE -like '*\OneDrive*') { exit 4 }; if ($env:HDJ_RACINE -like '\\*' -or $env:HDJ_RACINE -like '*\Downloads\*' -or $env:HDJ_RACINE -like '*\AppData\Local\Temp\*') { exit 3 }; if (([IO.DriveInfo]([IO.Path]::GetPathRoot($env:HDJ_RACINE))).DriveType -eq 'Fixed') { exit 0 } else { exit 3 } } catch { exit 0 }" 2>nul
 if errorlevel 5 goto creer
 if errorlevel 4 goto onedrive
 if not errorlevel 3 goto creer
 echo.
-echo  ATTENTION : ce dossier HDJ n'est pas sur le disque du PC
-echo  (cle USB, lecteur reseau ou CD) : la base y serait enregistree.
+echo  ATTENTION : ce dossier HDJ n'est pas au bon endroit (Telechargements,
+echo  cle USB, lecteur reseau ou CD) : la base y serait enregistree.
 goto conseil
 :onedrive
 echo.
@@ -79,9 +81,10 @@ goto fin
 :echec
 echo.
 echo  Le raccourci n'a pas pu etre cree. Vous pouvez lancer HDJ en double-cliquant
-echo  sur HDJ.bat dans ce dossier, ou creer le raccourci a la main :
-echo  clic droit sur HDJ.bat, Envoyer vers, Bureau (creer un raccourci) ; puis
-echo  clic droit sur le raccourci, Proprietes, Changer d'icone, choisir hdj.ico.
+echo  sur HDJ.bat dans ce dossier, ou creer le raccourci a la main : clic droit
+echo  sur HDJ.bat (Windows 11 : Afficher d'autres options), Envoyer vers,
+echo  Bureau (creer un raccourci) ; puis clic droit sur le raccourci,
+echo  Proprietes, Changer d'icone, Parcourir, choisir hdj.ico.
 goto fin
 
 :incomplet
