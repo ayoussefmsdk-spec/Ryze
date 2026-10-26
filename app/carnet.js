@@ -46,7 +46,8 @@
   const bi2 = (v, cls, vals) => v ? `<div class="bi2${cls ? ' ' + cls : ''}"><div class="fr">${insec(remplir(esc(fr(v)), vals, 'fr'))}</div>${ar(v) ? `<div class="ar" lang="ar" dir="rtl">${insec(remplir(esc(ar(v)), vals, 'ar'))}</div>` : ''}</div>` : '';
   const fill = () => '<span class="fill"></span>';
   /* ligne « libellé : valeur » ; valeur : chaîne (échappée, ou LTR isolée), paire bilingue, ou vide (ligne à compléter) */
-  const champ = (label, val, o = {}) => `<div class="f${o.cls ? ' ' + o.cls : ''}${typeof val === 'string' && val.length > 42 ? ' long' : ''}"><span class="lab">${bi(label)}</span><span class="val${val ? '' : ' libre'}">${val ? (typeof val === 'object' ? bi(val) : o.html ? val : (o.ltr ? ltr(val) : esc(val))) : ''}</span></div>`;
+  const champ = (label, val, o = {}) => { if (val && typeof val === 'object' && !fr(val) && !ar(val)) val = ''; return champ0(label, val, o); }; /* valeur bilingue vide (maladie non renseignée) = champ libre */
+const champ0 = (label, val, o = {}) => `<div class="f${o.cls ? ' ' + o.cls : ''}${typeof val === 'string' && val.length > 42 ? ' long' : ''}"><span class="lab">${bi(label)}</span><span class="val${val ? '' : ' libre'}">${val ? (typeof val === 'object' ? bi(val) : o.html ? val : (o.ltr ? ltr(val) : esc(val))) : ''}</span></div>`;
   const titreBloc = (v, cls) => `<h3 class="bt${cls ? ' ' + cls : ''}">${bi(v)}</h3>`;
   const chk = on => `<span class="chk${on ? ' coche' : ''}">${on ? '✓' : ''}</span>`; /* case à cocher ; cochée pour ce qui est déjà fait */
   const pre = h => `<span class="pre">${h}</span>`;
@@ -118,7 +119,7 @@
     const dateDiag = p.dateDiag && !isNaN(R.parse(p.dateDiag)) && String(p.dateDiag) <= c.t ? R.fmtDate(p.dateDiag, { month: '2-digit', year: 'numeric' }) : '';
     /* valeurs longues (allergies, prémédication, nom, « Comment » d'un protocole IV puis SC, DCI longue) : présentation resserrée dès l'estimation ; R.carnetPatientAjuster vérifie ensuite à l'affichage */
     const long = [allergies, premed].reduce((a, x) => a + String(x || '').length, 0) + Math.max(0, (p.prenom || '').length + (p.nom || '').length - 28) * 3 + Math.max(0, fr(commentBi(c)).length + ar(commentBi(c)).length - 60) + Math.max(0, String(c.dci || '').length - 14) * 2;
-    return `<section class="page p1${long > 150 ? ' dense' : ''}">
+    return `<section class="page p1${long > 150 ? ' dense' : ''}${p.vierge ? ' vierge' : ''}">
       <header class="couv">${R.logoHTML('lv-logo')}<div class="couv-etab">${e.etablissement ? `<span>${esc(e.etablissement)}</span>` : ''}${e.hopital ? `<b class="hop">${esc(e.hopital)}</b>` : ''}${etabLignes(e).map(x => `<span>${esc(x)}</span>`).join('')}<span class="couv-hdj">${esc(e.hdj)}</span></div></header>
       <div class="couv-titre"><div class="titre">${bi(Lv.titre)}</div></div>
       <div class="nom-band"><div class="nom">${p.vierge ? `<span class="vierge-l">${bi(par.nom)} ${fill()}</span> <span class="ipp vierge-ipp">${bi({ fr: 'N° de dossier', ar: ar(Lv.dossierNo) })} ${fill()}</span>` : `${nomPatient(p)}${p.ipp ? ` <span class="ipp">${bi(Lv.dossierNo)} ${ltr(p.ipp)}</span>` : ''}`}</div>
@@ -342,6 +343,8 @@ html.imp-nb .livret{--lv-soft:transparent}
 .livret .f{display:flex;flex-wrap:wrap;gap:0 1.5mm;padding:.8mm 0;border-bottom:.25pt dotted var(--lv-line);align-items:baseline;min-height:5.2mm;font-size:8pt}
 .livret .f .lab{flex:0 1 auto;color:var(--lv-ink2)}
 .livret .f .val{flex:1 1 18mm;font-weight:500}
+/* carnet vierge : chaque information a sa ligne d'écriture sous son libellé */
+.livret .p1.vierge .f{flex-direction:column;align-items:stretch;gap:0;border-bottom:0;padding:.6mm 0 .4mm}.livret .p1.vierge .f .val.libre{display:block;flex:none;height:5.6mm;border-bottom:.45pt solid var(--lv-ink2)}.livret .p1.vierge .medecin-l .fill{min-width:60mm}
 .livret .f.long .val{flex-basis:100%} /* valeur longue (allergies, prémédication) : sous le libellé, sur toute la largeur */
 .livret .fill{display:inline-block;min-width:14mm;border-bottom:.3pt solid var(--lv-ink2);height:1em;vertical-align:baseline;flex:1}
 .livret .chk{display:inline-flex;align-items:center;justify-content:center;width:3.8mm;height:3.8mm;border:.45pt solid var(--lv-ink);border-radius:.5mm;vertical-align:-0.9mm;margin-right:.6mm;background:#fff;font-size:8.5pt;line-height:1;color:var(--lv-ink);font-style:normal}

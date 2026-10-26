@@ -205,8 +205,8 @@ window.RYZE.LIVRET = {
     "ar": "نوع الدواء"
    },
    "tt-comment": {
-    "fr": "Comment",
-    "ar": "طريقة العلاج"
+    "fr": "Voie du traitement",
+    "ar": "طريقة إعطاء العلاج"
    },
    "tt-rythme": {
     "fr": "Rythme",
@@ -1454,6 +1454,11 @@ window.RYZE.LIVRET = {
   }
  ],
  "_aValider": [
+  {
+   "cle": "p1.traitement.tt-comment",
+   "fr": "Voie du traitement",
+   "ar": "طريقة إعطاء العلاج"
+  },
   {
    "cle": "p1.voies.SC",
    "fr": "Injection sous la peau, à l’hôpital de jour",
