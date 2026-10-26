@@ -17,7 +17,7 @@
       if (f.patho) list = list.filter(p => p.pathologie === f.patho); if (f.proto) list = list.filter(p => p.protocoleId === f.proto); if (f.statut) list = list.filter(p => p.statut === f.statut); else if (!q) list = list.filter(p => p.statut !== 'termine');
       list.sort((a, b) => a.nom.localeCompare(b.nom));
       return `<div class="page-head"><div><h1>Patients</h1><p>${S.patients.length} dossiers · ${S.patients.filter(p => p.statut === 'induction').length} en induction · ${S.patients.filter(p => p.statut === 'suspendu').length} suspendu(s)</p></div>
-        <div class="page-actions">${R.can('dossier', 'w') ? `<button class="btn primary" data-go="nouveau">${R.icon('plus')}Nouveau dossier</button>` : ''}</div></div>
+        <div class="page-actions">${R.can('carnet', 'r') ? `<button class="btn" data-go="carnetPatient" data-params='${R.params({ id: 'vierge' })}' title="Carnet patient à remplir à la main (nom, dates, doses), à imprimer en A5 ou en A4 recto-verso">Carnet patient vierge</button>` : ''}${R.can('dossier', 'w') ? `<button class="btn primary" data-go="nouveau">${R.icon('plus')}Nouveau dossier</button>` : ''}</div></div>
       <div class="toolbar"><input type="search" id="f-q" name="q" placeholder="Nom, prénom ou IPP" value="${esc(f.q || '')}" data-input="filtrePatients" style="min-width:240px">
         <select name="patho" data-change="filtrePatients"><option value="">Toutes pathologies</option>${opt(Object.keys(R.PATHOS), k => k, k => R.PATHOS[k].label, f.patho)}</select>
         <select name="proto" data-change="filtrePatients"><option value="">Toutes biothérapies</option>${opt(S.protocoles, p => p.id, p => p.dci, f.proto)}</select>

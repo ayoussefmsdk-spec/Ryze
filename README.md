@@ -19,7 +19,7 @@ Ouvrir `app/index.html` dans un navigateur suffit : aucune dépendance, aucun se
 
 ## Installation sur un poste de travail (Windows) — paquet « HDJ »
 
-Le dossier `pc/` contient de quoi installer l'application comme un logiciel du service, sous le nom **HDJ** et avec le logo du CHU comme icône, sans serveur ni Internet ni droits administrateur :
+Le dossier `pc/` contient de quoi installer l'application comme un logiciel du service, sous le nom **HDJ** et avec l'emblème du Groupement Sanitaire Territorial Casablanca-Settat comme icône, sans serveur ni Internet ni droits administrateur :
 
 ```
 pc/
@@ -31,11 +31,11 @@ pc/
                      (%LOCALAPPDATA%\HDJ\chemin.txt) ; avertit si le dossier est sur une clé USB, le réseau ou OneDrive
   Mettre-a-jour.bat  lancé depuis un nouveau paquet décompressé : remplace le dossier app du HDJ installé
                      (l'ancien est gardé en app-ancien-AAAAMMJJ), sans jamais toucher au dossier donnees
-  hdj.ico, hdj.png   icône multi-taille (256, 64, 48, 32, 16 px) tirée du logo du CHU
+  hdj.ico, hdj.png   icône multi-taille (256, 64, 48, 32, 16 px) tirée de l'emblème du GST Casablanca-Settat
   LISEZMOI.txt       mode d'emploi : installation, usage, sauvegardes, mise à jour, problèmes fréquents
 ```
 
-Paquet à copier sur le PC : un dossier `HDJ\` contenant `app\` (tout le dossier, `etablissement.js` et `fonts\` compris) et le contenu de `pc/`. Le copier dans `C:\HDJ`, lancer `Installer.bat`, puis ouvrir HDJ par l'icône du Bureau (importer la base depuis Paramètres, ou démarrer avec une base vide). Avec `etablissement.js`, la fenêtre s'intitule « HDJ — Hôpital de jour · Biothérapies » et prend le logo du CHU comme icône (`R.appliquerIdentiteFenetre`, core.js) ; sans lui (démonstration publique), titre et icône Ryze inchangés. Les fichiers `.bat` sont en ASCII et en CRLF, `LISEZMOI.txt` en UTF-8 avec BOM et CRLF (voir `.gitattributes`). La **sauvegarde automatique sur le disque** (Paramètres) écrit la base dans un dossier choisi après chaque modification (`ryze-base.json` + une copie datée par jour) ; les documents exportés embarquent les polices et s'impriment hors ligne.
+Paquet à copier sur le PC : un dossier `HDJ\` contenant `app\` (tout le dossier, `etablissement.js` et `fonts\` compris) et le contenu de `pc/`. Le copier dans `C:\HDJ`, lancer `Installer.bat`, puis ouvrir HDJ par l'icône du Bureau (importer la base depuis Paramètres, ou démarrer avec une base vide). Avec `etablissement.js`, la fenêtre s'intitule « HDJ — Hôpital de jour · Biothérapies » et prend l'emblème du GST comme icône (`R.appliquerIdentiteFenetre`, core.js) ; sans lui (démonstration publique), titre et icône Ryze inchangés. Les fichiers `.bat` sont en ASCII et en CRLF, `LISEZMOI.txt` en UTF-8 avec BOM et CRLF (voir `.gitattributes`). La **sauvegarde automatique sur le disque** (Paramètres) écrit la base dans un dossier choisi après chaque modification (`ryze-base.json` + une copie datée par jour) ; les documents exportés embarquent les polices et s'impriment hors ligne.
 
 ## Modules
 

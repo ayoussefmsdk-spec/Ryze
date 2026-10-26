@@ -23,7 +23,7 @@
     /* champ vide complété une seule fois (etabComplete) : un champ vidé ensuite dans Paramètres reste vide ; jamais renseigné (undefined) ou valeur de démonstration : complété */
     ['etablissement', 'hopital', 'service', 'unite'].forEach(k => { if (txt(E[k]) && (st[k] == null || st[k] === ETAB_DEMO[k] || (vide(st[k]) && !st.etabComplete))) st[k] = txt(E[k]); if (st[k] == null) st[k] = ''; });
     if (['etablissement', 'hopital', 'service', 'unite'].some(k => txt(E[k]))) st.etabComplete = true;
-    if (!logoValide(st.logo)) st.logo = ''; if (!st.logo && !st.logoRetire && logoValide(E.logo)) st.logo = E.logo;
+    if (!logoValide(st.logo)) st.logo = ''; if (!st.logo && !st.logoRetire && logoValide(E.logo)) st.logo = E.logo; /* ancien logo par défaut (CHU Ibn Rochd, avant le logo du GST Casablanca-Settat) encore en place : remplacé par celui d'etablissement.js ; un logo importé dans Paramètres n'est jamais touché */ if (st.logo && logoValide(E.logo) && st.logo !== E.logo && st.logo.length === 24134 && st.logo.slice(22, 86) === 'iVBORw0KGgoAAAANSUhEUgAAAlgAAADwCAMAAADraOpEAAAAk1BMVEX////6/f31' && st.logo.slice(-64) === 'sxoAib8B8upkXdc+570qFp4MrKrz63oF/5vrf1RiL5Cp3pX5AAAAAElFTkSuQmCC') st.logo = E.logo;
     if (txt(E.etablissement) && st.chef === CHEF_DEMO) st.chef = ''; /* chef de service fictif de la démonstration : jamais imprimé sous l'identité réelle de l'établissement (à saisir dans Paramètres) */
     return s;
   }
@@ -44,6 +44,7 @@
     const E = typeof window !== 'undefined' && window.RYZE_ETABLISSEMENT && typeof window.RYZE_ETABLISSEMENT === 'object' ? window.RYZE_ETABLISSEMENT : null;
     const st = (S && S.settings) || {}, logo = logoValide(st.logo) ? st.logo : E && logoValide(E.logo) ? E.logo : ''; /* logo retiré dans Paramètres : celui d'etablissement.js reste l'icône du paquet */
     document.title = E || logoValide(st.logo) ? TITRE_HDJ : fenetreOrigine.titre;
+    if (logo && E && logo === E.logo && logoValide(E.logoIcone) && iconeCarree.logo !== logo) iconeCarree = { logo, url: E.logoIcone }; /* icône fournie par etablissement.js (emblème carré) */
     const href = logo ? (iconeCarree.logo === logo && iconeCarree.url) || logo : fenetreOrigine.href, type = logo ? (/^data:([^;,]+)/.exec(href) || [])[1] || '' : fenetreOrigine.type;
     if (!lien && href) { lien = document.createElement('link'); lien.rel = 'icon'; document.head.appendChild(lien); }
     if (lien) { if (!href) lien.removeAttribute('href'); else if (lien.getAttribute('href') !== href) lien.setAttribute('href', href); if (type) lien.setAttribute('type', type); else lien.removeAttribute('type'); }

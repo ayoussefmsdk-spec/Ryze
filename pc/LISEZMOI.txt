@@ -24,7 +24,7 @@ Installation et utilisation sur un PC Windows (sans Internet, sans serveur)
     HDJ.bat             lance l'application (cible de l'icône HDJ)
     Installer.bat       crée l'icône HDJ sur le Bureau et dans le menu Démarrer
     Mettre-a-jour.bat   installe une nouvelle version (voir 5)
-    hdj.ico, hdj.png    icône (logo du CHU)
+    hdj.ico, hdj.png    icône (emblème du GST Casablanca-Settat)
     app\                l'application elle-même
     donnees\            LA BASE, créé à la première ouverture : ne jamais
                         le supprimer
@@ -44,7 +44,7 @@ Installation et utilisation sur un PC Windows (sans Internet, sans serveur)
      Si Windows affiche « Windows a protégé votre ordinateur » : cliquer
      « Informations complémentaires », puis « Exécuter quand même ».
 
-  3) L'icône « HDJ » (logo du CHU) apparaît sur le Bureau et dans le menu
+  3) L'icône « HDJ » (emblème du GST Casablanca-Settat) apparaît sur le Bureau et dans le menu
      Démarrer. C'est toujours par elle qu'on ouvre HDJ.
 
   4) Première ouverture : double-cliquer sur l'icône HDJ. La fenêtre
