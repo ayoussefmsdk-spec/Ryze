@@ -711,7 +711,7 @@
       if (s.statut === 'annulee') { if (s.annuleAuto) return false; const d = s.annuleLe || s.echeance; return C.aReprog(s) || dans(d) || (avenir && apres(d)); }
       return false; };
     /* ordre chronologique : date prévue (contrôle fait en avance : date où il a été fait) ; la ligne « À venir » sépare ce qui tombe après aujourd'hui */
-    const dateTri = s => { const e = s.echeance || '', f = s.statut === 'faite' ? s.dateFaite || '' : ''; return String((f && (!e || f < e) ? f : e) || s.annuleLe || '9999-12-31'); };
+    const dateTri = s => { if (s.statut === 'annulee' && !avenir && s.annuleLe) return String(s.annuleLe); /* « à venir » décoché : un annulé se range à sa date d'annulation, jamais sous « À venir » */ const e = s.echeance || '', f = s.statut === 'faite' ? s.dateFaite || '' : ''; return String((f && (!e || f < e) ? f : e) || s.annuleLe || '9999-12-31'); };
     const L = surv.filter(garde).sort((a, b) => dateTri(a).localeCompare(dateTri(b)) || String(a.dateFaite || '').localeCompare(String(b.dateFaite || '')));
     if (!L.length) return '';
     const fd = d => d ? fdI(d) : '—';

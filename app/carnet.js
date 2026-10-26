@@ -121,7 +121,7 @@
     return `<section class="page p1${long > 150 ? ' dense' : ''}">
       <header class="couv">${R.logoHTML('lv-logo')}<div class="couv-etab">${e.etablissement ? `<span>${esc(e.etablissement)}</span>` : ''}${e.hopital ? `<b class="hop">${esc(e.hopital)}</b>` : ''}${etabLignes(e).map(x => `<span>${esc(x)}</span>`).join('')}<span class="couv-hdj">${esc(e.hdj)}</span></div></header>
       <div class="couv-titre"><div class="titre">${bi(Lv.titre)}</div></div>
-      <div class="nom-band"><div class="nom">${p.vierge ? `<span class="vierge-l">${bi(par.nom)} ${fill()}</span> <span class="ipp">${bi(Lv.dossierNo)} ${fill()}</span>` : `${nomPatient(p)}${p.ipp ? ` <span class="ipp">${bi(Lv.dossierNo)} ${ltr(p.ipp)}</span>` : ''}`}</div>
+      <div class="nom-band"><div class="nom">${p.vierge ? `<span class="vierge-l">${bi(par.nom)} ${fill()}</span> <span class="ipp vierge-ipp">${bi({ fr: 'N° de dossier', ar: ar(Lv.dossierNo) })} ${fill()}</span>` : `${nomPatient(p)}${p.ipp ? ` <span class="ipp">${bi(Lv.dossierNo)} ${ltr(p.ipp)}</span>` : ''}`}</div>
         <div class="remis"><span>${bi(Lv.remisLe)} ${p.vierge ? fill() : `<b>${ltr(R.fmtDate(c.t))}</b>`}</span><span>${bi(Lv.remisPar)} ${fill()}</span><span>${bi(Lv.carnetNo)} ${chk()}1 ${chk()}2 ${chk()}3</span></div></div>
       <div class="cols">
         <div class="col">
@@ -371,7 +371,7 @@ html.imp-nb .livret{--lv-soft:transparent}
 .livret .couv-titre .titre .ar{font-size:.95em}
 .livret .nom-band{margin:2mm 0 .6mm;padding:1.4mm 2mm;background:var(--lv-acc-t);border:.4pt solid var(--lv-acc-m);border-radius:1mm;display:flex;flex-direction:column;gap:.7mm}
 .livret .nom-band .nom{font-size:13pt;font-weight:500}
-.livret .nom-band .vierge-l,.livret .nom-band .nom .ipp{display:inline-flex;align-items:baseline;gap:1.5mm;font-size:9pt;font-weight:400}.livret .nom-band .vierge-l .fill{min-width:52mm}.livret .nom-band .nom .ipp .fill{min-width:24mm}
+.livret .nom-band .vierge-l,.livret .nom-band .nom .ipp.vierge-ipp{display:inline-flex;align-items:baseline;gap:1.5mm;font-size:9pt;font-weight:400}.livret .nom-band .vierge-l .fill{min-width:52mm}.livret .nom-band .nom .ipp.vierge-ipp .fill{min-width:24mm}
 .livret .nom-band .nom .ipp{font-size:7.4pt;color:var(--lv-ink2);margin-left:2mm;font-weight:400}
 .livret .nom-band .remis{font-size:7.2pt;color:var(--lv-ink2);display:flex;flex-wrap:wrap;gap:.6mm 3mm;align-items:baseline}
 .livret .nom-band .remis > span{white-space:nowrap}
@@ -525,7 +525,7 @@ html.imp-nb .livret .page .ico.oct,html.imp-nb .livret .page .ico.tri{background
       const a4 = !!R.ui.carnetA4; const doc = R.carnetPatientHTML(p, { a4 }); const N = +(doc.match(/data-pages="(\d+)"/) || [])[1] || 0; setTimeout(R.carnetPatientPolices, 0);
       return `<div class="row between no-print mb16" style="flex-wrap:wrap;gap:8px">${vierge ? `<button class="btn" data-go="patients">${R.icon('back')}Retour aux patients</button>` : `<button class="btn" data-go="patient" data-params='${R.params({ id: p.id })}'>${R.icon('back')}Retour au dossier</button>`}
         <div class="row" style="gap:8px;flex-wrap:wrap"><span class="small muted">${vierge ? 'Carnet patient vierge' : 'Carnet patient'} (français / arabe) · ${N} pages A5 · ${R.pluriel(N / 4, 'feuille A4', 'feuilles A4')}</span><div class="btn-group"><button type="button" class="btn sm${a4 ? '' : ' on'}" data-action="carnetVue" data-v="a5">Vue A5</button><button type="button" class="btn sm${a4 ? ' on' : ''}" data-action="carnetVue" data-v="a4">Vue A4 recto-verso</button></div>${R.boutonsDoc()}</div></div>
-        <p class="small muted no-print" style="margin:-8px 0 12px">Carnet remis une seule fois : les séances et les examens déjà faits sont pré-remplis, les dates à venir et les doses sont laissées en blanc, l’équipe les note à chaque séance. ${a4 ? 'Feuilles A4 paysage à imprimer recto-verso (retournement sur le bord court) puis à plier en deux : la carte détachable a son verso au dos, à la même place.' : 'Pages A5 à imprimer recto-verso (retournement sur le bord long) ; la vue A4 donne l’imposition pour deux feuilles pliées en deux.'}</p>${doc}`;
+        <p class="small muted no-print" style="margin:-8px 0 12px">${vierge ? 'Carnet vierge : nom, dates, doses et informations sont à remplir à la main ; rien n’est enregistré dans HDJ.' : 'Carnet remis une seule fois : les séances et les examens déjà faits sont pré-remplis, les dates à venir et les doses sont laissées en blanc, l’équipe les note à chaque séance.'} ${a4 ? 'Feuilles A4 paysage à imprimer recto-verso (retournement sur le bord court) puis à plier en deux : la carte détachable a son verso au dos, à la même place.' : 'Pages A5 à imprimer recto-verso (retournement sur le bord long) ; la vue A4 donne l’imposition pour deux feuilles pliées en deux.'}</p>${doc}`;
     }
   };
   R.actions.carnetVue = el => { R.ui.carnetA4 = el.dataset.v === 'a4'; R.render(); };

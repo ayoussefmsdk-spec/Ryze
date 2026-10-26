@@ -44,8 +44,8 @@ Installation et utilisation sur un PC Windows (sans Internet, sans serveur)
      Si Windows affiche « Windows a protégé votre ordinateur » : cliquer
      « Informations complémentaires », puis « Exécuter quand même ».
 
-  3) L'icône « HDJ » (emblème du GST Casablanca-Settat) apparaît sur le Bureau et dans le menu
-     Démarrer. C'est toujours par elle qu'on ouvre HDJ.
+  3) L'icône « HDJ » (emblème du GST Casablanca-Settat) apparaît sur le
+     Bureau et dans le menu Démarrer. C'est toujours par elle qu'on ouvre HDJ.
 
   4) Première ouverture : double-cliquer sur l'icône HDJ. La fenêtre
      s'ouvre sur l'écran de connexion (logo et nom de l'établissement).

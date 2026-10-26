@@ -48,7 +48,7 @@
     const href = logo ? (iconeCarree.logo === logo && iconeCarree.url) || logo : fenetreOrigine.href, type = logo ? (/^data:([^;,]+)/.exec(href) || [])[1] || '' : fenetreOrigine.type;
     if (!lien && href) { lien = document.createElement('link'); lien.rel = 'icon'; document.head.appendChild(lien); }
     if (lien) { if (!href) lien.removeAttribute('href'); else if (lien.getAttribute('href') !== href) lien.setAttribute('href', href); if (type) lien.setAttribute('type', type); else lien.removeAttribute('type'); }
-    /* logo large (600 × 240) : version carrée de 128 px (fond blanc, logo centré, marge de 8 %), calculée une fois par logo puis appliquée */
+    /* logo large (900 × 325 pour le GST) sans logoIcone : version carrée de 128 px (fond blanc, logo centré, marge de 8 %), calculée une fois par logo puis appliquée */
     if (logo && iconeCarree.logo !== logo) { iconeCarree = { logo, url: '' }; const img = new Image(); img.onload = () => { if (iconeCarree.logo !== logo || !img.naturalWidth) return; try { const T = 128, u = T * 0.84, k = Math.min(u / img.naturalWidth, u / img.naturalHeight), w = img.naturalWidth * k, h = img.naturalHeight * k, c = document.createElement('canvas'); c.width = c.height = T; const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, T, T); g.imageSmoothingQuality = 'high'; g.drawImage(img, (T - w) / 2, (T - h) / 2, w, h); iconeCarree.url = c.toDataURL('image/png'); R.appliquerIdentiteFenetre(); } catch (e) {} }; img.src = logo; }
   };
 
