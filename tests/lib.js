@@ -93,6 +93,7 @@ function suite(nom) {
   H.ouvrir = async (opts = {}) => {
     if (!H.navigateur) H.navigateur = await chromium.launch({ executablePath: cheminChromium(), args: ARGS_CHROMIUM });
     const context = await H.navigateur.newContext({ viewport: { width: 1360, height: 900 }, acceptDownloads: true, locale: 'fr-FR', timezoneId: process.env.TZ || undefined });
+    context.setDefaultTimeout(10000); /* application cassée : échec rapide plutôt qu'une attente de 30 s par action */
     const bloques = [...(opts.bloquer || [])]; if (opts.etab === false) bloques.push(/\/etablissement\.js(\?|$)/);
     const reseau = []; /* requêtes vers le réseau (ni file:, ni data:, ni blob:) */
     if (bloques.length || opts.horsLigne) await context.route(() => true, route => {

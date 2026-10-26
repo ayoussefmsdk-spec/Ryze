@@ -15,6 +15,7 @@ const { t } = H;
 
 const NOTE_EPINGLEE = 'Note épinglée de test 03-documents';
 /* conduite à tenir proposée par l'application après un dosage : à l'écran seulement, jamais sur un document */
+const norm = s => String(s || '').replace(/\s+/g, ' ');
 const CONDUITES = [/Discuter une optimisation/i, /désescalade peut se discuter/i, /échec probable du mécanisme/i, /discuter un changement de (classe|molécule)/i, /Doser les anticorps pour conclure/i, /interprétation au cas par cas/i, /poursuivre le schéma prévu/i];
 
 H.executer(async () => {
@@ -56,7 +57,8 @@ H.executer(async () => {
     const ident = pdf.textes ? pdf.textes.every(x => x.includes(d.nom) && x.includes(d.prenom)) : dom.styleId.includes(d.nom) && dom.styleId.includes(d.prenom);
     if (!ident) ko.identite.push(`${d.id}${pdf.textes ? ' : pages ' + pdf.textes.map((x, i) => x.includes(d.nom) ? '' : i + 1).filter(Boolean).join(',') : ''}`);
     if (!(/statut et sécurité/i.test(txt) && /à faire/i.test(txt))) ko.blocs.push(d.id);
-    const conduite = [...contexte.conduites.filter(c => txt.includes(c)), ...CONDUITES.filter(re => re.test(txt)).map(String)]; if (conduite.length) ko.tdm.push(`${d.id} : ${conduite[0]}`);
+    const tout = norm(txt + ' ' + (pdf.textes || []).join(' ')); /* document affiché et PDF (lignes recollées) */
+    const conduite = [...contexte.conduites.filter(c => tout.includes(norm(c))), ...CONDUITES.filter(re => re.test(tout)).map(String)]; if (conduite.length) ko.tdm.push(`${d.id} : ${conduite[0]}`);
     if (!dom.courbes.includes('Taille')) ko.taille.push(`${d.id} : ${dom.courbes.join(', ')}`);
     if (!txt.includes(NOTE_EPINGLEE)) ko.notes.push(d.id);
     if (d.type === '2 cycles') { const h = await page.evaluate(id => window.RYZE.patient(id).historiqueProtocoles.filter(x => !x.retro).map(x => (window.RYZE.proto(x.protocoleId) || {}).dci || ''), d.id); t('carnet A4 (2 cycles) : historique avec les deux protocoles', /Historique du traitement/i.test(txt) && h.every(dci => txt.includes(dci.split(' ')[0])), h); }
@@ -97,7 +99,8 @@ H.executer(async () => {
     const tc = garder(`compte rendu ${d.id}`, await racine());
     const pc = await H.pdf(page, `compte-rendu-${d.id}`);
     if (pc.textes) garder(`compte rendu ${d.id} (PDF)`, pc.textes.join('\n'));
-    const conduite = [...contexte.conduites.filter(c => tc.includes(c)), ...CONDUITES.filter(re => re.test(tc)).map(String)];
+    const toutCR = norm(tc + ' ' + (pc.textes || []).join(' '));
+    const conduite = [...contexte.conduites.filter(c => toutCR.includes(norm(c))), ...CONDUITES.filter(re => re.test(toutCR)).map(String)];
     if (!(/Compte rendu de suivi/.test(tc) && tc.includes(d.nom) && /résumé/i.test(tc) && /conclusion/i.test(tc) && pc.pages >= 1 && !conduite.length)) koCR.push(`${d.id}${conduite.length ? ' : ' + conduite[0] : ''}`);
   }
   t('compte rendu : titre, identité, résumé, conclusion, sans conduite automatique (4 dossiers)', !koCR.length, koCR);
@@ -149,7 +152,8 @@ H.executer(async () => {
   /* ---------------- Rapport d'activité ---------------- */
   H.section('Rapport d’activité (nominatif et anonymisé)');
   await H.aller(page, 'activite');
-  await page.evaluate(() => { window.RYZE.ui.rapport.anonyme = false; window.RYZE.ui.rapport.annexes = true; window.RYZE.render(); });
+  /* trois derniers mois (mois en cours compris) : la période contient toujours des séances et des événements de la démonstration */
+  await page.evaluate(() => { Object.assign(window.RYZE.ui.rapport, { preset: 'trimestre', anonyme: false, annexes: true }); window.RYZE.render(); });
   const tr = garder('rapport nominatif', await racine('#app .rapport'));
   const pr = await H.pdf(page, 'rapport-nominatif');
   if (pr.textes) garder('rapport nominatif (PDF)', pr.textes.join('\n'));

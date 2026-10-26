@@ -165,8 +165,11 @@ H.executer(async () => {
   await H.validerModal(page);
   const cibles = await page.evaluate(id => { const R = window.RYZE, p = R.patient(id); return { per: !!(p.paris && p.paris.p), prevues: [...new Set(p.surveillance.filter(s => s.id === 'tdm' && s.statut === 'prevue').map(s => R.cibleControle(p, s)))], min: R.cibleTdm(p, 'infliximab').min }; }, iv);
   t('atteinte périnéale (Paris p) : cible infliximab ≥ 10 µg/mL sur les dosages prévus', cibles.per && cibles.min === 10 && cibles.prevues.length === 1 && cibles.prevues[0] === 'infliximab ≥ 10 µg/mL (atteinte périnéale)', cibles);
-  const demoCibles = await page.evaluate(() => { const R = window.RYZE, c = id => { const p = R.patient(id), s = p.surveillance.find(x => x.id === 'tdm' && x.statut === 'prevue'); return s ? R.cibleControle(p, s) : null; }; return { p1: c('p1'), p8: c('p8'), p8per: !!(R.patient('p8').paris || {}).p }; });
-  t('démonstration : cible ≥ 5 sans atteinte périnéale (p1), ≥ 10 avec (p8)', demoCibles.p1 === 'infliximab ≥ 5 µg/mL' && demoCibles.p8per && demoCibles.p8 === 'infliximab ≥ 10 µg/mL (atteinte périnéale)', demoCibles);
+  /* dossiers infliximab de la démonstration avec un dosage prévu : sans atteinte périnéale (≥ 5) et avec « p » de Paris (≥ 10) */
+  const demoCibles = await page.evaluate(() => { const R = window.RYZE, L = R.S.patients.filter(p => !/^ESSAI$/.test(p.nom) && p.protocoleId === 'ifx-iv' && p.surveillance.some(x => x.id === 'tdm' && x.statut === 'prevue'));
+    const c = p => { if (!p) return null; const s = p.surveillance.find(x => x.id === 'tdm' && x.statut === 'prevue'); return p.id + ' : ' + R.cibleControle(p, s); };
+    return { sans: c(L.find(p => !(p.paris || {}).p && !R.atteintePerineale(p).oui)), avec: c(L.find(p => (p.paris || {}).p)) }; });
+  t('démonstration : cible infliximab ≥ 5 sans atteinte périnéale, ≥ 10 avec « p » de Paris', /: infliximab ≥ 5 µg\/mL$/.test(demoCibles.sans || '') && /: infliximab ≥ 10 µg\/mL \(atteinte périnéale\)$/.test(demoCibles.avec || ''), demoCibles);
 
   /* ---------------- Suspension et reprise ---------------- */
   H.section('Suspension et reprise du traitement');

@@ -49,6 +49,14 @@ Paquet à copier sur le PC : un dossier `HDJ\` contenant `app\` (tout le dossier
 | Équipe & codes | codes d'accès personnels, deux niveaux (accès complet, accès hôpital de jour) |
 | Carnet | document A4 : identité et traitement, historique des cycles, planification unifiée (séances + contrôles) ou tableaux séparés selon l'option du dossier, conduite à tenir |
 
+## Tests
+
+```bash
+bash tests/run.sh          # toutes les suites (≈ 20 s) ; bash tests/run.sh 03 pour une partie
+```
+
+Suites de non-régression dans `tests/` (Playwright + Chromium, application ouverte en `file://`) : `01-base` (connexion, droits, sauvegarde, export / import, base vide, migration, identité de l'établissement), `02-dossier` (assistant IV / SC, séances, notes, contrôles et cibles de dosage, suspension, changement de protocole, corrections tracées), `03-documents` (carnets, impressions, compte rendu, carnet patient 8 pages A5, rapport, planning, exports, couleur / noir et blanc), `04-hors-ligne` (tout sans réseau). Une ligne de résultat par suite, code de sortie 1 au moindre échec ; PDF et journaux dans `tests/out/` (ignoré par git). Prérequis, détail des contrôles et règle « jamais de données réelles » : [`tests/README.md`](tests/README.md).
+
 ## Sources cliniques
 
 Posologies : RCP EMA / résumés des caractéristiques du produit (Remicade, Remsima SC, Humira, Entyvio, Stelara, Simponi, Skyrizi, Omvoh, Tremfya, Xeljanz, Rinvoq). Bilan pré-thérapeutique : check-list GETAID 2021, ECCO 2021/2025. Cibles thérapeutiques : STRIDE-II (2021). Dosages pharmacologiques : AGA 2017 et consensus 2021. Vaccination : GETAID 2025, HAS. Gestion de stock : formules PUI classiques (CMM, stock de sécurité, point de commande, couverture).
