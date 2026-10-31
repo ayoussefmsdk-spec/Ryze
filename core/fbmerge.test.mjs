@@ -158,3 +158,29 @@ test('page scan: a feed item whose facebookUrl is the PROFILE still keys by its 
   );
   assert.equal(fbItemUrl({ facebookUrl: 'https://www.facebook.com/profile.php?id=1', inputUrl: 'https://www.facebook.com/profile.php?id=1' }), null);
 });
+
+test('page scan falls back to the POSTS scraper and keeps only videos', async () => {
+  const { scanFacebookPage } = await import('../lib/fetchers/facebook.mjs');
+  const realFetch = globalThis.fetch;
+  process.env.APIFY_TOKEN = 'test-token';
+  const actorsCalled = [];
+  globalThis.fetch = async (url) => {
+    const actor = String(url).match(/acts\/([^/]+)\//)[1];
+    actorsCalled.push(actor);
+    if (actor.includes('reels')) {
+      return new Response(JSON.stringify([{ error: 'no_items', errorDescription: 'Empty or private data for provided input' }]), { status: 200 });
+    }
+    return new Response(JSON.stringify([
+      { url: 'https://www.facebook.com/reel/7778889990001', facebookUrl: 'https://www.facebook.com/profile.php?id=61595456373129', likes: 40, time: '2026-10-29T10:00:00.000Z' },
+      { url: 'https://www.facebook.com/somepage/posts/pfbid0PhotoOnly', facebookUrl: 'https://www.facebook.com/profile.php?id=61595456373129', likes: 3 },
+    ]), { status: 200 });
+  };
+  try {
+    const posts = await scanFacebookPage('61595456373129', 20);
+    assert.ok(actorsCalled.some((a) => a.includes('posts')), 'posts scraper must be tried');
+    assert.deepEqual(posts.map((p) => p.url), ['https://www.facebook.com/reel/7778889990001']);
+    assert.equal(posts[0].likes, 40);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
