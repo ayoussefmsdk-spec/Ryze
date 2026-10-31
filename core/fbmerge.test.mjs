@@ -215,3 +215,27 @@ test('posts-scraper items carrying the PAGE id in facebookId stay separate posts
     globalThis.fetch = realFetch;
   }
 });
+
+test('fallback scan explains a short result: items in, reels kept, what was dropped', async () => {
+  const { scanFacebookPage } = await import('../lib/fetchers/facebook.mjs');
+  const realFetch = globalThis.fetch;
+  process.env.APIFY_TOKEN = 'test-token';
+  globalThis.fetch = async (url) => {
+    const actor = String(url).match(/acts\/([^/]+)\//)[1];
+    return new Response(JSON.stringify(actor.includes('reels')
+      ? [{ error: 'no_items', errorDescription: 'Empty or private data for provided input' }]
+      : [
+        { url: 'https://www.facebook.com/reel/4677240789261441', viewsCount: 169 },
+        { url: 'https://www.facebook.com/somepage/posts/pfbid0PhotoA', likes: 2 },
+        { url: 'https://www.facebook.com/somepage/posts/pfbid0PhotoB', likes: 1 },
+      ]), { status: 200 });
+  };
+  try {
+    const posts = await scanFacebookPage('61595456373129', 100);
+    assert.equal(posts.length, 1);
+    assert.match(posts.warning, /3 items came back → 1 reel kept/);
+    assert.match(posts.warning, /2 dropped as photo\/text posts \(e\.g\. https:\/\/www\.facebook\.com\/somepage\/posts\/pfbid0photoa|2 dropped as photo\/text posts/);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
