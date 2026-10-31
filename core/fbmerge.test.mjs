@@ -64,3 +64,45 @@ test('fbItemUrl prefers the real post URL over the profile inputUrl', () => {
     'https://www.facebook.com/reel/3170672053141859',
   );
 });
+
+test('share-link clips get the actor answer via inputUrl, with the real URL attached', async () => {
+  const { fetchFacebookStats } = await import('../lib/fetchers/facebook.mjs');
+  const realFetch = globalThis.fetch;
+  process.env.APIFY_TOKEN = 'test-token';
+  globalThis.fetch = async () => new Response(JSON.stringify([{
+    inputUrl: 'https://www.facebook.com/share/r/1EzjhaEV4t/',
+    facebookUrl: 'https://www.facebook.com/reel/1234567890123',
+    facebookId: '1234567890123',
+    playCountRounded: 4200, likes: 310, total_comment_count: 12,
+  }]), { status: 200, headers: { 'content-type': 'application/json' } });
+  try {
+    const out = await fetchFacebookStats([{ url: 'https://www.facebook.com/share/r/1EzjhaEV4t', handle: null }]);
+    const s = out.get('facebook:share:1ezjhaev4t');
+    assert.ok(s, 'share key must be answered');
+    assert.equal(s.views, 4200);
+    assert.equal(s.likes, 310);
+    assert.equal(s.resolvedUrl, 'https://www.facebook.com/reel/1234567890123');
+    assert.ok(out.get('facebook:1234567890123'), 'real key present too');
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test('resolveFbShareUrl follows redirects (incl. login-wall ?next=) to the real reel', async () => {
+  const { resolveFbShareUrl } = await import('../lib/fetchers/facebook.mjs');
+  const realFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = async () => new Response(null, { status: 302, headers: { location: 'https://www.facebook.com/reel/987654321012/?mibextid=abc' } });
+    assert.equal(await resolveFbShareUrl('https://www.facebook.com/share/r/XyZ123'), 'https://www.facebook.com/reel/987654321012');
+
+    globalThis.fetch = async () => new Response(null, { status: 302, headers: { location: 'https://www.facebook.com/login/?next=https%3A%2F%2Fwww.facebook.com%2Freel%2F555666777888%2F' } });
+    assert.equal(await resolveFbShareUrl('https://www.facebook.com/share/r/XyZ123'), 'https://www.facebook.com/reel/555666777888');
+
+    globalThis.fetch = async () => { throw new Error('network down'); };
+    assert.equal(await resolveFbShareUrl('https://www.facebook.com/share/r/XyZ123'), null);
+    // Non-share URLs are never touched.
+    assert.equal(await resolveFbShareUrl('https://www.facebook.com/reel/111222333444'), null);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
