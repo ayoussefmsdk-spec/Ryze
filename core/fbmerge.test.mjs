@@ -184,3 +184,34 @@ test('page scan falls back to the POSTS scraper and keeps only videos', async ()
     globalThis.fetch = realFetch;
   }
 });
+
+test('posts-scraper items carrying the PAGE id in facebookId stay separate posts', async () => {
+  const { scanFacebookPage, fbItemUrl } = await import('../lib/fetchers/facebook.mjs');
+  const page = '61594161490965';
+  const feed = [
+    { facebookId: page, facebookUrl: `https://www.facebook.com/profile.php?id=${page}`, url: 'https://www.facebook.com/reel/1111111111111', viewsCount: 121 },
+    { facebookId: page, facebookUrl: `https://www.facebook.com/profile.php?id=${page}`, url: 'https://www.facebook.com/reel/2222222222222', viewsCount: 1100 },
+    { facebookId: page, facebookUrl: `https://www.facebook.com/profile.php?id=${page}`, url: 'https://www.facebook.com/reel/3333333333333', viewsCount: 93 },
+  ];
+  // Never build a "reel" out of the page's own id.
+  assert.equal(fbItemUrl({ facebookId: page }, { pageId: page }), null);
+  const realFetch = globalThis.fetch;
+  process.env.APIFY_TOKEN = 'test-token';
+  globalThis.fetch = async (url) => {
+    const actor = String(url).match(/acts\/([^/]+)\//)[1];
+    return new Response(JSON.stringify(actor.includes('reels')
+      ? [{ error: 'no_items', errorDescription: 'Empty or private data for provided input' }]
+      : feed), { status: 200 });
+  };
+  try {
+    const posts = await scanFacebookPage(page, 100);
+    assert.deepEqual(posts.map((p) => p.url), [
+      'https://www.facebook.com/reel/1111111111111',
+      'https://www.facebook.com/reel/2222222222222',
+      'https://www.facebook.com/reel/3333333333333',
+    ]);
+    assert.deepEqual(posts.map((p) => p.views), [121, 1100, 93]);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});

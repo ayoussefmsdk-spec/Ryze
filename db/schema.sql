@@ -313,3 +313,10 @@ update clips set flags = array_append(flags, 'not_a_post')
  where platform = 'facebook'
    and normalized_key !~ '^facebook:([0-9]+|share:.+|post:.+)$'
    and not ('not_a_post' = any(flags));
+-- A posts-scraper bug once built "reels" out of a PAGE's id (facebookId);
+-- any clip whose id is a linked Facebook page's id is not a post.
+update clips c set flags = array_append(c.flags, 'not_a_post')
+ where c.platform = 'facebook'
+   and not ('not_a_post' = any(c.flags))
+   and exists (select 1 from clipper_accounts ca
+                where ca.platform = 'facebook' and 'facebook:' || ca.handle = c.normalized_key);
