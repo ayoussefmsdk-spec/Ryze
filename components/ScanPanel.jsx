@@ -200,6 +200,15 @@ export default function ScanPanel({ cycleId, members, accountsByClipper = {} }) 
           ))}
         </div>
       )}
+      {result?.ok && result.notes?.length > 0 && (
+        <div className="grid" style={{ gap: 4 }}>
+          {result.notes.map((it, i) => (
+            <div key={i} className="muted" style={{ fontSize: 12 }}>
+              ℹ <span style={{ fontFamily: 'var(--mono)' }}>{it.account}</span> — {it.note}
+            </div>
+          ))}
+        </div>
+      )}
       {atLimit.length > 0 && (
         <div className="muted" style={{ fontSize: 12 }}>
           ℹ {atLimit.map((k) => k.split(':')[1] && `@${k.split(':')[1]}`).filter(Boolean).join(', ')} filled the whole
