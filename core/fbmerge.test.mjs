@@ -233,8 +233,68 @@ test('fallback scan explains a short result: items in, reels kept, what was drop
   try {
     const posts = await scanFacebookPage('61595456373129', 100);
     assert.equal(posts.length, 1);
-    assert.match(posts.warning, /3 items came back → 1 reel kept/);
+    assert.match(posts.warning, /3 items came back over 1 request → 1 reel kept/);
     assert.match(posts.warning, /2 dropped as photo\/text posts \(e\.g\. https:\/\/www\.facebook\.com\/somepage\/posts\/pfbid0photoa|2 dropped as photo\/text posts/);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test('backup scan pages past the ~35-post logged-out wall using onlyPostsOlderThan', async () => {
+  const { scanFacebookPage } = await import('../lib/fetchers/facebook.mjs');
+  // 80 reels, one per ~9 hours going back in time (newest first).
+  const t0 = Date.parse('2026-10-31T20:00:00Z');
+  const all = Array.from({ length: 80 }, (_, i) => ({
+    url: `https://www.facebook.com/reel/${9000000000000 + i}`,
+    time: new Date(t0 - i * 9 * 3600_000).toISOString(),
+    viewsCount: 100 + i,
+  }));
+  const WALL = 35;
+  const realFetch = globalThis.fetch;
+  process.env.APIFY_TOKEN = 'test-token';
+  const olderThanSeen = [];
+  globalThis.fetch = async (url, init) => {
+    const actor = String(url).match(/acts\/([^/]+)\//)[1];
+    if (actor.includes('reels')) {
+      return new Response(JSON.stringify([{ error: 'no_items', errorDescription: 'Empty or private data for provided input' }]), { status: 200 });
+    }
+    const input = JSON.parse(init.body);
+    let pool = all;
+    if (input.onlyPostsOlderThan) {
+      olderThanSeen.push(input.onlyPostsOlderThan);
+      const cut = Date.parse(input.onlyPostsOlderThan);
+      pool = all.filter((p) => Date.parse(p.time) < cut);
+    }
+    return new Response(JSON.stringify(pool.slice(0, WALL)), { status: 200 }); // logged-out wall
+  };
+  try {
+    const posts = await scanFacebookPage('61595456373129', 100);
+    assert.equal(posts.length, 80, 'all 80 reels collected across pages');
+    assert.equal(new Set(posts.map((p) => p.url)).size, 80, 'no duplicates');
+    assert.ok(olderThanSeen.length >= 2, 'paged with the date cursor');
+    assert.match(posts.warning, /→ 80 reels kept/);
+    assert.match(posts.warning, /Oldest post reached: 2026-10-02/);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test('backup scan paging stops cleanly if the scraper rejects the date option', async () => {
+  const { scanFacebookPage } = await import('../lib/fetchers/facebook.mjs');
+  const realFetch = globalThis.fetch;
+  process.env.APIFY_TOKEN = 'test-token';
+  globalThis.fetch = async (url, init) => {
+    const actor = String(url).match(/acts\/([^/]+)\//)[1];
+    if (actor.includes('reels')) return new Response(JSON.stringify([]), { status: 200 });
+    if (JSON.parse(init.body).onlyPostsOlderThan) return new Response('{"error":{"type":"invalid-input"}}', { status: 400 });
+    return new Response(JSON.stringify([
+      { url: 'https://www.facebook.com/reel/1212121212121', time: '2026-10-30T10:00:00Z', viewsCount: 50 },
+    ]), { status: 200 });
+  };
+  try {
+    const posts = await scanFacebookPage('61595456373129', 100);
+    assert.equal(posts.length, 1, 'keeps what the first request found');
+    assert.match(posts.warning, /Paging deeper stopped/);
   } finally {
     globalThis.fetch = realFetch;
   }
