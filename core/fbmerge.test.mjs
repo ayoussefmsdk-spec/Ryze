@@ -106,3 +106,55 @@ test('resolveFbShareUrl follows redirects (incl. login-wall ?next=) to the real 
     globalThis.fetch = realFetch;
   }
 });
+
+test('facebook page/profile links are NOT clips; real post forms are', async () => {
+  const { parseClip } = await import('./platform.mjs');
+  for (const u of [
+    'https://www.facebook.com/profile.php?id=61595456373129&sk=reels_tab',
+    'https://www.facebook.com/profile.php?id=61594161490965',
+    'https://www.facebook.com/az-clipz/reels/',
+    'https://www.facebook.com/people/Az-Clipz/61590459089254/',
+  ]) {
+    const p = parseClip(u);
+    assert.equal(p.valid, false, u);
+    assert.equal(p.notAPost, true, u);
+  }
+  assert.equal(parseClip('https://www.facebook.com/reel/3170672053141859').key, 'facebook:3170672053141859');
+  assert.equal(parseClip('https://www.facebook.com/videos/123456789012/').key, 'facebook:123456789012');
+  assert.equal(parseClip('https://www.facebook.com/somepage/posts/pfbid02AbCdEf123').key, 'facebook:post:pfbid02abcdef123');
+  assert.equal(parseClip('https://www.facebook.com/permalink.php?story_fbid=9876543210&id=61590459089254').key, 'facebook:post:9876543210');
+  assert.equal(parseClip('https://www.facebook.com/photo/?fbid=1122334455').key, 'facebook:post:1122334455');
+});
+
+test('page scan skips error/placeholder items and reports what Facebook said', async () => {
+  const { scanFacebookPage } = await import('../lib/fetchers/facebook.mjs');
+  const realFetch = globalThis.fetch;
+  process.env.APIFY_TOKEN = 'test-token';
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    return new Response(JSON.stringify([{
+      url: 'https://www.facebook.com/profile.php?id=61595456373129&sk=reels_tab',
+      inputUrl: 'https://www.facebook.com/profile.php?id=61595456373129&sk=reels_tab',
+      error: 'not_available',
+      errorDescription: "This content isn't available right now",
+    }]), { status: 200 });
+  };
+  try {
+    const posts = await scanFacebookPage('61595456373129', 20);
+    assert.equal(posts.length, 0, 'the profile URL must never pass as a post');
+    assert.ok(calls > 1, 'must fall through to the other input shapes');
+    assert.match(posts.warning, /isn't available/);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test('page scan: a feed item whose facebookUrl is the PROFILE still keys by its reel', async () => {
+  const { fbItemUrl } = await import('../lib/fetchers/facebook.mjs');
+  assert.equal(
+    fbItemUrl({ facebookUrl: 'https://www.facebook.com/profile.php?id=1&sk=reels_tab', url: 'https://www.facebook.com/reel/5550001112223' }),
+    'https://www.facebook.com/reel/5550001112223',
+  );
+  assert.equal(fbItemUrl({ facebookUrl: 'https://www.facebook.com/profile.php?id=1', inputUrl: 'https://www.facebook.com/profile.php?id=1' }), null);
+});

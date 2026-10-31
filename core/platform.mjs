@@ -158,6 +158,7 @@ export function parseClip(raw) {
     const withPage = path.match(/^\/([\w.-]+)\/videos\/(\d+)/i);
     const idm = withPage ? [null, withPage[2]]
       : path.match(/^\/reel\/(\d+)/i)
+      || path.match(/^\/videos\/(\d+)/i)
       || (u.searchParams.get('v') && /^\d+$/.test(u.searchParams.get('v')) ? [null, u.searchParams.get('v')] : null);
     if (idm) {
       const id = idm[1];
@@ -171,7 +172,19 @@ export function parseClip(raw) {
     if (s) {
       return { valid: true, platform, id: null, handle: null, key: `facebook:share:${s[1].toLowerCase()}`, canonicalUrl: canonical(u) };
     }
-    return { valid: true, platform, id: null, handle: null, key: `facebook:${host}${path}`.toLowerCase(), canonicalUrl: canonical(u) };
+    // Regular (non-video) posts: /<page>/posts/<id|pfbid…>, permalink.php /
+    // story.php?story_fbid=…, photo?fbid=… — each names ONE post.
+    const post = path.match(/^\/[\w.-]+\/posts\/([A-Za-z0-9]+)/i);
+    const story = /^\/(permalink|story)\.php$/i.test(path) ? u.searchParams.get('story_fbid') : null;
+    const photo = /^\/photo(\.php)?\/?$/i.test(path) ? u.searchParams.get('fbid') : null;
+    const pid = post?.[1] || story || photo;
+    if (pid && /^[A-Za-z0-9]{5,}$/.test(pid)) {
+      return { valid: true, platform, id: /^\d+$/.test(pid) ? pid : null, handle: null, key: `facebook:post:${pid.toLowerCase()}`, canonicalUrl: canonical(u) };
+    }
+    // Anything else (a profile, a page's home or reels tab, a group…) is NOT
+    // a post. Accepting it used to give every profile.php?id=… page the same
+    // key, so unrelated pages collided as "duplicates" across campaigns.
+    return { ...base, canonicalUrl: canonical(u), notAPost: true };
   }
 
   if (platform === 'twitter') {

@@ -305,3 +305,11 @@ alter type platform_t add value if not exists 'facebook';
 alter table cycles alter column allowed_platforms set default '{youtube,tiktok,instagram,twitter,facebook,other}';
 update cycles set allowed_platforms = allowed_platforms || '{facebook}'::platform_t[]
  where not ('facebook' = any(allowed_platforms));
+
+-- Facebook page/profile links were once accepted as "clips" (every
+-- profile.php?id=… page shared one key). Tag any such leftovers so the manager
+-- can find and delete them; real post keys are numeric, share:… or post:….
+update clips set flags = array_append(flags, 'not_a_post')
+ where platform = 'facebook'
+   and normalized_key !~ '^facebook:([0-9]+|share:.+|post:.+)$'
+   and not ('not_a_post' = any(flags));
