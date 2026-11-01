@@ -4,6 +4,7 @@ import { getSystemStatus } from '../../lib/system.mjs';
 import Shell from '../../components/Shell.jsx';
 import ApifyCapEditor from '../../components/ApifyCapEditor.jsx';
 import ApifyRateEditor from '../../components/ApifyRateEditor.jsx';
+import ScraperTest from '../../components/ScraperTest.jsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +38,8 @@ export default async function SystemPage() {
         </div>
 
         {error && <div className="card" style={{ borderColor: 'var(--crit)' }}><p className="muted">{error}</p></div>}
+
+        <ScraperTest />
 
         {s && (
           <>
