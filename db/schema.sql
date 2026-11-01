@@ -326,3 +326,16 @@ update clips c set flags = array_append(c.flags, 'not_a_post')
 -- instead of burning 4 failed runs (time + Apify credit) every time.
 alter table clipper_accounts add column if not exists fb_scan_via text;
 alter table clipper_accounts add column if not exists fb_scan_via_at timestamptz;
+
+-- "Check now" runs in the background (a big cycle takes longer than a web
+-- request may stay open); the page polls this row for progress/result.
+create table if not exists check_runs (
+  id          bigserial primary key,
+  cycle_id    uuid not null references cycles(id) on delete cascade,
+  scope       text not null,
+  started_at  timestamptz not null default now(),
+  finished_at timestamptz,
+  result      jsonb,
+  error       text
+);
+create index if not exists check_runs_cycle_idx on check_runs (cycle_id, started_at desc);
