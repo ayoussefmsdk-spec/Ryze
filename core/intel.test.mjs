@@ -1,10 +1,56 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  clipMoneyState,
+  analyzeViewCurve, engagementSuspect, clipMoneyState,
   roiProof, writeRecap, paceInfo,
 } from './intel.mjs';
 
+const H = 3600_000;
+const pts = (views) => views.map((v, i) => ({ t: i * H, views: v }));
+
+// ---- view-curve forensics ----
+test('organic S-curve is not suspect', () => {
+  const r = analyzeViewCurve(pts([0, 2000, 9000, 20000, 32000, 40000, 44000, 46000]));
+  assert.equal(r.suspect, false);
+  assert.equal(r.reason, 'organic');
+});
+
+test('single-interval injection spike is caught', () => {
+  const r = analyzeViewCurve(pts([100, 150, 180, 50180, 50200, 50210]));
+  assert.equal(r.suspect, true);
+  assert.equal(r.reason, 'single_interval_spike');
+});
+
+test('late burst after a dead flatline is caught', () => {
+  const r = analyzeViewCurve(pts([100, 110, 115, 118, 120, 122, 124, 126, 128, 90128]));
+  assert.equal(r.suspect, true);
+});
+
+test('tiny clips are never accused', () => {
+  const r = analyzeViewCurve(pts([0, 10, 20, 3020]));
+  assert.equal(r.suspect, false);
+});
+
+test('short history gives no verdict', () => {
+  assert.equal(analyzeViewCurve(pts([0, 100000])).suspect, false);
+});
+
+// ---- engagement bands ----
+test('50k views with 4 likes on TikTok is suspect', () => {
+  assert.equal(engagementSuspect({ platform: 'tiktok', views: 50000, likes: 4, comments: 0 }), true);
+});
+
+test('healthy engagement passes', () => {
+  assert.equal(engagementSuspect({ platform: 'tiktok', views: 50000, likes: 2500, comments: 80 }), false);
+});
+
+test('hidden counts are never judged', () => {
+  assert.equal(engagementSuspect({ platform: 'tiktok', views: 500000, likes: null, comments: null }), false);
+});
+
+test('small clips are never judged', () => {
+  assert.equal(engagementSuspect({ platform: 'tiktok', views: 8000, likes: 0, comments: 0 }), false);
+});
 
 // ---- money states ----
 test('money-state pipeline maps correctly', () => {

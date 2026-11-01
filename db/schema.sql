@@ -367,8 +367,3 @@ update clips c set
        cycles cy
  where p.clip_id = c.id and cy.id = c.cycle_id and cy.status = 'active'
    and c.views < p.peak and not c.manual_override and p.peak > 0;
--- No bot / fake-view detection anymore: drop its old flags.
-update clips set flags = array_remove(array_remove(flags, 'engagement_suspect'), 'velocity_suspect'),
-                 dismissed_flags = array_remove(array_remove(dismissed_flags, 'engagement_suspect'), 'velocity_suspect')
- where flags && '{engagement_suspect,velocity_suspect}'::text[]
-    or dismissed_flags && '{engagement_suspect,velocity_suspect}'::text[];

@@ -13,6 +13,8 @@ const FLAG_LABELS = {
   removed: ['video removed?', 'var(--crit)'],
   view_drop: ['big view drop', 'var(--crit)'],
   fetch_failed: ['check failed', 'var(--text-3)'],
+  engagement_suspect: ['engagement too low — bought views?', 'var(--crit)'],
+  velocity_suspect: ['unnatural view spike', 'var(--crit)'],
   api_glitch: ['stats glitch — kept last good numbers (likely Apify, not the video)', 'var(--warn, #f6a64b)'],
   previously_deleted: ['was deleted from this cycle before — re-added', 'var(--crit)'],
   not_a_post: ['page/profile link, not a post — delete this', 'var(--crit)'],

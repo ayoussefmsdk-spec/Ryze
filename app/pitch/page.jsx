@@ -213,7 +213,7 @@ export default async function PitchPage() {
               {[
                 ['🎯', 'A managed clipper team', 'recruited, briefed, and coordinated for your content'],
                 ['📡', 'Automatic view tracking', 'every clip checked on schedule across all platforms'],
-                ['🛡', 'Clean-data radar', 'duplicate & recycled clips and unknown accounts get flagged'],
+                ['🛡', 'Anti-fraud radar', 'bought views, recycled clips and fake accounts get flagged'],
                 ['📊', 'A private live dashboard', 'watch your reach climb in real time, day by day'],
               ].map(([ic, k, v]) => (
                 <div key={k} style={{ background: 'var(--surface-2)', borderRadius: 11, padding: '12px 14px' }}>

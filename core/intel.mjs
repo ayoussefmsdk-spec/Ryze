@@ -1,10 +1,69 @@
 // ============================================================================
 // ClipHive intelligence layer — pure, testable logic. No I/O.
+// - View-curve forensics (catch injected/bought views)
+// - Engagement sanity bands (catch "50k views, 4 likes")
 // - Money-state pipeline (Estimating / Pending / Locked / Paid)
 // - ROI proof ("what this reach would've cost in ads")
 // - Auto-written cycle recap (template prose, no LLM)
 // - Pace & ETA math (velocity, days-to-cap)
 // ============================================================================
+
+// ---- View-curve forensics ---------------------------------------------------
+/**
+ * analyzeViewCurve(points) — points: [{t: epoch-ms, views: number}] ascending.
+ * Flags an "injection" shape: one interval carrying almost all growth,
+ * surrounded by near-flat intervals (organic clips rise then taper smoothly).
+ * Returns { suspect, reason, spikeIndex } — conservative by design.
+ */
+export function analyzeViewCurve(points) {
+  if (!Array.isArray(points) || points.length < 4) return { suspect: false, reason: 'insufficient_data' };
+  const deltas = [];
+  for (let i = 1; i < points.length; i++) {
+    deltas.push({ i, gain: Math.max(0, points[i].views - points[i - 1].views) });
+  }
+  const total = deltas.reduce((a, d) => a + d.gain, 0);
+  if (total < 5000) return { suspect: false, reason: 'too_small' }; // ignore tiny clips
+  const max = deltas.reduce((a, d) => (d.gain > a.gain ? d : a), deltas[0]);
+  const share = max.gain / total;
+  // One interval carries ≥90% of ALL growth and its neighbours are dead flat.
+  const before = deltas.filter((d) => d.i < max.i).reduce((a, d) => a + d.gain, 0);
+  const after = deltas.filter((d) => d.i > max.i).reduce((a, d) => a + d.gain, 0);
+  const neighboursDead = before + after < total * 0.1;
+  if (share >= 0.9 && neighboursDead && deltas.length >= 3) {
+    return { suspect: true, reason: 'single_interval_spike', spikeIndex: max.i };
+  }
+  // Flatline that suddenly resumes with a huge burst late in life.
+  const lastQuarter = deltas.slice(Math.floor(deltas.length * 0.75));
+  const lateGain = lastQuarter.reduce((a, d) => a + d.gain, 0);
+  if (deltas.length >= 6 && before < total * 0.05 && max.i > deltas.length * 0.7 && lateGain > total * 0.9) {
+    return { suspect: true, reason: 'late_burst_after_flatline', spikeIndex: max.i };
+  }
+  return { suspect: false, reason: 'organic' };
+}
+
+// ---- Engagement sanity band -------------------------------------------------
+// Typical floor of (likes+comments)/views by platform. Real clips rarely fall
+// below these; bought views usually do. Conservative to avoid false accusations.
+export const ENGAGEMENT_FLOORS = {
+  tiktok: 0.005,     // 0.5% — TikTok engagement is normally 3-10%
+  youtube: 0.002,    // 0.2%
+  instagram: 0.003,  // 0.3%
+};
+
+/**
+ * engagementSuspect({ platform, views, likes, comments })
+ * True when views are meaningful but engagement sits under the platform floor.
+ * Null/hidden counts are NOT judged (absent data isn't evidence).
+ */
+export function engagementSuspect({ platform, views, likes, comments }) {
+  const floor = ENGAGEMENT_FLOORS[platform];
+  if (!floor) return false;
+  const v = Number(views) || 0;
+  if (v < 10000) return false;                 // small clips: not enough signal
+  if (likes == null && comments == null) return false; // hidden counts: no verdict
+  const eng = ((Number(likes) || 0) + (Number(comments) || 0)) / v;
+  return eng < floor;
+}
 
 // ---- Money-state pipeline ---------------------------------------------------
 /**
