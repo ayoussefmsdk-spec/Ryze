@@ -49,3 +49,12 @@ test('known backup-only Facebook account goes straight to the posts scraper', as
     globalThis.fetch = realFetch;
   }
 });
+
+test('glitch shield: hold a big drop, accept it only when the next check confirms', async () => {
+  const { decideGlitch } = await import('./normalize.mjs');
+  assert.equal(decideGlitch({ prevViews: 50000, newViews: 51000 }).action, 'apply');           // normal growth
+  assert.equal(decideGlitch({ prevViews: 50000, newViews: 20000 }).action, 'hold');            // first big drop
+  assert.equal(decideGlitch({ prevViews: 50000, newViews: 20400, holdViews: 20000 }).action, 'apply'); // confirmed
+  assert.equal(decideGlitch({ prevViews: 50000, newViews: 31000, holdViews: 20000 }).action, 'hold');  // inconsistent
+  assert.equal(decideGlitch({ prevViews: 50000, newViews: 0, holdViews: 0 }).action, 'hold');   // zero never auto-accepted
+});

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { hasSession } from '../../../../lib/auth.mjs';
 import { query } from '../../../../lib/db.mjs';
+import { TRANSIENT_FLAGS } from '../../../../core/normalize.mjs';
 import { fetchSingleClip } from '../../../../lib/check.mjs';
 
 /** GET — one clip + its full check history (powers the per-clip analytics). */
@@ -97,12 +98,15 @@ export async function PATCH(req, { params }) {
   }
 
   if (b.action === 'clearFlag' && typeof b.flag === 'string') {
-    // Sticky: remember the dismissal so later checks never re-add this flag.
+    // Sticky: remember the dismissal so later checks never re-add this flag —
+    // EXCEPT per-fetch flags (glitch, check failed, view drop, removed): those
+    // describe one read; remembering them disabled the glitch shield for good.
+    const sticky = !TRANSIENT_FLAGS.includes(b.flag);
     await query(
       `update clips set flags = array_remove(flags, $1),
-              dismissed_flags = (select array(select distinct unnest(dismissed_flags || $1)))
+              dismissed_flags = case when $3 then (select array(select distinct unnest(dismissed_flags || $1))) else dismissed_flags end
         where id = $2`,
-      [b.flag, params.id],
+      [b.flag, params.id, sticky],
     );
     return NextResponse.json({ ok: true });
   }

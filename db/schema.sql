@@ -339,3 +339,13 @@ create table if not exists check_runs (
   error       text
 );
 create index if not exists check_runs_cycle_idx on check_runs (cycle_id, started_at desc);
+
+-- Glitch shield v2: a suspicious read is held here; a matching read on the
+-- next check confirms it as real (no more manual "trust it" dismissal).
+alter table clips add column if not exists glitch_hold_views bigint;
+-- Repair: per-fetch flags must never be remembered as dismissed — a stored
+-- api_glitch dismissal had switched the shield off for good on those clips.
+update clips
+   set dismissed_flags = array(select f from unnest(dismissed_flags) f
+                                where not (f = any('{api_glitch,fetch_failed,view_drop,removed}'::text[])))
+ where dismissed_flags && '{api_glitch,fetch_failed,view_drop,removed}'::text[];

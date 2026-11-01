@@ -22,6 +22,8 @@ import CycleSettings from '../../../components/CycleSettings.jsx';
 import { gmtLabel } from '../../../lib/tz.mjs';
 import ClipGallery from '../../../components/ClipGallery.jsx';
 import ClearAllFlags from '../../../components/ClearAllFlags.jsx';
+import ViewDropsPanel from '../../../components/ViewDropsPanel.jsx';
+import { findViewDrops } from '../../../lib/drops.mjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,6 +54,8 @@ export default async function CyclePage({ params }) {
   )).rows[0];
   if (!cycleRow) notFound();
 
+  // Never let the recovery panel take the page down.
+  const drops = await findViewDrops(params.id).catch(() => null);
   const [payouts, membersRes, clipsRes, rosterRes, changesRes] = await Promise.all([
     computeCyclePayouts(params.id),
     query(
@@ -200,6 +204,8 @@ export default async function CyclePage({ params }) {
             </div>
           </div>
         </div>
+
+        <ViewDropsPanel cycleId={params.id} drops={drops} />
 
         {/* Alerts strip */}
         {(pending.length > 0 || flagged.length > 0 || payouts.budget.band !== 'ok') && (

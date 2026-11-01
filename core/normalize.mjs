@@ -254,6 +254,31 @@ export function classifyStatsAnomaly({ prevViews, newViews }) {
   return null;
 }
 
+/** Flags that describe ONE fetch, not the clip. Dismissing them must never be
+ *  remembered: a remembered api_glitch dismissal used to switch the glitch
+ *  shield off for that clip forever, so the next bad scrape was saved. */
+export const TRANSIENT_FLAGS = ['api_glitch', 'fetch_failed', 'view_drop', 'removed'];
+
+/**
+ * decideGlitch({ prevViews, newViews, holdViews }) -> { action, anomaly }
+ * The glitch shield's decision. A suspicious read (see classifyStatsAnomaly)
+ * is HELD — old numbers kept — unless it CONFIRMS the previous held read
+ * (two checks in a row agreeing within 5%): a real drop then goes through on
+ * its own, while a one-off scraper glitch never lands. A sudden zero is never
+ * accepted automatically (a deleted post shows up as a miss, not a zero).
+ */
+export function decideGlitch({ prevViews, newViews, holdViews = null }) {
+  const anomaly = classifyStatsAnomaly({ prevViews, newViews });
+  if (!anomaly) return { action: 'apply', anomaly: null };
+  if (anomaly === 'zero_glitch') return { action: 'hold', anomaly };
+  const held = Number(holdViews);
+  const next = Number(newViews);
+  if (holdViews != null && Number.isFinite(held) && Math.abs(next - held) <= Math.max(50, held * 0.05)) {
+    return { action: 'apply', anomaly };
+  }
+  return { action: 'hold', anomaly };
+}
+
 /**
  * sanitizeCheckSchedule(v) — validate a per-cycle check schedule from the UI.
  * Shape: { free: {mode, atLocal?, everyMinutes?}, paid: {...} }
