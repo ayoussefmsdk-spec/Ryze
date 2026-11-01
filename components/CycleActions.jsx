@@ -15,6 +15,7 @@ export default function CycleActions({ cycleId, status, hasPaidPlatforms, hasFac
   );
 
   const [elapsed, setElapsed] = useState(0);
+  const [progress, setProgress] = useState('');
   const pollRef = useRef(null);
 
   const summarize = (d) =>
@@ -46,7 +47,8 @@ export default function CycleActions({ cycleId, status, hasPaidPlatforms, hasFac
       }
       misses = 0;
       const st = d.run.status;
-      if (st === 'running') return;
+      if (st === 'running') { setProgress(d.run.progress || ''); return; }
+      setProgress('');
       clearInterval(pollRef.current);
       setBusy(null);
       if (st === 'done') { setResult(summarize(d.run.result || {})); router.refresh(); }
@@ -157,8 +159,9 @@ export default function CycleActions({ cycleId, status, hasPaidPlatforms, hasFac
       </div>
       {['all', 'free', 'facebook', 'paid'].includes(busy) && (
         <div className="muted" style={{ fontSize: 12.5 }}>
-          Running on the server — big cycles take several minutes (TikTok/Instagram are the slow part).
-          You can leave this page; it keeps going and shows the result when you come back.
+          {progress ? <><b style={{ color: 'var(--text)' }}>{progress}</b><br /></> : null}
+          Running on the server — big cycles take a few minutes. You can leave this page; it keeps going and shows
+          the result when you come back.
         </div>
       )}
       {result && <div className="muted" style={{ fontSize: 13 }}>{result}</div>}
