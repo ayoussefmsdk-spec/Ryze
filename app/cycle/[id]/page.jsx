@@ -138,6 +138,7 @@ export default async function CyclePage({ params }) {
   const frozen = cycleRow.status === 'frozen';
   const hasPaid = clips.some((c) => c.platform === 'tiktok' || c.platform === 'instagram');
   const hasFb = clips.some((c) => c.platform === 'facebook');
+  const failedCount = clips.filter((c) => c.status !== 'rejected' && (c.flags || []).some((f) => f === 'fetch_failed' || f === 'api_glitch')).length;
 
   // Group clips: clipper -> platform -> clips.
   const byClipper = new Map();
@@ -193,7 +194,7 @@ export default async function CyclePage({ params }) {
             </h1>
           </div>
           <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
-            <CycleActions cycleId={cycleRow.id} status={cycleRow.status} hasPaidPlatforms={hasPaid} hasFacebook={hasFb} endsOn={String(cycleRow.ends_on)} />
+            <CycleActions cycleId={cycleRow.id} status={cycleRow.status} hasPaidPlatforms={hasPaid} hasFacebook={hasFb} endsOn={String(cycleRow.ends_on)} failedCount={failedCount} />
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               <CycleSettings cycle={cycleRow} cpm={cpmMap} />
               <ViewerCodePanel cycleId={cycleRow.id} />

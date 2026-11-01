@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-export default function CycleActions({ cycleId, status, hasPaidPlatforms, hasFacebook, endsOn }) {
+export default function CycleActions({ cycleId, status, hasPaidPlatforms, hasFacebook, endsOn, failedCount = 0 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(null); // 'free' | 'all' | 'toggle' | 'revive'
   const [result, setResult] = useState('');
@@ -19,7 +19,7 @@ export default function CycleActions({ cycleId, status, hasPaidPlatforms, hasFac
   const pollRef = useRef(null);
 
   const summarize = (d) =>
-    `✓ ${d.checked} updated${d.failed ? ` · ${d.failed} flagged` : ''}${d.skipped ? ` · ${d.skipped} skipped${d.capInfo ? ` — daily paid-check cap hit (${d.capInfo.used}/${d.capInfo.cap} used today; stalest clips went first — raise the cap in System or wait for tomorrow)` : ''}` : ''}${d.dupesFlagged ? ` · ${d.dupesFlagged} duplicate${d.dupesFlagged > 1 ? 's' : ''} caught` : ''}${d.frozen ? ' · cycle froze (end date passed)' : ''}`;
+    `${d.unfetched ? '⚠' : '✓'} ${d.checked} updated${d.failed ? ` · ${d.failed} flagged` : ''}${d.skipped ? ` · ${d.skipped} skipped${d.capInfo ? ` — daily paid-check cap hit (${d.capInfo.used}/${d.capInfo.cap} used today; stalest clips went first — raise the cap in System or wait for tomorrow)` : ''}` : ''}${d.dupesFlagged ? ` · ${d.dupesFlagged} duplicate${d.dupesFlagged > 1 ? 's' : ''} caught` : ''}${d.frozen ? ' · cycle froze (end date passed)' : ''}${d.unfetched ? ` · ${d.unfetched} clip${d.unfetched > 1 ? 's' : ''} could NOT be fetched even after retries${d.failError ? ` (${d.failError})` : ''} — their numbers are kept as they were and they're flagged "check failed". Use ↻ Retry failed to fetch just those.` : ''}`;
 
   // Poll a background run until it finishes. Big cycles take minutes — far
   // longer than one web request may stay open — so the check runs on the
@@ -133,6 +133,13 @@ export default function CycleActions({ cycleId, status, hasPaidPlatforms, hasFac
                 {busy === 'free' ? `Checking… ${mmss}` : 'YouTube only (free)'}
               </button>
             )}
+            {failedCount > 0 && (
+              <button className="btn secondary" disabled={busy !== null} onClick={() => check('retry')}
+                style={{ borderColor: 'var(--warn, #f6a64b)', color: 'var(--warn, #f6a64b)' }}
+                title="Re-fetches ONLY the clips whose last check failed or returned bad data (all platforms) — cheap, targeted.">
+                {busy === 'retry' ? `Retrying… ${mmss}` : `↻ Retry failed (${failedCount})`}
+              </button>
+            )}
             {hasFacebook && (
               <button className="btn secondary" disabled={busy !== null} onClick={() => check('facebook')}
                 title="Checks ONLY the Facebook clips in this cycle — nothing else runs, nothing else spends.">
@@ -157,7 +164,7 @@ export default function CycleActions({ cycleId, status, hasPaidPlatforms, hasFac
           </span>
         )}
       </div>
-      {['all', 'free', 'facebook', 'paid'].includes(busy) && (
+      {['all', 'free', 'facebook', 'paid', 'retry'].includes(busy) && (
         <div className="muted" style={{ fontSize: 12.5 }}>
           {progress ? <><b style={{ color: 'var(--text)' }}>{progress}</b><br /></> : null}
           Running on the server — big cycles take a few minutes. You can leave this page; it keeps going and shows

@@ -4,13 +4,14 @@ import { startCheckRun, getCheckRun } from '../../../../../lib/checkRuns.mjs';
 
 export const dynamic = 'force-dynamic';
 
-/** POST — "Check now". Body: { scope: 'free' | 'paid' | 'facebook' | 'all' }
+/** POST — "Check now". Body: { scope: 'free' | 'paid' | 'facebook' | 'retry' | 'all' }
+ *  ('retry' = only clips flagged check-failed / stats-glitch, all platforms).
  *  ('all' = YouTube+TikTok+IG; Facebook only ever runs via its own scope).
  *  Starts the check in the BACKGROUND and returns at once; poll GET. */
 export async function POST(req, { params }) {
   if (!hasSession()) return NextResponse.json({ ok: false }, { status: 401 });
   const b = await req.json().catch(() => ({}));
-  const scope = ['free', 'facebook', 'paid'].includes(b.scope) ? b.scope : 'all';
+  const scope = ['free', 'facebook', 'paid', 'retry'].includes(b.scope) ? b.scope : 'all';
   try {
     const { run, alreadyRunning } = await startCheckRun(params.id, scope);
     return NextResponse.json({ ok: true, run, alreadyRunning }, { status: 202 });

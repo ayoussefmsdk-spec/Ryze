@@ -1,8 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
+process.env.APIFY_RETRY_WAIT_MS = '1'; // no real waiting in tests
+
 // Fake Apify API: start run -> poll (RUNNING once, then done) -> dataset items.
-function fakeApify({ failChunk = -1 } = {}) {
+function fakeApify({ failChunk = -1, poison = null } = {}) {
   const runs = new Map();
   let started = 0;
   let live = 0;
@@ -12,7 +14,10 @@ function fakeApify({ failChunk = -1 } = {}) {
     if (u.includes('/runs?')) {
       const input = JSON.parse(init.body);
       const idx = started++;
-      if (idx === failChunk) return new Response('{"error":{"type":"x","message":"boom"}}', { status: 400 });
+      // A run containing the poison link always fails (permanently bad input).
+      if (idx === failChunk || (poison && input.postURLs.includes(poison))) {
+        return new Response('{"error":{"type":"x","message":"boom"}}', { status: 400 });
+      }
       const id = `run${idx}`;
       live++; maxLive = Math.max(maxLive, live);
       runs.set(id, { input, polls: 0 });
@@ -55,14 +60,44 @@ test('TikTok batch: 250 links -> 3 async runs, polled to completion, all stats b
   } finally { globalThis.fetch = real; }
 });
 
-test('TikTok batch: one failing chunk does not sink the others', async () => {
+test('TikTok batch: a transient failure is retried and recovers everything', async () => {
   const { fetchTikTokStats } = await import('../lib/fetchers/apify.mjs');
-  const fake = fakeApify({ failChunk: 1 });
+  const fake = fakeApify({ failChunk: 1 }); // 2nd start attempt fails once
   const real = globalThis.fetch;
   process.env.APIFY_TOKEN = 't';
   globalThis.fetch = fake.fetch;
   try {
     const out = await fetchTikTokStats(urls);
-    assert.equal(out.size, 150, 'the two healthy chunks (100 + 50) still come back');
+    assert.equal(out.size, 250, 'retry recovered the failed chunk');
+    assert.equal(out.unfetched.size, 0);
+  } finally { globalThis.fetch = real; }
+});
+
+test('TikTok batch: one permanently bad link is isolated — the rest still come back', async () => {
+  const { fetchTikTokStats } = await import('../lib/fetchers/apify.mjs');
+  const poison = urls[137];
+  const fake = fakeApify({ poison });
+  const real = globalThis.fetch;
+  process.env.APIFY_TOKEN = 't';
+  globalThis.fetch = fake.fetch;
+  try {
+    const out = await fetchTikTokStats(urls);
+    assert.ok(out.size >= 240, `got ${out.size} of 250 — splitting isolated the bad link`);
+    assert.ok(out.unfetched.size >= 1 && out.unfetched.size <= 10, `unfetched narrowed to ${out.unfetched.size} links`);
+    const { parseClip } = await import('./platform.mjs');
+    assert.ok(out.unfetched.has(parseClip(poison).key), 'the bad link is reported as unfetched, not missing');
+    assert.equal(out.size + out.unfetched.size, 250, 'every link is either fetched or reported');
+  } finally { globalThis.fetch = real; }
+});
+
+test('TikTok batch: an account-level error (usage limit) fails fast without retries', async () => {
+  const { fetchTikTokStats } = await import('../lib/fetchers/apify.mjs');
+  let starts = 0;
+  const real = globalThis.fetch;
+  process.env.APIFY_TOKEN = 't';
+  globalThis.fetch = async () => { starts++; return new Response('{"error":{"type":"platform-feature-disabled","message":"Monthly usage hard limit exceeded"}}', { status: 403 }); };
+  try {
+    await assert.rejects(() => fetchTikTokStats(urls), /MONTHLY USAGE LIMIT/);
+    assert.equal(starts, 3, 'one attempt per chunk, no retries, no splitting');
   } finally { globalThis.fetch = real; }
 });
