@@ -50,11 +50,11 @@ test('known backup-only Facebook account goes straight to the posts scraper', as
   }
 });
 
-test('glitch shield: hold a big drop, accept it only when the next check confirms', async () => {
-  const { decideGlitch } = await import('./normalize.mjs');
-  assert.equal(decideGlitch({ prevViews: 50000, newViews: 51000 }).action, 'apply');           // normal growth
-  assert.equal(decideGlitch({ prevViews: 50000, newViews: 20000 }).action, 'hold');            // first big drop
-  assert.equal(decideGlitch({ prevViews: 50000, newViews: 20400, holdViews: 20000 }).action, 'apply'); // confirmed
-  assert.equal(decideGlitch({ prevViews: 50000, newViews: 31000, holdViews: 20000 }).action, 'hold');  // inconsistent
-  assert.equal(decideGlitch({ prevViews: 50000, newViews: 0, holdViews: 0 }).action, 'hold');   // zero never auto-accepted
+test('views never go down on their own; real gaps are flagged, tiny wobbles are not', async () => {
+  const { resolveViews } = await import('./normalize.mjs');
+  assert.deepEqual(resolveViews({ fetched: 51000, floor: 50000 }), { views: 51000, lowRead: false, glitch: false });
+  assert.deepEqual(resolveViews({ fetched: 20000, floor: 50000 }), { views: 50000, lowRead: true, glitch: true });
+  assert.deepEqual(resolveViews({ fetched: 0, floor: 300 }), { views: 300, lowRead: true, glitch: true });
+  assert.deepEqual(resolveViews({ fetched: 49990, floor: 50000 }), { views: 50000, lowRead: true, glitch: false }); // wobble
+  assert.deepEqual(resolveViews({ fetched: 120, floor: 0 }), { views: 120, lowRead: false, glitch: false });       // first read
 });

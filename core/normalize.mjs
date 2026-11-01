@@ -260,23 +260,18 @@ export function classifyStatsAnomaly({ prevViews, newViews }) {
 export const TRANSIENT_FLAGS = ['api_glitch', 'fetch_failed', 'view_drop', 'removed'];
 
 /**
- * decideGlitch({ prevViews, newViews, holdViews }) -> { action, anomaly }
- * The glitch shield's decision. A suspicious read (see classifyStatsAnomaly)
- * is HELD — old numbers kept — unless it CONFIRMS the previous held read
- * (two checks in a row agreeing within 5%): a real drop then goes through on
- * its own, while a one-off scraper glitch never lands. A sudden zero is never
- * accepted automatically (a deleted post shows up as a miss, not a zero).
+ * resolveViews({ fetched, floor }) -> { views, lowRead, glitch }
+ * Views NEVER go down on their own. `floor` is the clip's highest recorded
+ * number (or the manager's typed number). A fetch below it means the scraper
+ * returned bad data: keep the floor; flag it (glitch) when the gap is real —
+ * a zero, or at least 100 views and 5% below — so tiny wobbles stay quiet.
  */
-export function decideGlitch({ prevViews, newViews, holdViews = null }) {
-  const anomaly = classifyStatsAnomaly({ prevViews, newViews });
-  if (!anomaly) return { action: 'apply', anomaly: null };
-  if (anomaly === 'zero_glitch') return { action: 'hold', anomaly };
-  const held = Number(holdViews);
-  const next = Number(newViews);
-  if (holdViews != null && Number.isFinite(held) && Math.abs(next - held) <= Math.max(50, held * 0.05)) {
-    return { action: 'apply', anomaly };
-  }
-  return { action: 'hold', anomaly };
+export function resolveViews({ fetched, floor }) {
+  const f = Math.max(0, Math.trunc(Number(fetched) || 0));
+  const fl = Math.max(0, Math.trunc(Number(floor) || 0));
+  if (f >= fl) return { views: f, lowRead: false, glitch: false };
+  const glitch = f === 0 || (fl - f >= Math.max(100, fl * 0.05));
+  return { views: fl, lowRead: true, glitch };
 }
 
 /**

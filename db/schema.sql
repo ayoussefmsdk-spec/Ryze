@@ -349,3 +349,26 @@ update clips
    set dismissed_flags = array(select f from unnest(dismissed_flags) f
                                 where not (f = any('{api_glitch,fetch_failed,view_drop,removed}'::text[])))
  where dismissed_flags && '{api_glitch,fetch_failed,view_drop,removed}'::text[];
+
+-- Views never go down on their own. floor_reset_at marks the manager's last
+-- typed number (Set stats): only peaks from then on count as the floor.
+alter table clips add column if not exists floor_reset_at timestamptz;
+-- Repair: in ACTIVE cycles, put any clip that a bad scrape pushed below its
+-- own recorded peak back to that peak (typed numbers are left alone).
+-- Idempotent — only touches clips still below their peak.
+update clips c set
+    views = p.peak,
+    engagement = case when c.likes is null and c.comments is null then null
+                      else round((coalesce(c.likes,0) + coalesce(c.comments,0))::numeric / p.peak, 4) end
+  from (select vh.clip_id, max(vh.views) as peak
+          from view_history vh join clips c2 on c2.id = vh.clip_id
+         where c2.floor_reset_at is null or vh.checked_at >= c2.floor_reset_at
+         group by vh.clip_id) p,
+       cycles cy
+ where p.clip_id = c.id and cy.id = c.cycle_id and cy.status = 'active'
+   and c.views < p.peak and not c.manual_override and p.peak > 0;
+-- No bot / fake-view detection anymore: drop its old flags.
+update clips set flags = array_remove(array_remove(flags, 'engagement_suspect'), 'velocity_suspect'),
+                 dismissed_flags = array_remove(array_remove(dismissed_flags, 'engagement_suspect'), 'velocity_suspect')
+ where flags && '{engagement_suspect,velocity_suspect}'::text[]
+    or dismissed_flags && '{engagement_suspect,velocity_suspect}'::text[];

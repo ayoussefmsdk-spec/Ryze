@@ -52,7 +52,8 @@ export async function PATCH(req, { params }) {
     const engagement = computeEngagement({ views, likes, comments });
     await query(
       `update clips set views = $1, likes = $2, comments = $3, engagement = $4,
-              source = 'manual', manual_override = true, last_checked_at = now()
+              source = 'manual', manual_override = true, last_checked_at = now(),
+              floor_reset_at = now() -- the typed number is the new floor; older peaks no longer count
         where id = $5`,
       [views, likes, comments, engagement, params.id],
     );
