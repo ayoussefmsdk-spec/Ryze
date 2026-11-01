@@ -320,3 +320,9 @@ update clips c set flags = array_append(c.flags, 'not_a_post')
    and not ('not_a_post' = any(c.flags))
    and exists (select 1 from clipper_accounts ca
                 where ca.platform = 'facebook' and 'facebook:' || ca.handle = c.normalized_key);
+
+-- Facebook accounts the reels scraper can't read are scanned via the posts
+-- scraper; remember that per account so later scans/checks go straight to it
+-- instead of burning 4 failed runs (time + Apify credit) every time.
+alter table clipper_accounts add column if not exists fb_scan_via text;
+alter table clipper_accounts add column if not exists fb_scan_via_at timestamptz;

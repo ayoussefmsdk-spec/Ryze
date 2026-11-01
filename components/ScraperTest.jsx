@@ -37,8 +37,8 @@ export default function ScraperTest() {
       </div>
       <p className="muted" style={{ fontSize: 13, margin: 0 }}>
         Re-fetches ONE recent clip per platform (TikTok, Instagram, Facebook) live through the same scrapers your
-        checks use, and compares the fresh numbers with what's stored. Read-only — nothing in your data changes.
-        Costs a few cents (Facebook can cost more if it has to scan the page).
+        checks use — all three at the same time — and compares the fresh numbers with what's stored. Read-only:
+        nothing in your data changes. Costs a few cents; usually done in under a minute.
       </p>
       {error && <div style={{ color: 'var(--crit)', fontSize: 13 }}>✗ {error}</div>}
       {data && !data.tokenSet && <div style={{ color: 'var(--crit)', fontSize: 13 }}>✗ APIFY_TOKEN is not set on the server — no paid scraper can work.</div>}

@@ -17,3 +17,35 @@ test('Apify monthly hard limit becomes a plain instruction', async () => {
   assert.match(msg, /MONTHLY USAGE LIMIT/);
   assert.match(msg, /Billing → Limits/);
 });
+
+test('facebook light read with likes but no plays counts as working', () => {
+  const r = judgeScrape({ storedViews: 169, fresh: { views: 0, likes: 12, comments: 1 }, platform: 'facebook' });
+  assert.equal(r.verdict, 'ok');
+  // ...but a TikTok/IG 0-view read is still suspicious.
+  assert.equal(judgeScrape({ storedViews: 169, fresh: { views: 0, likes: 12 }, platform: 'tiktok' }).verdict, 'warn');
+});
+
+test('known backup-only Facebook account goes straight to the posts scraper', async () => {
+  const { scanFacebookPage } = await import('../lib/fetchers/facebook.mjs');
+  const realFetch = globalThis.fetch;
+  process.env.APIFY_TOKEN = 'test-token';
+  const actors = [];
+  globalThis.fetch = async (url) => {
+    const actor = String(url).match(/acts\/([^/]+)\//)[1];
+    actors.push(actor);
+    if (actor.includes('reels')) return new Response(JSON.stringify([{ error: 'no_items', errorDescription: 'Empty or private data for provided input' }]), { status: 200 });
+    return new Response(JSON.stringify([{ url: 'https://www.facebook.com/reel/4677240789261441', viewsCount: 169 }]), { status: 200 });
+  };
+  try {
+    const remembered = await scanFacebookPage('61595456373129', 20, { preferPosts: true });
+    assert.ok(actors[0].includes('posts'), 'first run is the posts scraper');
+    assert.ok(!actors.some((a) => a.includes('reels')), 'no wasted reels attempts');
+    assert.equal(remembered.via, 'posts');
+    actors.length = 0;
+    const fresh = await scanFacebookPage('61595456373129', 20);
+    assert.equal(actors.filter((a) => a.includes('reels')).length, 4, 'without memory: 4 reels tries first');
+    assert.equal(fresh.via, 'posts', 'reports which scraper worked so it can be remembered');
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
