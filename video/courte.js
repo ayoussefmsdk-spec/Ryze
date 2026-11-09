@@ -15,7 +15,7 @@ const studio = require('./studio');
 const S = require('./scenes');
 
 const SORTIE_DEFAUT = '/tmp/claude-0/-home-user-Ryze/d683416b-3238-53e6-a9a0-b6d3024a5424/scratchpad/video/courte';
-const DUREE = 90.5; /* durée réelle mesurée (barre de progression) */
+const DUREE = 90.63; /* durée réelle mesurée (barre de progression) */
 const C = { variante: 'courte' };
 
 /* durées du scénario par segment (docs/VIDEO-SCENARIO.md), contrôlées par controle.js (± 10 %) */

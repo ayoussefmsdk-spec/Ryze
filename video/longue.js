@@ -15,7 +15,7 @@ const studio = require('./studio');
 const S = require('./scenes');
 
 const SORTIE_DEFAUT = '/tmp/claude-0/-home-user-Ryze/d683416b-3238-53e6-a9a0-b6d3024a5424/scratchpad/video/longue';
-const DUREE = 276.08; /* durée réelle mesurée (barre de progression) */
+const DUREE = 275.04; /* durée réelle mesurée (barre de progression) */
 
 /* durées du scénario par segment (docs/VIDEO-SCENARIO.md), contrôlées par controle.js (± 10 %) */
 const PREVU = { ouverture: 8, connexion: 10, 'tableau-de-bord': 24, 'dossier-patient': 58, 'nouveau-dossier': 25, planning: 30, documents: 55, rapport: 25, securite: 20, fin: 15 };

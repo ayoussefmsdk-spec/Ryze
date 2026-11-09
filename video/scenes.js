@@ -150,7 +150,8 @@ async function seanceRealisee(st, v) {
   await st.taper(`${MODAL} input[name="lot"]`, 'RMS26K118', vite);
   await st.taper(`${MODAL} input[name="ta"]`, '108/64', vite);
   await st.taper(`${MODAL} input[name="temp"]`, '36.7', vite);
-  await st.choisir(`${MODAL} select[name="cl_puberte"]`, 'Tanner 3', { apres: 0.2 });
+  await st.vers(`${MODAL} select[name="cl_puberte"]`, 0.6); /* puberté pré-remplie avec le dernier Tanner connu (Tanner 3) : on la montre */
+  await st.attendre(0.5);
   await st.taper(`${MODAL} input[name="cl_digestif"]`, '1 à 2 selles/j, moulées, sans sang', vite);
   await st.cliquer(`${MODAL} button[type=submit]`, { apres: 0.3 });
   await st.stable();
@@ -251,7 +252,7 @@ async function nouveauDossier(st) {
   const r = { rampe: true, caracteresParSeconde: 14, vitesseMax: 3, apres: 0 };
   await st.taper('#w-nom', 'BOUAZZA', r);
   await st.appuyer('Tab', 0.05); await st.taper(null, 'Ilyas', r);
-  await st.appuyer('Tab', 0.05); await st.taper(null, '2026-01260', r);
+  /* N° de dossier laissé vide : numéro automatique « HDJ-2026-… » */
   await st.taper('#w-ddn', '14022015', r);
   await st.choisir('select[data-k="sexe"]', 'M', { apres: 0 });
   await st.taper('#w-poids', '34.5', r);
@@ -264,7 +265,7 @@ async function nouveauDossier(st) {
   await st.dezoom(0.4);
   /* saisie rétrospective */
   await st.sousTitre('La saisie rétrospective', 'un traitement antérieur et ses séances sont repris sans rien perdre');
-  await st.cliquer('summary:has-text("Traitement(s) antérieur(s)")', { apres: 0.1 });
+  await st.cliquer('summary:has-text("antérieurs par biothérapie")', { apres: 0.1 });
   await st.cliquer('[data-action="retroOuvrir"]', { apres: 0.2 });
   await cadrer(st, `${MODAL} .callout >> nth=0`, 1.5, { fixe: true, duree: 0.7 });
   await st.attendre(0.6);
@@ -459,28 +460,29 @@ async function securite(st, v) {
   await st.sousTitre(L ? 'Sauvegarde automatique sur clé ou disque' : 'Local, sans Internet, sauvegardé', L ? 'à activer sur le poste de l’HDJ : une copie par jour, 90 jours puis une par mois' : 'un seul poste, export en un clic, copie automatique sur clé ou disque');
   await cadrer(st, `${EXPORT}`, 1.45, { duree: 0.9, hautEnHaut: true });
   await st.vers(`${AUTO} h2`, 0.6);
-  await st.attendre(L ? 1.0 : 1.2);
+  await st.attendre(L ? 0.9 : 1.2);
   if (L) {
     await st.sousTitre('Aucune donnée ne sort de l’hôpital', 'un seul PC, sans Internet ni serveur · export manuel en un clic');
     await st.vers(`${EXPORT} [data-action="exporterBase"]`, 0.6);
-    await st.attendre(1.3);
+    await st.attendre(1.0);
   }
   await st.dezoom(0.5);
   if (!L) return;
   await st.naviguer('.nav [data-go="equipe"]', { attente: 0.3 });
   await st.sousTitre('Un code par personne, deux niveaux d’accès', 'accès complet pour les médecins, accès hôpital de jour pour l’équipe');
   await cadrer(st, '.grid.c11', 1.4, { duree: 0.8 });
-  await st.attendre(0.8);
+  await st.attendre(0.6);
   await st.dezoom(0.5);
-  /* qui a fait quoi : la trace d'une correction dans le détail de séance */
-  const aya = await idDe(st, 'Aya SEBTI');
-  await st.fonduEnchaine(0.4, () => st.allerA('patient', { id: aya, tab: 'plan' }));
-  await st.sousTitre('Qui a fait quoi', 'chaque séance garde son auteur et ses corrections, datées et signées');
-  const l = 'tbody tr:has-text("S38"):has-text("Séance")';
-  await st.cliquer(`${l} details.menu summary`, { apres: 0.2 });
-  await st.cliquer(`${l} [data-action="cureDetail"]`, { apres: 0.3 });
-  await cadrer(st, `${MODAL} .modal-body`, 1.45, { fixe: true, duree: 0.8 });
-  await st.vers(`${MODAL} :text("Corrigée le") >> nth=0`, 0.5);
+  /* qui a fait quoi : la carte « Journal des actions » (filtre en rampe sur une patiente fictive) */
+  await st.sousTitre('Qui a fait quoi', 'journal des actions, suppressions conservées');
+  await st.defiler('#journal-carte', { duree: 0.8, position: 0.08 });
+  await st.taper('#journal-filtre', 'SEBTI', { rampe: true, caracteresParSeconde: 8, apres: 0 });
+  await st.page.waitForTimeout(400); await st.stable(); /* filtre de l'application en temps réel */
+  const modif = '#journal-corps tr:has-text("Séance modifiée") >> nth=0';
+  await cadrer(st, modif, 1.4, { duree: 0.9 });
+  await st.vers('#journal-corps tr:has-text("Séance n°8 réalisée") >> nth=0', 0.6);
+  await st.attendre(0.8);
+  await st.vers(`${modif} >> td >> nth=3`, 0.5);
   await st.attendre(1.0);
   await st.dezoom(0.5);
 }
