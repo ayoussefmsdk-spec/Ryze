@@ -1,4 +1,4 @@
-# Ryze — Suivi biothérapique en hôpital de jour
+# HDJ — Suivi biothérapique en hôpital de jour
 
 Prototype d'application hospitalière pour la gestion des biothérapies en hôpital de jour (service de gastro-entérologie, MICI) et génération du **Carnet de suivi biothérapique** du patient.
 
@@ -40,7 +40,7 @@ pc/
   LISEZMOI.txt       mode d'emploi : installation, usage, sauvegardes, mise à jour, problèmes fréquents
 ```
 
-Paquet à copier sur le PC : un dossier `HDJ\` contenant `app\` (tout le dossier, `etablissement.js` et `fonts\` compris) et le contenu de `pc/`. Le copier dans `C:\HDJ` (chemin sans accent conseillé, zip débloqué dans ses Propriétés avant « Extraire tout »), lancer `Installer.bat`, puis ouvrir HDJ par l'icône du Bureau (importer la base depuis Paramètres, ou démarrer avec une base vide). Impression : décocher une fois « En-têtes et pieds de page » (Plus de paramètres) et garder les marges par défaut ; Edge 87 minimum, Edge 131 ou plus récent conseillé (numéros de page et identité du patient sur les pages suivantes, boîtes de marge `@page`). Avec `etablissement.js`, la fenêtre s'intitule « HDJ — Hôpital de jour · Biothérapies » et prend l'emblème du GST comme icône (`R.appliquerIdentiteFenetre`, core.js) ; sans lui (démonstration publique), titre et icône Ryze inchangés. Les fichiers `.bat` sont en ASCII et en CRLF, `LISEZMOI.txt` en UTF-8 avec BOM et CRLF (voir `.gitattributes`). La **sauvegarde automatique sur le disque** (Paramètres) écrit la base dans un dossier choisi après chaque modification (`ryze-base.json` + une copie datée par jour) ; les documents exportés embarquent les polices et s'impriment hors ligne.
+Paquet à copier sur le PC : un dossier `HDJ\` contenant `app\` (tout le dossier, `etablissement.js` et `fonts\` compris) et le contenu de `pc/`. Le copier dans `C:\HDJ` (chemin sans accent conseillé, zip débloqué dans ses Propriétés avant « Extraire tout »), lancer `Installer.bat`, puis ouvrir HDJ par l'icône du Bureau (importer la base depuis Paramètres, ou démarrer avec une base vide). Impression : décocher une fois « En-têtes et pieds de page » (Plus de paramètres) et garder les marges par défaut ; Edge 87 minimum, Edge 131 ou plus récent conseillé (numéros de page et identité du patient sur les pages suivantes, boîtes de marge `@page`). Avec `etablissement.js`, la fenêtre s'intitule « HDJ — Hôpital de jour · Biothérapies » et prend l'emblème du GST comme icône (`R.appliquerIdentiteFenetre`, core.js) ; sans lui (démonstration publique), titre « HDJ — Suivi biothérapique » et icône HDJ générique (`app/ryze.svg`). Les fichiers `.bat` sont en ASCII et en CRLF, `LISEZMOI.txt` en UTF-8 avec BOM et CRLF (voir `.gitattributes`). La **sauvegarde automatique sur le disque** (Paramètres) écrit la base dans un dossier choisi après chaque modification (`ryze-base.json` + une copie datée par jour) ; les documents exportés embarquent les polices et s'impriment hors ligne.
 
 ## Modules
 

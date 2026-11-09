@@ -205,7 +205,7 @@ H.executer(async () => {
   const dIV = D[0];
   await H.aller(page, 'carnet', { id: dIV.id });
   const ex = await H.telecharger(page, '#app [data-action="telechargerDoc"]');
-  t('export : fichier Ryze_Carnet_NOM_Prénom_AAAA-MM-JJ.html', new RegExp(`^Ryze_Carnet_${dIV.nom.replace(/[^A-Za-z0-9]+/g, '-')}_[A-Za-z-]+_\\d{4}-\\d{2}-\\d{2}\\.html$`).test(ex.nom), ex.nom);
+  t('export : fichier HDJ_Carnet_NOM_Prénom_AAAA-MM-JJ.html', new RegExp(`^HDJ_Carnet_${dIV.nom.replace(/[^A-Za-z0-9]+/g, '-')}_[A-Za-z-]+_\\d{4}-\\d{2}-\\d{2}\\.html$`).test(ex.nom), ex.nom);
   const html = ex.contenu;
   t('export : polices embarquées (data:font/woff2), logo intégré, aucune ressource Internet ni script', /@font-face/.test(html) && /url\(data:font\/woff2;base64,/.test(html) && html.includes(contexte.etab.logo.slice(0, 120)) && !/https?:\/\/(?!www\.w3\.org)/.test(html.replace(/data:[^)"']+/g, '')) && !/<script/i.test(html), { googleapis: /googleapis/.test(html), script: /<script/i.test(html) });
   const X = await H.ouvrir({ horsLigne: true });
@@ -224,7 +224,7 @@ H.executer(async () => {
     const lib = `${r}${par.quoi || par.vue ? ' ' + (par.quoi || par.vue) : ''}`;
     if (!e) { koX.push(`${lib} : aucun export`); continue; }
     garder(`export ${lib}`, e.texte);
-    if (!(/^Ryze_[A-Za-z-]+(_[A-Za-z0-9-]+)*_\d{4}-\d{2}-\d{2}\.html$/.test(e.nom) && e.autorise && e.polices && e.texte.length > 500)) koX.push(`${lib} : ${e.nom} (${e.texte.length} car.)`);
+    if (!(/^HDJ_[A-Za-z-]+(_[A-Za-z0-9-]+)*_\d{4}-\d{2}-\d{2}\.html$/.test(e.nom) && e.autorise && e.polices && e.texte.length > 500)) koX.push(`${lib} : ${e.nom} (${e.texte.length} car.)`);
   }
   t('fichier .html de chacun des 10 types de document : nom daté, polices intégrées, contenu complet', !koX.length, koX);
 

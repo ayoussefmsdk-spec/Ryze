@@ -169,7 +169,7 @@ H.executer(async () => {
   const id2 = await B.page.evaluate(() => { const R = window.RYZE, e = R.etab(), ic = document.querySelector('link[rel~="icon"]'); return { charge: !!window.RYZE_ETABLISSEMENT, etab: e.etablissement, hopital: e.hopital, logo: e.logo, img: !!document.querySelector('img.login-logo'), titre: document.title, icone: ic ? ic.getAttribute('href') : '' }; });
   t('sans etablissement.js : chargement sans erreur JavaScript', H.erreursJS.length === avant && !id2.charge, H.erreursJS.slice(avant));
   t('sans etablissement.js : identité générique (aucun établissement réel, aucun logo)', !!id2.etab && !/Ibn Rochd|Harouchi/i.test(id2.etab + id2.hopital) && id2.logo === '' && !id2.img, id2);
-  t('sans etablissement.js : titre et icône d’origine (Ryze, ryze.svg)', id2.titre === 'Ryze Biothérapies' && id2.icone === 'ryze.svg', [id2.titre, id2.icone]);
+  t('sans etablissement.js : titre et icône d’origine (HDJ — Suivi biothérapique, ryze.svg)', id2.titre === 'HDJ — Suivi biothérapique' && id2.icone === 'ryze.svg', [id2.titre, id2.icone]);
   await H.connexion(B.page, 'MED001');
   await H.aller(B.page, 'carnet', { id: 'p1' });
   const ent2 = await B.page.evaluate(() => { const w = document.querySelector('#app .carnet-wrap'); return { txt: w ? w.innerText : '', logo: !!(w && w.querySelector('img.doc-logo')) }; });

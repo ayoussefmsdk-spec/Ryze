@@ -103,7 +103,7 @@ const champ0 = (label, val, o = {}) => `<div class="f${o.cls ? ' ' + o.cls : ''}
   /* bandeau de page : nom et dossier (une seule fois par page), titre, numéro ; sansNom : page de la carte (le nom est sur la carte) ; sansNum : le numéro est dans le pied */
   const enTete = (c, n, titre, o) => `<div class="run">${o && o.sansNom ? '' : `<span class="run-id">${nomPatient(c.p)}${c.p.ipp ? ` · ${bi(L().dossierNo)} ${ltr(c.p.ipp)}` : ''}</span>`}<span class="run-t">${bi(titre)}</span>${o && o.sansNum ? '' : `<span class="num">${fr(L().page)} ${n}/${NB_PAGES}</span>`}</div>`;
   const etabLignes = e => [[e.service, e.unite].filter(Boolean).join(' · ')].filter(Boolean);
-  const pied = (c, n) => `<span class="maq">imprimé le ${R.fmtDate(c.t)} <span class="nw">par Ryze</span></span><span class="pied-sep"> · </span><span class="num">${fr(L().page)} ${n}/${NB_PAGES}</span>`; /* page 8 : texte continu « imprimé le … par Ryze · Page 8/8 » renvoyé à la ligne à côté de la carte */
+  const pied = (c, n) => `<span class="maq">imprimé le ${R.fmtDate(c.t)} <span class="nw">par HDJ</span></span><span class="pied-sep"> · </span><span class="num">${fr(L().page)} ${n}/${NB_PAGES}</span>`; /* page 8 : texte continu « imprimé le … par HDJ · Page 8/8 » renvoyé à la ligne à côté de la carte */
   const titrePage = v => `<div class="titre-page"><h2>${bi(v)}</h2></div>`;
   /* ligne « Mon médecin : Dr … » (le médecin en charge, rien d'autre) */
   const ligneMedecin = (c, cls) => `<div class="medecin-l${cls ? ' ' + cls : ''}"><span class="lab">${bi(L().p1.equipe.medecin)}</span><span class="val">${c.medecin ? esc(c.medecin) : fill()}</span></div>`;

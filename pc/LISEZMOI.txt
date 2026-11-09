@@ -219,6 +219,6 @@ Installation et utilisation sur un PC Windows (sans Internet, sans serveur)
 
 7. VERSION
 ----------
-  Paquet HDJ 1.0 du 26/10/2026 — application Ryze (format de la base :
+  Paquet HDJ 1.0 du 26/10/2026 — application HDJ (format de la base :
   version 12), pour Windows 10 et 11 avec Microsoft Edge ou Google Chrome
   (version 131 ou plus récente conseillée, 87 au minimum).
