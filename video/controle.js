@@ -68,13 +68,13 @@ if (r.status !== 0) alerte('planche : ' + r.stderr.trim()); else dire(`Planche :
 /* ---------- 8 images aux instants clés ---------- */
 const cles = [];
 if (M) {
+  (M.zooms || []).forEach(z => cles.push({ t: z.atteint != null ? z.atteint + 0.3 : z.debut + 1.2, q: 'zoom' }));
   (M.cartons || []).forEach(c => cles.push({ t: Math.min(c.fin - 0.5, c.debut + 1.6), q: 'carton-' + (c.type || '') }));
   (M.sousTitres || []).forEach(s => cles.push({ t: s.debut + Math.min(1.2, s.affichage / 2), q: 'sous-titre' }));
-  (M.zooms || []).forEach(z => cles.push({ t: (z.fin != null ? z.fin - 0.15 : z.debut + 1.2), q: 'zoom' }));
   (M.rampes || []).forEach(x => cles.push({ t: (x.debut + x.fin) / 2, q: 'rampe-' + x.type }));
 }
-cles.sort((a, b) => a.t - b.t);
-let choisies = cles.filter(c => c.t > 0 && c.t < duree - 0.05).filter((c, i, l) => !l.slice(0, i).some(d => Math.abs(d.t - c.t) < 0.8));
+/* priorité : zooms, cartons, sous-titres, rampes (ordre d'insertion), puis tri chronologique */
+let choisies = cles.filter(c => c.t > 0 && c.t < duree - 0.05).filter((c, i, l) => !l.slice(0, i).some(d => Math.abs(d.t - c.t) < 0.8)).sort((a, b) => a.t - b.t);
 while (choisies.length > 8) { /* on retire l'instant le plus proche de son voisin */ let k = 1, m = Infinity; for (let i = 1; i < choisies.length; i++) { const d = choisies[i].t - choisies[i - 1].t; if (d < m) { m = d; k = i; } } choisies.splice(k, 1); }
 for (let i = 1; choisies.length < 8; i++) { const t = duree * i / 9; if (!choisies.some(c => Math.abs(c.t - t) < 0.8)) choisies.push({ t, q: 'regulier' }); if (i > 40) break; }
 choisies.sort((a, b) => a.t - b.t);

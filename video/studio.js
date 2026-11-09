@@ -264,6 +264,9 @@ class Studio {
       if (code !== 0) throw new Error(`ffmpeg a échoué pour ${s.fichier} (code ${code}) : ${s.stderr}`);
       if (!s.images) { fs.rmSync(s.tmp, { force: true }); } else fs.renameSync(s.tmp, s.fichier);
     }
+    if (s.muet) { /* segment repris : le fichier existant doit avoir le même nombre d'images (sinon le minutage et la barre de progression seraient faux) */
+      try { const n = +execSync(`ffprobe -v error -select_streams v:0 -show_entries stream=nb_frames -of csv=p=0 "${s.fichier}"`, { encoding: 'utf8' }).trim(); if (n && n !== s.images) console.log(`  attention : ${path.basename(s.fichier)} contient ${n} images, le scénario en produit ${s.images} : rendre aussi ce segment`); } catch (e) { /* ffprobe absent */ }
+    }
     const duree = (Date.now() - s.debutRendu) / 1000;
     const rec = { numero: s.numero, nom: s.nom, fichier: path.basename(s.fichier), debut: arrondi(s.f0 / this.ips), fin: arrondi(this.f / this.ips), duree: arrondi(s.images / this.ips), images: s.images, rendu: s.muet ? 'repris' : 'rendu', secondesDeRendu: +duree.toFixed(1), imagesParSeconde: s.muet ? null : +(s.images / Math.max(0.001, duree)).toFixed(2) };
     if (s.images) this.segments.push(rec);
@@ -399,8 +402,8 @@ class Studio {
     const b = await this.boite(cible), c = this.versContenu(b.x + b.width / 2, b.y + b.height / 2);
     if (echelle == null) { const u = { w: b.width / this.cam.s, h: b.height / this.cam.s }; echelle = Math.min(1.8, (this.W * 0.86) / Math.max(1, u.w), (this.H * 0.72) / Math.max(1, u.h)); }
     echelle = borne(echelle, 1, 1.8);
-    await this.camera(echelle, c.x, c.y, duree);
-    this.journal.zooms.push({ cible: typeof cible === 'string' ? cible : `${Math.round(cible.x)},${Math.round(cible.y)}`, echelle: +echelle.toFixed(2), debut: arrondi(this.t - duree), fin: null });
+    const t0 = this.t; await this.camera(echelle, c.x, c.y, duree);
+    this.journal.zooms.push({ cible: typeof cible === 'string' ? cible : `${Math.round(cible.x)},${Math.round(cible.y)}`, echelle: +echelle.toFixed(2), debut: arrondi(t0), atteint: arrondi(this.t), fin: null });
   }
   async dezoom(duree = 0.8) {
     if (this.cam.s === 1 && this.cam.cx === this.W / 2 && this.cam.cy === this.H / 2) return;
@@ -540,6 +543,7 @@ class Studio {
     this.journal.cartons.push({ type: o.type || 'carton', titre: o.titre || null, debut: arrondi(debut), fin: arrondi(this.t) });
   }
   async cartonChapitre(numero, titre, o = {}) {
+    this.chapitre(null); /* la pastille du chapitre précédent s'arrête avec l'arrivée du carton */
     await this.carton({ type: 'chapitre', numero, titre, tailleTitre: 84, logo: o.logo !== false, petitLogo: true, entree: o.entree != null ? o.entree : 0.4, duree: o.duree != null ? o.duree : 1.0, sortie: o.sortie != null ? o.sortie : 0.4, ecart: 0.15, pendant: async (p, st) => { if (this.cam.s !== 1) { this.cam = { s: 1, cx: this.W / 2, cy: this.H / 2 }; } if (o.pendant) await o.pendant(p, st); } });
     this.chapitre(numero, titre);
   }
