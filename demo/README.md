@@ -127,7 +127,6 @@ La vérification passe 767 contrôles, sans échec ni erreur JavaScript :
 
 ## Limites connues
 
-- L'écran de l'application affiche encore des « (s) » : « traitement(s) suspendu(s) », « réalisée(s) », « Résultat(s) anormal(aux) »… C'est un libellé de l'application, pas un problème de données. Les documents imprimés n'en contiennent pas.
-- Le carnet A4 imprime « grossesse éventuelle » dans les vérifications avant séance pour **toutes** les filles, y compris Hiba (9 ans) et Lina (10 ans). Le carnet patient de Nour (16 ans) ne mentionne pas la grossesse.
 - La liste des prémédications de la fenêtre de séance n'a que des doses adultes (« Paracétamol 1 g + dexchlorphéniramine 5 mg IV »). Pour Omar, une note d'équipe précise donc les doses au poids.
 - Les injections SC n'ont pas d'heure : elles apparaissent comme « SC » dans « Ma journée ».
+- Les libellés « (s) » à l'écran et la mention « grossesse éventuelle » pour les fillettes, signalés lors de la construction, ont été corrigés dans l'application depuis.
