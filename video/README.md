@@ -11,7 +11,45 @@ démonstration **fictive** uniquement.
 |---|---|
 | `studio.js` | la bibliothèque (`ouvrir()` → objet studio) |
 | `essai.js` | essai de ~26 s qui utilise toute l'API |
-| `controle.js` | contrôle qualité d'un mp4 (ffprobe, planche, images clés, minutage) |
+| `controle.js` | contrôle qualité d'un mp4 (ffprobe, planche, images clés, minutage, écart au scénario) |
+| `scenes.js` | les scènes des films (une fonction `async (st, v)` par scène, variante `longue` ou `courte`) |
+| `longue.js` | version longue (≈ 4 min 30, 10 chapitres) |
+| `courte.js` | version courte (≈ 90 s, 8 plans), mêmes scènes en variante « courte » |
+
+## Rendre les deux films de démonstration
+
+Base vitrine `demo/vitrine.json` (31 dossiers fictifs), code `AAA111`
+(Dr Y. MOUSSADDEK), horloge de la page figée au lundi 9/11/2026 10:00
+(`ouvrir({ horloge })`) : le film est identique quel que soit le jour du rendu.
+Le profil Chromium est jetable : la séance marquée réalisée et le dossier
+fictif créé pendant le film n'existent que dans ce profil.
+
+```sh
+export NODE_PATH=$(npm root -g)
+SP=/tmp/claude-0/-home-user-Ryze/d683416b-3238-53e6-a9a0-b6d3024a5424/scratchpad   # sorties hors du dépôt
+node video/longue.js --ips 24                  # essai (≈ 8 min) → $SP/video/longue/
+node video/longue.js                           # final 60 i/s (≈ 17 min)
+node video/longue.js --segment documents       # refaire un seul chapitre (les autres sont repris)
+node video/controle.js $SP/video/longue/HDJ-demo-longue.mp4
+node video/courte.js --ips 24 && node video/courte.js
+node video/controle.js $SP/video/courte/HDJ-demo-courte.mp4
+```
+
+Segments de la version longue : `ouverture`, `connexion`, `tableau-de-bord`,
+`dossier-patient`, `nouveau-dossier`, `planning`, `documents`, `rapport`,
+`securite`, `fin` ; de la version courte : `ouverture`, `tableau-de-bord`,
+`dossier`, `planning`, `carnet`, `rapport`, `securite`, `fin`. Les durées
+prévues par le scénario sont passées à `ouvrir({ prevu })` et contrôlées par
+`controle.js` (± 10 % par segment) ; `DUREE` (barre de progression) est la
+durée réelle mesurée. Après un `--segment` qui change la durée d'un segment,
+rendre le film entier (le minutage des segments repris serait décalé).
+
+Choix de mise en scène propres à ces films (voir les commentaires de
+`scenes.js`) : pastille de chapitre en haut à droite (`pastille: { right: 16,
+top: 72 }`) pour ne pas couvrir la marque « HDJ » du menu ; zooms par
+`cadrer()` (l'élément est amené au-dessus du sous-titre avant le zoom) ; la
+carte « Sauvegarde automatique sur le disque » est montrée repliée, car son
+texte cite le nom technique des fichiers de sauvegarde.
 
 ## Lancer
 
@@ -69,8 +107,11 @@ courant est `st.t` (s) ; la page Playwright est `st.page`.
   intégrée, figée : `RYZE.S.dirty = true; RYZE.save()`), `code` (`'MED001'`),
   `ips` (60), `sortie`, `largeur`/`hauteur` (1920×1080), `dureeTotale` (s, pour
   la barre de progression ; absente = pas de barre), `seulement` (noms de
-  segments à rendre, les autres sont repris), `pastille` (`{ left, top }`,
-  défaut 8/8), `fuseau` (ex. `'Africa/Casablanca'`), `dialogues`
+  segments à rendre, les autres sont repris), `pastille` (`{ left, top }` ou
+  `{ right, top }` pour l'ancrer à droite ; défaut 8/8), `horloge` (date ISO :
+  `Date` de la page figée par `page.clock.setFixedTime`, minuteries normales),
+  `prevu` (`{ segment: secondes }`, durées du scénario recopiées dans
+  `minutage.json` et contrôlées par `controle.js`), `fuseau` (ex. `'Africa/Casablanca'`), `dialogues`
   (`'accepter'` par défaut ou `'refuser'` pour `confirm()`), `qualite` (JPEG,
   90), `preset`/`crf` (`slow`/19), `interdits` (RegExp de textes interdits à
   l'écran, défaut : Ryze, undefined, NaN, [object Object]), `silencieux`.
@@ -223,6 +264,9 @@ await st.segment('dossier');  …  await st.assembler('HDJ-demo-courte.mp4');
   ce segment (les autres sont « muets » : actions jouées, images comptées,
   fichiers existants repris ; un nombre d'images différent est signalé).
 - **Fichiers locaux uniquement** ; Chromium lancé sans trafic de fond.
+- **Langue** : Chromium est lancé avec `LANG=fr_FR.UTF-8`, `LANGUAGE=fr` et
+  `--lang=fr-FR` ; sans cela les champs date et heure natifs s'affichent à
+  l'américaine (« 11/09/2026 », « 08:00 AM ») malgré `locale: 'fr-FR'`.
 
 ## Vitesse mesurée (essai, 4 cœurs)
 
@@ -240,8 +284,8 @@ await st.segment('dossier');  …  await st.assembler('HDJ-demo-courte.mp4');
   au temps du film : le rendu étant ~4× plus lent que le temps réel à 60 i/s,
   un message de 4 s ne reste ≈ 1 s dans le film. Pour un message à lire,
   filmer juste après l'action ou le doubler d'un sous-titre.
-- La pastille de chapitre (en haut à gauche) recouvre la marque « HDJ » du
-  menu ; le sous-titre recouvre le bas gauche (pied du menu et bas du
+- La pastille de chapitre (en haut à gauche par défaut) recouvre la marque
+  « HDJ » du menu (les films la placent en haut à droite) ; le sous-titre recouvre le bas gauche (pied du menu et bas du
   contenu) : `vers` fait défiler une cible située derrière, mais un zoom ou une
   capture sur cette zone doit en tenir compte. Position réglable
   (`ouvrir({ pastille })`).

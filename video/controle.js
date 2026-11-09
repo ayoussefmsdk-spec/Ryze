@@ -47,6 +47,10 @@ if (M) {
   let fin = 0;
   (M.segments || []).forEach(s => { dire(`    ${String(s.numero).padStart(2, '0')} ${s.nom.padEnd(22)} ${s.debut.toFixed(2).padStart(7)} → ${s.fin.toFixed(2).padStart(7)} s  (${s.duree.toFixed(2)} s, ${s.images} images${s.imagesParSeconde ? `, rendu ${s.imagesParSeconde} i/s` : ''})`); if (Math.abs(s.debut - fin) > 1e-3) alerte(`segment ${s.nom} : début ${s.debut} ≠ fin du précédent ${fin}`); fin = s.fin; });
   if (Math.abs(fin - duree) > 2 / ips + 0.05) alerte(`somme des segments ${fin} s ≠ durée du film ${duree.toFixed(3)} s`);
+  if (M.prevu) { /* écart au scénario par segment (chapitre ou plan, carton compris) */
+    dire('  Écart au scénario (± 10 % par segment) :');
+    (M.segments || []).forEach(s => { const p = M.prevu[s.nom]; if (!p) return; const e = (s.duree - p) / p; dire(`    ${s.nom.padEnd(22)} prévu ${String(p).padStart(5)} s, réel ${s.duree.toFixed(2).padStart(6)} s (${e >= 0 ? '+' : ''}${(e * 100).toFixed(1)} %)`); if (Math.abs(e) > 0.10 + 1e-9) alerte(`segment ${s.nom} : ${s.duree.toFixed(2)} s pour ${p} s prévues (écart > 10 %)`); });
+  }
   dire('  Chapitres : ' + ((M.chapitres || []).map(c => `${c.numero} ${c.titre} (${c.debut.toFixed(1)}–${c.fin.toFixed(1)} s)`).join(' · ') || 'aucun'));
   dire('  Sous-titres :');
   (M.sousTitres || []).forEach(s => { dire(`    ${s.debut.toFixed(2).padStart(7)} → ${s.fin.toFixed(2).padStart(7)} s  ${s.affichage.toFixed(2)} s  « ${s.ligne1} »${s.complement ? `  (+${s.complement.toFixed(2)} s ajoutées pour atteindre 2,5 s)` : ''}`); if (s.affichage < 2.5 - 1 / ips) alerte(`sous-titre « ${s.ligne1} » affiché ${s.affichage} s (< 2,5 s)`); });

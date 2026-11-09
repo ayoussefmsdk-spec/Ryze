@@ -125,7 +125,7 @@ function installerDansLaPage() {
     const cur = $('vs-cur'); vis(cur, !!e.cur); if (e.cur) cur.style.transform = `translate(${e.cur.x - 4.3}px,${e.cur.y - 2.2}px)`;
     const ring = $('vs-ring'); vis(ring, !!e.ring); if (e.ring) { ring.style.left = e.ring.x + 'px'; ring.style.top = e.ring.y + 'px'; ring.style.opacity = e.ring.o; ring.style.transform = `scale(${e.ring.s})`; }
     const st = $('vs-st'); vis(st, !!e.st); if (e.st) { const a = st.children[0], b = st.children[1]; if (a.textContent !== e.st.l1) a.textContent = e.st.l1; if (b.textContent !== e.st.l2) b.textContent = e.st.l2; st.style.opacity = e.st.o; st.style.transform = `translateX(${e.st.x}px)`; }
-    const ch = $('vs-chap'); vis(ch, !!e.chap); if (e.chap) { if (ch.dataset.t !== e.chap.num + '|' + e.chap.t) { ch.textContent = ''; const b = document.createElement('b'); b.textContent = e.chap.num; ch.append(b, document.createTextNode(' · ' + e.chap.t)); ch.dataset.t = e.chap.num + '|' + e.chap.t; } ch.style.left = e.chap.left + 'px'; ch.style.top = e.chap.top + 'px'; ch.style.opacity = e.chap.o; }
+    const ch = $('vs-chap'); vis(ch, !!e.chap); if (e.chap) { if (ch.dataset.t !== e.chap.num + '|' + e.chap.t) { ch.textContent = ''; const b = document.createElement('b'); b.textContent = e.chap.num; ch.append(b, document.createTextNode(' · ' + e.chap.t)); ch.dataset.t = e.chap.num + '|' + e.chap.t; } ch.style.left = e.chap.left != null ? e.chap.left + 'px' : 'auto'; ch.style.right = e.chap.right != null ? e.chap.right + 'px' : 'auto'; ch.style.top = e.chap.top + 'px'; ch.style.opacity = e.chap.o; }
     const v = $('vs-voile'); vis(v, !!e.voile); if (e.voile) { v.style.background = e.voile.c; v.style.opacity = e.voile.o; }
     const sn = $('vs-snap'); vis(sn, !!e.snap && !!sn.getAttribute('src')); if (e.snap) sn.style.opacity = e.snap.o;
     const ca = $('vs-carton'); vis(ca, !!e.carton); if (e.carton) {
@@ -162,7 +162,8 @@ class Studio {
   async init() {
     const { chromium } = chargerPlaywright();
     fs.mkdirSync(this.sortie, { recursive: true });
-    this.navigateur = await chromium.launch({ executablePath: fs.existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined, args: ['--disable-background-networking', '--disable-component-update', '--disable-sync', '--disable-domain-reliability', '--no-pings', '--no-first-run', '--hide-scrollbars', '--disable-frame-rate-limit', '--disable-gpu-vsync', '--disable-features=OptimizationHints,MediaRouter,Translate,AutofillServerCommunication'] });
+    /* LANG/LANGUAGE en français : sinon les champs date/heure natifs s'affichent à l'américaine (« 11/09/2026 », « 08:00 AM ») */
+    this.navigateur = await chromium.launch({ executablePath: fs.existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined, env: Object.assign({}, process.env, { LANG: 'fr_FR.UTF-8', LANGUAGE: 'fr' }), args: ['--lang=fr-FR', '--disable-background-networking', '--disable-component-update', '--disable-sync', '--disable-domain-reliability', '--no-pings', '--no-first-run', '--hide-scrollbars', '--disable-frame-rate-limit', '--disable-gpu-vsync', '--disable-features=OptimizationHints,MediaRouter,Translate,AutofillServerCommunication'] });
     this.contexte = await this.navigateur.newContext({ viewport: { width: this.W, height: this.H }, deviceScaleFactor: 1, colorScheme: 'light', locale: 'fr-FR', timezoneId: this.o.fuseau || undefined, acceptDownloads: true });
     await this.contexte.addInitScript(installerDansLaPage);
     this.page = await this.contexte.newPage();
@@ -170,6 +171,8 @@ class Studio {
     this.page.on('dialog', d => (this.o.dialogues === 'refuser' ? d.dismiss() : d.accept()).catch(() => {}));
     this.cdp = await this.contexte.newCDPSession(this.page);
     const p = this.page;
+    /* horloge figée (Date seulement, minuteries normales) : le film reste cohérent quel que soit le jour du rendu */
+    if (this.o.horloge) await p.clock.setFixedTime(new Date(this.o.horloge));
     await p.goto(APP_URL);
     await p.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
     if (this.o.base) {
@@ -198,7 +201,7 @@ class Studio {
     const st = this.subs.find(s => s.f0 <= f && (s.f1 == null || f < s.f1 + this.n(SORTIE_ST)));
     if (st) { const ke = lisse((f - st.f0) / Math.max(1, this.n(ENTREE_ST))), ks = st.f1 == null || f < st.f1 ? 1 : 1 - (f - st.f1) / Math.max(1, this.n(SORTIE_ST)); e.st = { l1: st.l1, l2: st.l2, o: +(ke * ks).toFixed(3), x: +(-24 * (1 - ke)).toFixed(2) }; }
     const ch = this.chaps.find(c => c.f0 <= f && (c.f1 == null || f < c.f1));
-    if (ch) { const pos = this.o.pastille || {}; e.chap = { num: ch.num, t: ch.titre, o: +lisse((f - ch.f0) / Math.max(1, this.n(0.3))).toFixed(3), left: pos.left != null ? pos.left : 8, top: pos.top != null ? pos.top : 8 }; }
+    if (ch) { const pos = this.o.pastille || {}; e.chap = { num: ch.num, t: ch.titre, o: +lisse((f - ch.f0) / Math.max(1, this.n(0.3))).toFixed(3), left: pos.right != null ? null : (pos.left != null ? pos.left : 8), right: pos.right != null ? pos.right : null, top: pos.top != null ? pos.top : 8 }; }
     { const v = this.voile, k = v.f1 > v.f0 ? lisse((f - v.f0) / (v.f1 - v.f0)) : 1, o = v.a + (v.b - v.a) * k; if (o > 0.001) e.voile = { c: v.c, o: +o.toFixed(3) }; }
     if (this.snap) { const k = (f - this.snap.f0) / Math.max(1, this.snap.f1 - this.snap.f0); if (k < 1) e.snap = { o: +(1 - lisse(k)).toFixed(3) }; }
     if (this.cartonEtat) e.carton = this.etatCarton();
@@ -294,6 +297,7 @@ class Studio {
       segments: this.segments,
       chapitres: this.chaps.map(c => ({ numero: c.num, titre: c.titre, debut: s(c.f0), fin: s(c.f1) })),
       sousTitres: this.subs.map(x => ({ ligne1: x.l1, ligne2: x.l2, debut: s(x.f0), fin: s(x.f1 + this.n(SORTIE_ST)), affichage: s(x.f1 - x.f0), complement: x.complement ? arrondi(x.complement) : 0 })),
+      prevu: this.o.prevu || null, /* durées prévues par le scénario, par segment (contrôlées par controle.js, ± 10 %) */
       cartons: this.journal.cartons, zooms: this.journal.zooms, rampes: this.journal.rampes, textesInterdits: this.journal.textesInterdits,
       rendu: this.bilanRendu()
     };
