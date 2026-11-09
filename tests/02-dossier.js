@@ -47,6 +47,7 @@ H.executer(async () => {
   t('séances IV : créneau (heure) et fauteuil attribués', p.cures.every(c => c.voie === 'IV' && /^\d{2}:\d{2}$/.test(c.heure || '') && c.fauteuil >= 1 && !c.sansCreneau));
   const tdm0 = p.surveillance.filter(s => s.id === 'tdm');
   t('plan de surveillance généré, dosages infliximab avec la cible pédiatrique ≥ 5 µg/mL', p.surveillance.filter(s => s.mode === 'echeance').length >= 5 && tdm0.length >= 1 && tdm0.every(s => s.cible === 'infliximab ≥ 5 µg/mL'), tdm0.map(s => s.cible));
+  t('numéro de dossier automatique au préfixe HDJ- (« HDJ-AAAA-0001 »), plus de « RZ- »', new RegExp('^HDJ-' + today.slice(0, 4) + '-\\d{4}$').test(p.ipp || ''), p.ipp);
   t('statut « induction », brouillon de l’assistant effacé, création tracée au journal', p.statut === 'induction' && await page.evaluate(() => !(window.RYZE.S.brouillons || {})[window.RYZE.S.user] && /Dossier créé — ESSAI Perfusion/.test(window.RYZE.S.journal[0].txt)));
 
   /* ---------------- Création SC ---------------- */
@@ -64,11 +65,30 @@ H.executer(async () => {
   await page.fill('#modal-root [name="lot"]', 'TEST-LOT-1');
   const calc = await page.evaluate(() => ({ dose: document.querySelector('#modal-root [name="dose"]').value, txt: (document.getElementById('calc-dose') || {}).innerText || '' }));
   t('fenêtre de séance : dose recalculée sur le poids du jour (5 mg/kg × 43 kg = 215 mg, 3 flacons)', calc.dose === '215' && /215 mg/.test(calc.txt) && /3 flacon/.test(calc.txt), calc);
+  t('fenêtre de séance : pluriel accordé « 3 flacons de 100 mg nécessaires », aucun « (s) » dans la fenêtre', /3 flacons de 100 mg nécessaires/.test(calc.txt) && !/\(s\)/.test(await H.modal(page)), calc.txt);
+  await page.fill('#modal-root [name="poids"]', '15');
+  const calc1 = await H.texte(page, '#calc-dose');
+  t('fenêtre de séance : singulier « 1 flacon de 100 mg nécessaire » (5 mg/kg × 15 kg = 75 mg)', /75 mg/.test(calc1) && /\b1 flacon de 100 mg nécessaire\b/.test(calc1) && !/flacons|nécessaires|\(s\)/.test(calc1), calc1);
+  await page.fill('#modal-root [name="poids"]', '43');
+  const pub0 = await page.evaluate(() => { const el = document.querySelector('#modal-root [name="cl_puberte"]'); return el ? { v: el.value, lib: el.selectedOptions[0].textContent } : null; });
+  t('fenêtre de séance, enfant de 14 ans sans stade de Tanner au dossier : puberté vide « — à préciser », jamais « Non applicable (adulte) »', !!pub0 && pub0.v === '' && pub0.lib === '— à préciser', pub0);
+  await page.selectOption('#modal-root [name="cl_puberte"]', 'Tanner 3');
   await H.validerModal(page);
   p = await etat(page, iv);
   const s0 = p.cures.find(c => c.lot === 'TEST-LOT-1');
   t('séance S0 réalisée : date du jour, poids 43 kg, dose 215 mg, lot, IDE notée', !!s0 && s0.label === 'S0' && s0.statut === 'realisee' && s0.dateReelle === today && s0.poids === 43 && s0.dose === 215 && /215 mg/.test(s0.doseTexte) && s0.ide === 'u-med1', s0);
   t('poids du dossier mis à jour, dernière séance notée', p.poids === 43 && p.derniereCure === today, [p.poids, p.derniereCure]);
+  t('bilan clinique de la séance : stade « Tanner 3 » enregistré', !!s0 && !!s0.clinique && s0.clinique.puberte === 'Tanner 3', s0 && s0.clinique);
+  await H.aller(page, 'patient', { id: iv });
+  await page.click('.page-actions [data-action="cureEnregistrer"]');
+  const pub1 = await page.inputValue('#modal-root [name="cl_puberte"]');
+  t('séance suivante du même enfant : puberté pré-remplie avec le dernier stade connu (Tanner 3)', pub1 === 'Tanner 3', pub1);
+  await page.click('#modal-root [data-action="closeModal"]');
+  const pubCtrl = await page.evaluate(id => { const R = window.RYZE, p = R.patient(id); const s = p.surveillance.find(x => x.type === 'clinique' || (R.itemBilan(x.id) || {}).type === 'clinique') || { id: 'clin', type: 'clinique', label: 'Examen clinique' };
+    const v = d => { const div = document.createElement('div'); div.innerHTML = R.formSaisieControle(s, d); const el = div.querySelector('[name="cl_puberte"]'); return el ? el.value : null; };
+    const adulte = { ddn: R.addDays(R.today(), -365 * 19), cures: [], surveillance: [] }, enfant = { ddn: R.addDays(R.today(), -365 * 10), cures: [], surveillance: [] };
+    return { enfantTanner: v(p), enfantSans: v(enfant), adulte: v(adulte), defAdulte: R.puberteDefaut(adulte), defEnfant: R.puberteDefaut(enfant) }; }, iv);
+  t('fenêtre d’examen clinique : même règle (Tanner 3 repris ; enfant sans Tanner : vide ; 18 ans et plus : « Non applicable (adulte) »)', pubCtrl.enfantTanner === 'Tanner 3' && pubCtrl.enfantSans === '' && pubCtrl.adulte === 'Non applicable (adulte)' && pubCtrl.defAdulte === 'Non applicable (adulte)' && pubCtrl.defEnfant === '', pubCtrl);
 
   /* ---------------- Séance manquée puis reportée ---------------- */
   H.section('Séance manquée, reportée, replanifiée');
@@ -95,6 +115,24 @@ H.executer(async () => {
   await H.validerModal(page);
   p = await etat(page, iv); s2 = p.cures.find(c => (c.reports || []).length);
   t('report sans date : séance « reportée » (à replanifier), deux reports tracés', s2.statut === 'reportee' && s2.reports.length === 2 && s2.reports[1].vers === null, { st: s2.statut, r: s2.reports.length });
+
+  /* ---------------- Menu « ⋯ » d'une ligne de la planification ---------------- */
+  H.section('Menu « ⋯ » : fermé à l’ouverture d’une fenêtre, au clic ailleurs et par Échap');
+  const menuOuvert = () => page.evaluate(() => document.querySelectorAll('details.menu[open]').length);
+  const ouvrirMenu = async () => { await page.click('main details.menu:has([data-action="cureDetail"]) > summary'); return menuOuvert(); };
+  t('menu « ⋯ » d’une séance : s’ouvre au clic', await ouvrirMenu() === 1);
+  await page.click('main details.menu[open] [data-action="cureDetail"]');
+  await page.waitForSelector('#modal-root .modal');
+  t('« Détails et historique » : la fenêtre s’ouvre et le menu « ⋯ » est refermé derrière elle', await menuOuvert() === 0 && /historique/i.test(await H.modal(page)), await menuOuvert());
+  await page.click('#modal-root [data-action="closeModal"]');
+  await ouvrirMenu();
+  await page.keyboard.press('Escape');
+  t('touche Échap : le menu « ⋯ » se ferme', await menuOuvert() === 0);
+  await ouvrirMenu();
+  await page.locator('main h1').first().click();
+  t('clic ailleurs dans la page : le menu « ⋯ » se ferme', await menuOuvert() === 0);
+  const remarque = await page.evaluate(() => { const c = document.querySelector('main .note-chip, main .clamp2'); if (!c) return null; const st = getComputedStyle(c); return { title: c.getAttribute('title') !== null, clamp: st.webkitLineClamp || st.getPropertyValue('-webkit-line-clamp') }; });
+  t('planification : remarques sur deux lignes au plus (line-clamp 2) avec le texte complet en title', !!remarque && remarque.title && String(remarque.clamp) === '2', remarque);
 
   /* ---------------- Séance ajoutée en mg/kg ---------------- */
   H.section('Séance ajoutée à la main en mg/kg');
@@ -238,4 +276,26 @@ H.executer(async () => {
   }
   t('documents des dossiers créés (carnets, impressions, compte rendu) : aucun « (s) », « 05 XX », « undefined », « NaN »', !fautes.length, fautes.slice(0, 4));
   t('carnet A4 d’un dossier créé par l’assistant : note « Dossier créé — … » au pluriel accordé, sans « (s) »', !creation.length && /^Dossier créé — .*\b3 séances d’induction\b/.test(((await etat(page, iv)).notes.find(n => /^Dossier créé — /.test(n.txt)) || {}).txt || ''), creation.slice(0, 2));
+
+  /* ---------------- Journal des actions (Équipe & codes) ---------------- */
+  H.section('Journal des actions : affichage, filtre, export (accès complet)');
+  const nJournal = await page.evaluate(() => window.RYZE.S.journal.length);
+  await H.aller(page, 'equipe');
+  const jr = await page.evaluate(() => { const R = window.RYZE, tb = document.getElementById('journal-corps'); if (!tb) return null; const rows = [...tb.querySelectorAll('tr')]; const th = [...document.querySelectorAll('#journal-tbl thead th')].map(x => x.textContent);
+    return { th, n: rows.length, prem: rows[0] ? [...rows[0].cells].map(c => c.innerText) : [], attendu: R.S.journal[0], qui: R.userName(R.S.journal[0].par), boutons: [...document.querySelectorAll("#journal-carte button")].map(b => b.dataset.action).filter(a => a !== "plier") /* plier : bouton commun des cartes */, saisies: [...document.querySelectorAll('#journal-carte input, #journal-carte textarea, #journal-carte select')].map(x => x.id) }; });
+  t('Équipe & codes : carte « Journal des actions », colonnes Date et heure · Qui · Action · Détail', !!jr && jr.th.join('|') === 'Date et heure|Qui|Action|Détail', jr && jr.th);
+  t('journal : toutes les entrées (≤ 200), la plus récente en premier, auteur et texte réels de l’entrée', !!jr && jr.n === Math.min(200, nJournal) && jr.prem[1] === jr.qui && jr.attendu.txt.startsWith(jr.prem[2]) && jr.prem[0].includes(jr.attendu.heure), jr && { n: jr.n, nJournal, prem: jr.prem, att: jr.attendu });
+  t('journal en lecture seule : seul bouton « Exporter le journal », seul champ le filtre', !!jr && jr.boutons.join() === 'journalExporter' && jr.saisies.join() === 'journal-filtre', jr && [jr.boutons, jr.saisies]);
+  await page.fill('#journal-filtre', 'note supprimee');
+  const filtre = await page.evaluate(() => [...document.querySelectorAll('#journal-corps tr')].map(r => r.innerText));
+  t('filtre du journal (sans tenir compte des accents) : « note supprimee » → l’entrée « Note supprimée — ESSAI Perfusion »', filtre.length >= 1 && filtre.every(x => /Note supprimée/.test(x)) && filtre.some(x => /ESSAI Perfusion/.test(x)), filtre.slice(0, 3));
+  await page.fill('#journal-filtre', '');
+  const exp = await H.telecharger(page, '[data-action="journalExporter"]');
+  const lignesExp = exp.contenu.replace(/^﻿/, '').trim().split(/\r?\n/);
+  t('export du journal : fichier HDJ_Journal_AAAA-MM-JJ.csv en UTF-8 avec BOM, en-tête et une ligne par entrée', exp.nom === `HDJ_Journal_${today}.csv` && exp.contenu.charCodeAt(0) === 0xFEFF && lignesExp[0] === 'Date;Heure;Qui;Action;Détail;Conservée' && lignesExp.length === nJournal + 1 && /Note supprimée;ESSAI Perfusion/.test(exp.contenu), { nom: exp.nom, n: lignesExp.length, nJournal, l0: lignesExp[0] });
+  t('consulter et exporter le journal n’y ajoute aucune entrée', await page.evaluate(() => window.RYZE.S.journal.length) === nJournal);
+  await H.deconnexion(page);
+  await H.connexion(page, 'HDJ001');
+  await H.aller(page, 'equipe');
+  t('accès hôpital de jour (IDE) : pas de journal des actions', await page.evaluate(() => !document.getElementById('journal-carte')));
 });
