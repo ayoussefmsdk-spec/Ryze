@@ -1,108 +1,114 @@
-# HDJ — plan du segment de présentation (10–15 min, journée des maladies digestives)
+# Programme du segment de présentation (journée des maladies digestives)
 
-> Proposition à valider par la Pr Bensabahia avant la rédaction du texte et des diapositives.
-> Orateur : Youssef Moussaddek, seul, avec quelques diapositives puis la vidéo commentée en direct.
-> Principe : droit au but, une idée par diapositive, les chiffres et les gestes concrets plutôt que les adjectifs.
+> Version 2, à valider avec la Pr Bensabahia.
+> **Titre proposé :** *Du papier au numérique : conception d'un système informatisé pour améliorer l'observance, la planification et la sécurité des biothérapies chez l'enfant atteint de MICI*
+> Orateur : Youssef Moussaddek. Support : quelques diapositives, puis la vidéo commentée.
 
-## Minutage d'ensemble (12 min + 3 min de questions)
+## Minutage (15 min au total)
 
-| Temps | Partie | Durée |
+| Début | Partie | Durée |
 |---|---|---|
-| 0:00 | Introduction par la Pr Bensabahia | 1 min |
-| 1:00 | 1. Accroche : une matinée à l'hôpital de jour | 0:30 |
-| 1:30 | 2. Contexte : les biothérapies chez l'enfant à l'HDJ | 1:30 |
-| 3:00 | 3. Le problème : l'information dispersée | 1:30 |
-| 4:30 | 4. L'objectif et les choix | 0:45 |
-| 5:15 | 5. Comment nous l'avons construit | 0:45 |
-| 6:00 | 6. L'application : la vidéo commentée | 5:00 |
-| 11:00 | 7. L'hébergement : le problème, la solution | 1:15 |
-| 12:15 | 8. Limites et perspectives | 0:30 |
-| 12:45 | 9. Conclusion | 0:30 |
-| 13:15 | Questions | 2–3 min |
+| 0:00 | Présentation par la Pr Bensabahia | 1:00 |
+| 1:00 | 1. Accroche et contexte | 1:30 |
+| 2:30 | 2. Le problème | 2:00 |
+| 4:30 | 3. L'objectif et les choix | 0:45 |
+| 5:15 | 4. Comment nous l'avons construit | 0:45 |
+| 6:00 | 5. Démonstration vidéo | 5:00 |
+| 11:00 | 6. L'hébergement : problème et solution | 1:15 |
+| 12:15 | 7. Conclusion | 0:45 |
+| 13:00 | Questions | 2:00 |
 
 ---
 
-## Introduction par la Pr Bensabahia (1 min)
-Trois points qu'elle peut poser pour nous :
-- l'unité et son hôpital de jour de biothérapies : des enfants et adolescents atteints de MICI, suivis sur des années ;
-- un projet né dans le service, conçu par les soignants pour les soignants ;
-- les deux auteurs (Youssef Moussaddek, Ahmed Traifi) et le fait que l'outil est aujourd'hui installé dans l'unité.
+## 1. Accroche et contexte (1 min 30)
+**Accroche** (en choisir une) :
+- *Fil rouge* : « Yassine, 13 ans, maladie de Crohn, infliximab toutes les 8 semaines. » C'est un patient fictif, celui qu'on retrouve dans la vidéo.
+- *Question à la salle* : « Pour vos patients sous biothérapie, savez-vous aujourd'hui, sans ouvrir un dossier, lesquels ont un dosage en retard ? »
 
-## 1. Accroche (30 s) — une matinée à l'HDJ
-- Une scène concrète, sans diapositive de texte : un mardi matin, quatre enfants attendus, un poids qui a changé depuis la dernière perfusion, un dosage résiduel à prélever avant la perfusion, une réaction notée lors de la séance précédente, un carnet à remplir à la main.
-- La question qui lance tout : « Où est l'information, et qui s'en souvient ? »
+**Contexte** :
+- Quatre molécules (infliximab, adalimumab, védolizumab, ustékinumab), en IV ou en SC, toujours administrées à l'hôpital de jour.
+- Le rythme : une séance environ toutes les 8 semaines, des contrôles à 3, 6 et 12 mois. Chaque enfant a donc 6 à 7 séances par an plus ses contrôles, pendant des années. Pour [N] enfants, cela fait environ [N × 6,5] séances à planifier chaque année.
+- Ce qui est propre à l'enfant :
+  - la dose est recalculée au poids à chaque séance ;
+  - il faut suivre la croissance et la puberté ;
+  - les cibles de dosage sont pédiatriques (plus hautes en cas d'atteinte périnéale) ;
+  - la famille doit être informée dans sa langue.
 
-## 2. Contexte (1 min 30) — les biothérapies chez l'enfant
-- Quatre molécules (infliximab, adalimumab, védolizumab, ustékinumab), en perfusion ou en injection sous-cutanée, toujours réalisées à l'HDJ.
-- Un rythme chronique : une séance toutes les 8 semaines environ, des contrôles à 3, 6 et 12 mois (biologie, calprotectine, dosages, imagerie, endoscopie).
-- Une particularité pédiatrique : l'enfant grandit, le poids change, donc la dose change à chaque séance ; les cibles de dosage sont pédiatriques et dépendent de l'atteinte (périnéale : cible plus haute).
-- Une organisation d'hôpital de jour : des fauteuils, des créneaux, une file active qui s'allonge.
-- Chiffres du service à insérer si disponibles : file active [__] enfants, [__] séances par semaine, [__] fauteuils.
+*Transition :* « Tout cela représente énormément d'informations, et jusqu'ici elles étaient sur papier. »
 
-## 3. Le problème (1 min 30) — l'information dispersée
-- Avant : papier, tableurs, mémoire des soignants ; le même renseignement ressaisi trois fois.
-- Quatre risques concrets, un par ligne :
-  1. **la dose** : calcul manuel au poids, flacons à compter, erreur possible ;
-  2. **les contrôles** : dosage résiduel ou bilan oublié, découvert au moment de la perfusion ;
-  3. **les effets indésirables** : réaction, allergie, prémédication qui ne suivent pas l'enfant d'une séance à l'autre ;
-  4. **la planification** : fauteuils, créneaux, reports pour rupture de stock ou infection : gérés à la main.
-- Et deux manques : pas de carnet lisible pour la famille, pas de chiffres d'activité fiables pour le service et l'administration.
-- Formule à placer : « Le problème n'était pas le savoir médical, c'était l'information. »
+## 2. Le problème : l'information dispersée et en désordre (2 min)
+**Au quotidien, quatre risques :**
+1. **La dose** : calcul manuel au poids, flacons à compter.
+2. **Les contrôles** : un dosage ou un bilan oublié, découvert le jour de la perfusion.
+3. **Les effets indésirables** : réaction, allergie et prémédication ne suivent pas l'enfant d'une séance à l'autre.
+4. **La planification** : fauteuils, créneaux, reports (infection, rupture de stock) gérés à la main.
 
-## 4. L'objectif et les choix (45 s)
-- Un outil fait pour l'hôpital de jour, pas un dossier patient généraliste.
-- Trois exigences fixées au départ : **simple** (utilisable par l'infirmier·ère, le médecin et le secrétariat), **sûr** (règles pédiatriques, traçabilité), **autonome** (fonctionne sur un seul PC, sans Internet).
-- Ce qu'il doit faire, en six verbes : calculer, planifier, rappeler, tracer, imprimer, compter.
+**À long terme, le désordre freine l'amélioration des traitements :**
+- On ne voit pas la réponse au traitement dans le temps : calprotectine, CRP, croissance, taux résiduels.
+- On décide d'une optimisation ou d'un changement de molécule sans vue d'ensemble, et les motifs d'échec ne sont pas documentés.
+- On n'a pas de chiffres (activité, consommation par molécule, échecs) pour justifier auprès de l'administration et de la pharmacie l'introduction de nouvelles molécules ou de nouveaux moyens.
+- On n'a pas de données exploitables pour la recherche.
 
-## 5. Comment nous l'avons construit (45 s)
-- Conception pilotée par le médecin : chaque règle clinique, chaque document, chaque seuil décidés dans le service.
-- Développement en trois mois, sans budget informatique, avec un assistant de programmation par intelligence artificielle (une phrase, sans s'y attarder).
-- Vérification : audit complet du code, 193 contrôles automatiques rejoués à chaque modification, base de démonstration entièrement fictive pour les essais et la présentation.
-- Formule : « Le médecin décide, la machine calcule et n'oublie pas. »
+*Formule :* « Ce qui n'est pas noté ne peut pas être amélioré. »
+*Transition :* « Il fallait passer du papier au numérique. »
 
-## 6. L'application : la vidéo commentée (5 min)
-Vidéo longue (4 min 36, 1080p, sous-titres), commentée en direct ; une version avec voix off pourra la remplacer. Pour chaque chapitre, le point à dire :
-1. **Connexion** : un code personnel par soignant, deux niveaux d'accès.
-2. **Tableau de bord** : « tout ce qui se passe aujourd'hui » ; retards, contrôles et alertes remontent d'eux-mêmes.
-3. **Dossier patient** : la dose se calcule au poids du jour, alerte si l'écart dépasse 10 % ; une séance se saisit en trente secondes ; dosages avec cibles pédiatriques (≥ 10 µg/mL en cas d'atteinte périnéale), remarque du staff tracée ; courbes de croissance et d'inflammation ; allergie, réaction et prémédication toujours visibles.
-4. **Nouveau dossier** : trois étapes, le protocole propose, le médecin décide ; saisie rétrospective des séances déjà faites.
-5. **Planning et feuille du jour** : fauteuils sans double réservation ; en un clic, la feuille de l'infirmier·ère avec la dose recalculée, les flacons, les prélèvements à faire avant la perfusion.
-6. **Documents** : carnet des soignants, carnet de la famille en français et en arabe avec la carte « Je suis sous biothérapie », planification complète, compte rendu prérempli.
-7. **Rapport d'activité** : séances IV et SC, taux de réalisation, réactions, reports, consommation par molécule, heures-fauteuil ; version anonymisée pour l'administration.
-8. **Sécurité** : sauvegarde automatique, export, journal des actions (« qui a fait quoi »).
+## 3. L'objectif et les choix (45 s)
+- **Objectif général** : réunir et structurer toute l'information de l'hôpital de jour dans un seul système.
+- **Quatre objectifs**, qui répondent aux problèmes :
+  - *observance* : séances et contrôles planifiés et rappelés ;
+  - *sécurité* : dose au poids, alertes, effets indésirables tracés ;
+  - *organisation* : planning des fauteuils, feuille du jour ;
+  - *données* : historique des traitements et rapport d'activité, pour améliorer les traitements.
+- **Choix** :
+  - un outil dédié à l'hôpital de jour ;
+  - simple, pour les médecins, les infirmier·ères et le secrétariat ;
+  - autonome : un PC, sans Internet ;
+  - bilingue pour les familles.
 
-## 7. L'hébergement : le problème, la solution (1 min 15)
-- Le problème : pas de serveur, pas de service informatique pour l'installer et l'entretenir, pas de budget d'hébergement ni de licence.
-- La solution : une application **locale**. Un PC, un dossier, zéro serveur, zéro connexion Internet, zéro abonnement.
-- Ce que cela donne concrètement : installation en cinq minutes sans droits administrateur ; icône sur le bureau ; sauvegarde automatique sur clé ou disque après chaque modification, avec une copie datée par jour ; mise à jour sans toucher aux données.
-- Ce que cela garantit : aucune donnée de santé ne sort de l'hôpital (conforme à la loi 09-08) ; version anonymisée pour toute diffusion.
-- Formule : « Le coût de l'infrastructure : un PC qui existait déjà. »
+*Transition :* « Comment l'avons-nous construit ? »
 
-## 8. Limites et perspectives (30 s)
-- Aujourd'hui : un seul poste, validation en conditions réelles en cours, textes arabes en relecture.
-- Demain : réseau multi-postes, z-scores de croissance OMS, scores PCDAI et PUCAI dans le temps, transition vers le service adulte, et installation dans d'autres hôpitaux de jour.
+## 4. Comment nous l'avons construit (45 s)
+- Conçu par l'équipe : chaque règle clinique, chaque seuil et chaque document ont été décidés dans le service.
+- Réalisé en trois mois environ, avec un assistant de programmation par intelligence artificielle (à dire en une phrase).
+- Vérifié par un audit complet du code et 193 contrôles automatiques, sur une base de démonstration entièrement fictive.
 
-## 9. Conclusion (30 s)
-- HDJ en quatre mots : **sûr, organisé, documenté, autonome**.
-- L'outil est installé dans l'unité et disponible pour tout service qui souhaite l'essayer.
-- Remerciements : Pr Bensabahia, l'équipe de l'HDJ (infirmier·ères, secrétariat), les familles.
+*Formule :* « Le médecin décide, la machine calcule et n'oublie pas. »
+*Transition :* « Le plus simple est de vous le montrer : une journée à l'hôpital de jour en quatre minutes. »
 
----
+## 5. Démonstration vidéo (5 min)
+La vidéo est commentée en direct. Ne pas lire les sous-titres : dire *pourquoi* c'est utile, et rappeler le risque correspondant (« souvenez-vous, le risque n° 1, la dose… »).
+1. **Connexion** : un code par soignant, deux niveaux d'accès.
+2. **Tableau de bord** : la journée, les retards et les alertes en un coup d'œil (observance).
+3. **Dossier patient** :
+   - dose au poids du jour, avec une alerte si l'écart dépasse 10 % (sécurité) ;
+   - une séance saisie en trente secondes ;
+   - dosages à cibles pédiatriques ;
+   - courbes de suivi ;
+   - allergie et réaction toujours visibles (effets indésirables).
+4. **Nouveau dossier** : trois étapes ; le protocole propose, le médecin décide.
+5. **Planning et feuille du jour** : fauteuils sans double réservation ; la feuille de l'infirmier·ère en un clic (organisation).
+6. **Documents** : carnet des soignants, carnet de la famille en français et en arabe, compte rendu prérempli.
+7. **Rapport d'activité** : activité, consommation par molécule, version anonymisée (données).
+8. **Sécurité** : sauvegarde, journal des actions.
 
-## Accroches à placer dans le discours
-- « Où est l'information, et qui s'en souvient ? »
-- « Le problème n'était pas le savoir médical, c'était l'information. »
-- « La dose se calcule au poids du jour, pas au poids d'il y a huit semaines. »
-- « En un clic : la feuille du jour, le carnet de la famille, le rapport d'activité. »
-- « Le médecin décide, la machine calcule et n'oublie pas. »
-- « Un PC, un dossier, zéro serveur. »
-- « Rien ne sort de l'hôpital. »
+## 6. L'hébergement : problème et solution (1 min 15)
+- **Le problème** : pas de serveur, pas d'équipe informatique pour l'installer et l'entretenir, et le coût d'un hébergement.
+- **La solution** : une application locale, sur un PC déjà en place, avec une icône sur le bureau, qui fonctionne sans Internet.
+- **Ce que cela garantit** :
+  - aucune donnée ne sort de l'hôpital (loi 09-08) ;
+  - une sauvegarde automatique à chaque modification et une copie datée chaque jour ;
+  - des mises à jour qui ne touchent pas aux données ;
+  - une version anonymisée pour toute diffusion.
 
-## Points à valider avec la Pr Bensabahia
-1. L'ordre : problème → solution → vidéo → hébergement, ou hébergement avant la vidéo ?
-2. La durée : 12 min de présentation + 3 min de questions, ou 10 min au total ?
-3. La mention de l'intelligence artificielle : une phrase dans la méthode (proposé), davantage, ou rien.
-4. Les chiffres du service à insérer dans le contexte (file active, séances par semaine, fauteuils).
-5. Le titre de la communication, par exemple : « HDJ : une application locale pour la gestion des biothérapies en hôpital de jour pédiatrique ».
-6. Montrer les limites (proposé : oui, en 30 s, cela renforce la crédibilité) ou les garder pour les questions.
-7. Vidéo commentée en direct, ou version avec voix off.
+*Formule :* « Un PC, un dossier, zéro serveur. »
+
+## 7. Conclusion (45 s)
+- Une diapositive de récapitulatif : **quatre problèmes → quatre réponses**.
+- La suite : mesurer l'effet sur l'observance et la sécurité après 6 à 12 mois d'utilisation.
+- Perspectives :
+  - plusieurs postes en réseau ;
+  - scores d'activité PCDAI et PUCAI ;
+  - courbes de croissance OMS ;
+  - transition vers l'adulte ;
+  - d'autres services.
+- Remerciements, puis le titre et les noms à l'écran.
